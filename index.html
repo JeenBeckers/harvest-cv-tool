@@ -1,4 +1,5 @@
 <style>
+>
 :root{--hg:#1a5c35;--hg2:#2d7a4a;--hgl:#e8f2ec;--hga:#4caf78;--rad:10px;--beige:#F5EFE4;--push:#f59e0b;--pushl:#fef3c7}
 *{box-sizing:border-box;margin:0;padding:0}
 #app{background:var(--beige);min-height:620px;font-family:'Libre Franklin',system-ui,sans-serif}
@@ -368,6 +369,7 @@
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/tabler-icons.min.css" rel="stylesheet">
+
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo">
@@ -703,8 +705,9 @@
   </div>
 </div>
 <div class="toast" id="toast"></div>
-
 <script>
+
+
 
 // ══════════════════════════════════════════════
 // SUPABASE DATABASE LAYER
@@ -1418,348 +1421,322 @@ function showLoadingOverlay(show){
 .role-admin{background:#fee2e2;color:#9b1c1c}
 .role-sales{background:#e8f2ff;color:#1a56a8}
 .role-recruitment{background:#fce7f3;color:#9d174d}
+
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/tabler-icons.min.css" rel="stylesheet">
-<div id="login-screen">
-  <div class="login-box">
-    <div class="login-logo">
-      <div class="login-logom">H</div>
-      <div>
-        <div class="login-title">Harvest · CV Sales Tool</div>
-        <div class="login-sub">Log in om verder te gaan</div>
-      </div>
-    </div>
-    <div class="login-field">
-      <label class="login-label">Gebruikersnaam</label>
-      <input class="login-input" id="login-user" type="text" placeholder="jouw naam" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
-    </div>
-    <div class="login-field">
-      <label class="login-label">Wachtwoord</label>
-      <input class="login-input" id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <button class="login-btn" onclick="doLogin()">Inloggen</button>
-    <div class="login-error" id="login-error">Gebruikersnaam of wachtwoord onjuist</div>
-  </div>
-</div>
-<div id="app" style="display:none">
-  <div class="topbar">
-    <div class="logo">
-      <div class="logom">H</div>
-      <div><div class="logot">Harvest · CV Sales Tool <span style="font-size:10px;opacity:.6;margin-left:4px">v10</span></div><div class="logos">Kandidaten aanbieden aan partijen</div></div>
-    </div>
-    <div class="userpicker">
-      <span class="ulabel">Ingelogd als:</span>
-      <span id="topbar-username" style="color:#fff;font-size:12px;font-weight:600;background:rgba(255,255,255,.15);padding:4px 10px;border-radius:12px"></span>
-      <span id="topbar-role" style="font-size:10px;opacity:.7;color:#fff"></span>
-      <span class="syncbadge sync-wait" id="syncbadge">⟳ sync</span>
-      <button class="ubtn" onclick="doLogout()" title="Uitloggen" style="opacity:.7"><i class="ti ti-logout" style="font-size:11px"></i></button>
-    </div>
-  </div>
-  <div class="navtabs">
-    <div class="navtab active" onclick="showTab('lib')" id="tab-lib"><i class="ti ti-users"></i> Kandidaten <span class="nbadge" id="nb-lib">0</span></div>
-    <div class="navtab" onclick="showTab('push')" id="tab-push"><i class="ti ti-bolt"></i> Push <span class="nbadge-push" id="nb-push">0</span></div>
-    <div class="navtab" onclick="showTab('offer')" id="tab-offer"><i class="ti ti-send"></i> Aanbieding</div>
-    <div class="navtab" onclick="showTab('vac')" id="tab-vac"><i class="ti ti-briefcase"></i> Vacatures <span class="nbadge" id="nb-vac">0</span></div>
-    <div class="navtab" onclick="showTab('dash')" id="tab-dash"><i class="ti ti-chart-bar"></i> Dashboard <span class="nbadge" id="nb-dash">0</span></div>
-    <div class="navtab" onclick="showTab('archive')" id="tab-archive"><i class="ti ti-archive"></i> Archief <span class="nbadge" id="nb-archive">0</span></div>
-    <div class="navtab" onclick="showTab('companies')" id="tab-companies"><i class="ti ti-building"></i> Bedrijven <span class="nbadge" id="nb-co">0</span></div>
-    <div class="navtab" onclick="showTab('settings')" id="tab-settings"><i class="ti ti-settings"></i> Instellingen</div>
-  </div>
-  <div class="content">
 
-    <!-- KANDIDATEN -->
-    <div id="view-lib">
-      <div class="stitle">Kandidaten</div>
-      <div class="ssub">Actieve kandidatenlijst · selecteer voor aanbieding · ⚡ = push kandidaat</div>
-      <div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap">
-        <div class="impzone" style="flex:1;min-width:180px" onclick="document.getElementById('fi').click()">
-          <i class="ti ti-upload"></i><span>CV importeren (HTML/JSON)</span><small>meerdere tegelijk</small>
-          <input type="file" id="fi" accept=".json,.html" multiple style="display:none" onchange="handleFiles(event)">
-        </div>
-        <button class="bmain g" onclick="toggleAddPanel('add-cand-panel','btn-add-cand')"><i class="ti ti-user-plus"></i> Handmatig toevoegen</button>
-      </div>
-      <div class="add-panel" id="add-cand-panel">
-        <div class="ptitle"><i class="ti ti-user-plus"></i> Nieuwe kandidaat</div>
-        <div class="frow"><div class="fg"><label class="fl">Voornaam *</label><input class="fi" id="ac-fn" placeholder="Emma" type="text"></div><div class="fg"><label class="fl">Achternaam *</label><input class="fi" id="ac-ln" placeholder="de Vries" type="text"></div></div>
-        <div class="frow t"><div class="fg"><label class="fl">Rol / Specialisme *</label><input class="fi" id="ac-role" placeholder="Backend Engineer" type="text"></div><div class="fg"><label class="fl">Stad</label><input class="fi" id="ac-city" placeholder="Utrecht" type="text"></div><div class="fg"><label class="fl">Beschikbaar</label><input class="fi" id="ac-avail" placeholder="Direct / Aug 2026" type="text"></div></div>
-        <div class="frow q">
-          <div class="fg"><label class="fl">Sales eigenaar</label>
-        <input class="fi" id="ac-sales" list="sales-options" placeholder="Naam of kies…" autocomplete="off">
-        <datalist id="sales-options"><option value="Julieta"><option value="Frank"><option value="Marlie"></datalist>
-      </div>
-          <div class="fg"><label class="fl">Recruitment eigenaar</label><select class="fi" id="ac-recruit"><option value="">— Kies —</option><option>Bastijn</option><option>Wessal</option></select></div>
-          <div class="fg"><label class="fl">Bureau</label><select class="fi" id="ac-bureau"><option value="">— Kies —</option><option>PT</option><option>Ngage</option><option>StarApple</option><option>Sebastiaan</option><option>Eigen Werving</option></select></div>
-          <div class="fg"><label class="fl">Taal CV</label><select class="fi" id="ac-lang"><option value="nl">Nederlands</option><option value="en">English</option></select></div>
-        </div>
-        <div class="frow s"><div class="fg"><label class="fl">Skills (komma-gescheiden)</label><input class="fi" id="ac-skills" placeholder="Python, Docker, AWS" type="text"></div></div>
-        <div class="actbar"><button class="bmain g" onclick="addCandidateManual()"><i class="ti ti-check"></i> Toevoegen</button><button class="bmain o" onclick="toggleAddPanel('add-cand-panel','btn-add-cand')">Annuleren</button></div>
-      </div>
-      <div class="filterbar">
-        <div class="fg-filter">
-          <div class="fl-filter">Sales eigenaar</div>
-          <div class="fchip-wrap" id="filter-sales">
-            <div class="fchip active" onclick="setFilter('sales','all',this)">Alle</div>
-            <div class="fchip" onclick="setFilter('sales','Julieta',this)">Julieta</div>
-            <div class="fchip" onclick="setFilter('sales','Frank',this)">Frank</div>
-            <div class="fchip" onclick="setFilter('sales','Marlie',this)">Marlie</div>
-            <div class="fchip" onclick="setFilter('sales','',this)">Niet ingevuld</div>
-          </div>
-        </div>
-        <div class="fg-filter"><div class="fl-filter">Recruitment</div><div class="fchip-wrap" id="filter-recruit"><div class="fchip active" onclick="setFilter('recruit','all',this)">Alle</div><div class="fchip" onclick="setFilter('recruit','Bastijn',this)">Bastijn</div><div class="fchip" onclick="setFilter('recruit','Wessal',this)">Wessal</div></div></div>
-        <div class="fg-filter"><div class="fl-filter">Bureau</div><div class="fchip-wrap" id="filter-bureau"><div class="fchip active" onclick="setFilter('bureau','all',this)">Alle</div><div class="fchip" onclick="setFilter('bureau','PT',this)">PT</div><div class="fchip" onclick="setFilter('bureau','Ngage',this)">Ngage</div><div class="fchip" onclick="setFilter('bureau','StarApple',this)">StarApple</div><div class="fchip" onclick="setFilter('bureau','Sebastiaan',this)">Sebastiaan</div><div class="fchip" onclick="setFilter('bureau','Eigen Werving',this)">Eigen Werving</div></div></div>
-        <div class="fg-filter"><div class="fl-filter">CV</div><div class="fchip-wrap" id="filter-cv"><div class="fchip active" onclick="setFilter('cv','all',this)">Alle</div><div class="fchip" onclick="setFilter('cv','yes',this)">Met CV</div><div class="fchip" onclick="setFilter('cv','no',this)">Zonder</div></div></div>
-        <div class="fg-filter"><div class="fl-filter">Talent Class</div><div class="fchip-wrap" id="filter-tc"><div class="fchip active" onclick="setFilter('tc','all',this)">Alle</div><div class="fchip" onclick="setFilter('tc','SE',this)">SE</div><div class="fchip" onclick="setFilter('tc','DE',this)">DE</div><div class="fchip" onclick="setFilter('tc','BA',this)">BA</div></div></div>
-        <div class="fg-filter"><div class="fl-filter">Rol</div><div class="fchip-wrap" id="filter-role"><div class="fchip active" onclick="setFilter('role','all',this)">Alle</div><div class="fchip" onclick="setFilter('role','Software Engineer',this)">Software Engineer</div><div class="fchip" onclick="setFilter('role','Data Engineer',this)">Data Engineer</div><div class="fchip" onclick="setFilter('role','AI Engineer',this)">AI Engineer</div><div class="fchip" onclick="setFilter('role','Business Analist',this)">Business Analist</div></div></div>
-        <div class="fg-filter"><div class="fl-filter">Status</div><div class="fchip-wrap" id="filter-push"><div class="fchip active" onclick="setFilter('push','all',this)">Alle</div><div class="fchip" onclick="setFilter('push','push',this)">⚡ Push</div></div></div>
-        <button class="filter-reset" onclick="resetFilters()"><i class="ti ti-refresh" style="font-size:10px"></i> Reset</button>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
-        <span style="font-size:11px;color:#aaa" id="cand-count-label"></span>
-        <button class="col-mgr-btn" onclick="toggleColPanel()"><i class="ti ti-columns" style="font-size:11px"></i> Kolommen aanpassen</button>
-      </div>
-      <div class="col-mgr-panel" id="col-mgr-panel">
-        <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Zichtbare kolommen</div>
-        <div class="col-toggle-grid" id="col-toggle-grid"></div>
-        <div style="margin-top:9px;border-top:.5px solid #eee;padding-top:9px;display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:10px;color:#aaa">Klik op een kolom om in/uit te schakelen · klik op kolomkop om te sorteren</span>
-          <button class="bsm" onclick="resetCols()" style="font-size:10px"><i class="ti ti-refresh" style="font-size:10px"></i> Reset</button>
-        </div>
-      </div>
-      <div class="cv-table-wrap">
-        <table class="cv-tbl">
-          <thead id="cvthead"></thead>
-          <tbody id="cvtbody"></tbody>
-        </table>
-      </div>
-      <div id="selbar" style="display:none">
-        <div class="selbar"><i class="ti ti-check"></i><span id="selct">0 geselecteerd</span></div>
-        <div class="actbar" style="margin-top:7px">
-          <button class="bmain g" onclick="showTab('offer')"><i class="ti ti-send"></i> Aanbieding doen</button>
-          <button class="bmain amber" onclick="bulkPush()"><i class="ti ti-bolt"></i> Push markeren</button>
-          <button class="bmain o" onclick="bulkArchive()"><i class="ti ti-archive"></i> Archiveren</button>
-          <button class="bmain o" onclick="clearSel()">Wissen</button>
-        </div>
-      </div>
-    </div>
 
-    <!-- PUSH TAB -->
-    <div id="view-push" style="display:none">
-      <div class="stitle">⚡ Push kandidaten</div>
-      <div class="ssub">Kandidaten waar jullie actief op inzetten · aanbiedingen per push kandidaat</div>
-      <div class="push-box"><i class="ti ti-bolt" style="font-size:13px;flex-shrink:0;margin-top:1px"></i><div>Push-kandidaten zijn <strong>kort beschikbaar of sterk profiel</strong>. Markeer vanuit de kandidatenlijst. Klik op een kaart voor de aanbiedingshistorie.</div></div>
-      <div class="push-grid" id="push-grid"></div>
-      <div class="sdiv">Aanbiedingen voor push kandidaten</div>
-      <div class="twrap">
-        <table class="tbl">
-          <colgroup><col style="width:75px"><col style="width:120px"><col style="width:105px"><col style="width:100px"><col style="width:58px"><col style="width:68px"><col></colgroup>
-          <thead><tr><th>Datum</th><th>Kandidaat</th><th>Partij</th><th>Rol</th><th>Door</th><th>Methode</th><th>Notitie</th></tr></thead>
-          <tbody id="push-log-tbody"></tbody>
-        </table>
-      </div>
-    </div>
 
-    <!-- AANBIEDING -->
-    <div id="view-offer" style="display:none">
-      <div class="stitle">Nieuwe aanbieding</div>
-      <div class="ssub">Registreer handmatig of verstuur via Gmail</div>
-      <div class="mode-switcher">
-        <button class="mode-btn active" id="mode-btn-register" onclick="setOfferMode('register')"><i class="ti ti-clipboard-check"></i> Registreren</button>
-        <button class="mode-btn" id="mode-btn-email" onclick="setOfferMode('email')"><i class="ti ti-mail"></i> E-mail versturen</button>
-      </div>
-      <div class="panel">
-        <div class="ptitle"><i class="ti ti-building"></i> Klant / Partij</div>
-        <div class="frow">
-          <div class="fg"><label class="fl">Bedrijf *</label>
-            <div class="co-wrap" id="co-wrap">
-              <div class="co-sel" id="co-sel" onclick="toggleDrop()"><span id="co-sel-text" style="color:#bbb">Kies bedrijf…</span><i class="ti ti-chevron-down" style="font-size:11px;flex-shrink:0"></i></div>
-              <div class="co-drop" id="co-drop">
-                <input class="co-search" id="co-search" placeholder="Zoek bedrijf…" oninput="filterDrop(this.value)" onkeydown="dropKeydown(event)">
-                <div class="co-list" id="co-list"></div>
-                <div class="co-add"><input type="text" id="co-add-input" placeholder="Nieuw bedrijf…" onkeydown="if(event.key==='Enter')addCompanyFromDrop()"><button onclick="addCompanyFromDrop()">+ Toevoegen</button></div>
-              </div>
-            </div>
-          </div>
-          <div class="fg"><label class="fl">Contactpersoon</label><input class="fi" id="f-cp" placeholder="Jan de Vries" type="text" oninput="updatePreview()"></div>
-        </div>
-        <div class="frow t">
-          <div class="fg"><label class="fl">E-mailadres klant</label><input class="fi" id="f-email" placeholder="contact@bedrijf.nl" type="email" oninput="updatePreview()"></div>
-          <div class="fg"><label class="fl">Rol / Vacature</label><input class="fi" id="f-ro" placeholder="Senior Backend Engineer" type="text" oninput="updatePreview()"></div>
-          <div class="fg"><label class="fl">Aangeboden door</label><select class="fi" id="f-us" onchange="updatePreview()"><option>Marlie</option><option>Julieta</option><option>Frank</option></select></div>
-        </div>
-        <div class="frow s"><div class="fg"><label class="fl">Notitie</label><textarea class="fi" id="f-no" rows="2" placeholder="warm lead, tweede ronde…" oninput="updatePreview()"></textarea></div></div>
-      </div>
-      <div class="panel"><div class="ptitle"><i class="ti ti-users"></i> Kandidaten</div><div id="offerlist"></div><div style="margin-top:7px"><button class="bsm" onclick="showTab('lib')"><i class="ti ti-plus"></i> Vanuit kandidatenlijst</button></div></div>
-      <div id="email-section" class="panel">
-        <div class="ptitle"><i class="ti ti-mail"></i> E-mailpreview &amp; bijlage</div>
-        <div id="email-warn"></div>
-        <div class="fg" style="margin-bottom:8px"><label class="fl">Bijlagen</label>
-          <div class="att-zone" onclick="document.getElementById('att-input').click()"><i class="ti ti-paperclip"></i><span>Klik om bestanden toe te voegen</span><input type="file" id="att-input" multiple style="display:none" onchange="handleAttachments(event)"></div>
-          <div class="att-list" id="att-list"></div>
-        </div>
-        <div class="email-preview"><div class="ep-label">Aan</div><div class="ep-val" id="ep-to">—</div><div class="ep-label">Onderwerp</div><div class="ep-val" id="ep-subj">—</div><div class="ep-label">Bericht</div><div class="ep-body" id="ep-body">Vul de velden in voor preview.</div></div>
-        <div style="margin-top:10px"><div class="actbar"><button class="bmain g" id="btn-draft" onclick="triggerEmail('draft')"><i class="ti ti-inbox"></i> Concept</button><button class="bmain b" id="btn-send" onclick="triggerEmail('send')"><i class="ti ti-send"></i> Direct versturen</button><button class="bmain o" onclick="showTab('lib')">Annuleren</button></div></div>
-        <div id="email-result" style="display:none;margin-top:8px"></div>
-      </div>
-      <div id="register-section" style="display:none">
-        <div class="panel"><div class="ptitle"><i class="ti ti-clipboard-check"></i> Registreer aanbieding</div>
-          <div class="info-box"><i class="ti ti-info-circle" style="font-size:12px;flex-shrink:0;margin-top:1px"></i><div>Registreer <strong>zonder e-mail</strong> — bijv. na telefonisch contact.</div></div>
-          <div class="actbar"><button class="bmain g" onclick="doRegister()"><i class="ti ti-check"></i> Registreer</button><button class="bmain o" onclick="showTab('lib')">Annuleren</button></div>
-          <div id="register-result" style="display:none;margin-top:8px"></div>
-        </div>
-      </div>
-    </div>
 
-    <!-- VACATURES -->
-    <div id="view-vac" style="display:none;padding:0">
-      <div class="vac-layout">
-        <!-- LEFT: vacaturelijst -->
-        <div class="vac-sidebar">
-          <div class="vac-sidebar-header">
-            <span class="vac-sidebar-title">Vacatures</span>
-            <button class="bsm p" onclick="showAddVacPanel()" style="font-size:10px"><i class="ti ti-plus" style="font-size:10px"></i> Nieuw</button>
-          </div>
-          <div id="add-vac-inline" style="display:none;padding:12px;border-bottom:.5px solid #eee;background:#faf9f6">
-            <div class="fg" style="margin-bottom:6px"><label class="fl">Bedrijf *</label><input class="fi" id="vac-co" placeholder="bijv. ABN AMRO" type="text" style="font-size:12px"></div>
-            <div class="fg" style="margin-bottom:6px"><label class="fl">Rol *</label><input class="fi" id="vac-role" placeholder="bijv. Senior Backend Engineer" type="text" style="font-size:12px"></div>
-            <div class="fg" style="margin-bottom:6px"><label class="fl">Notities</label><textarea class="fi" id="vac-notes" rows="2" placeholder="Details, eisen…" style="font-size:12px"></textarea></div>
-            <div class="actbar">
-              <button class="bmain g" onclick="addVacature()" style="font-size:11px;padding:6px 12px"><i class="ti ti-check"></i> Toevoegen</button>
-              <button class="bmain o" onclick="document.getElementById('add-vac-inline').style.display='none'" style="font-size:11px;padding:6px 10px">Annuleren</button>
-            </div>
-          </div>
-          <div id="vac-sidebar-list"></div>
-        </div>
-        <!-- RIGHT: kanban board -->
-        <div class="kanban-area">
-          <div class="kanban-header" id="kanban-header">
-            <div class="kanban-empty-state" style="width:100%;padding:0">
-              <i class="ti ti-layout-kanban" style="font-size:24px;color:#ddd"></i>
-              <div style="font-size:12px;color:#ccc">Selecteer een vacature om het proces te zien</div>
-            </div>
-          </div>
-          <div class="kanban-board" id="kanban-board"></div>
-        </div>
-      </div>
-    </div>
 
-    <!-- DASHBOARD -->
-    <div id="view-dash" style="display:none">
-      <div class="stitle">Dashboard</div>
-      <div class="ssub" id="dashsub">Teamoverzicht</div>
-      <div class="sgrid5" id="sgrid"></div>
-      <div class="sdiv">⚡ Push kandidaten — aanbiedingen</div>
-      <div class="push-grid" id="dash-push-grid"></div>
-      <div class="sdiv">Per gebruiker</div>
-      <div id="userstats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px"></div>
-      <div class="sdiv">Aanbiedingshistorie</div>
-      <div style="display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap">
-        <div class="fchip active" onclick="setLogFilter('all',this)">Alle</div>
-        <div class="fchip" onclick="setLogFilter('mine',this)">Mijn</div>
-        <div class="fchip" onclick="setLogFilter('push',this)">⚡ Push</div>
-      </div>
-      <div class="twrap">
-        <table class="tbl">
-          <colgroup><col style="width:75px"><col style="width:120px"><col style="width:105px"><col style="width:100px"><col style="width:58px"><col style="width:68px"><col></colgroup>
-          <thead><tr><th>Datum</th><th>Kandidaat</th><th>Partij</th><th>Rol</th><th>Door</th><th>Methode</th><th>Notitie</th></tr></thead>
-          <tbody id="logtbody"></tbody>
-        </table>
-      </div>
-      <div class="sdiv">Meest aangeboden</div>
-      <div class="cvgrid" id="topcvs"></div>
-    </div>
 
-    <!-- ARCHIEF -->
-    <div id="view-archive" style="display:none">
-      <div class="stitle">Archief</div>
-      <div class="ssub">Gearchiveerde kandidaten · herstel om weer actief te maken</div>
-      <input type="text" class="search-input" id="archive-search" placeholder="Zoek op naam, rol, stad…" oninput="renderArchive()">
-      <div class="cv-table-wrap">
-        <table class="cv-tbl">
-          <thead><tr><th>Kandidaat</th><th>Rol</th><th>Stad</th><th>Bureau</th><th>Gearchiveerd</th><th>Acties</th></tr></thead>
-          <tbody id="archive-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- BEDRIJVEN -->
-    <div id="view-companies" style="display:none">
-      <div class="stitle">Bedrijven</div><div class="ssub">Klanten beheren</div>
-      <div class="add-comp-row"><input type="text" id="new-co-input" placeholder="Naam nieuw bedrijf…" onkeydown="if(event.key==='Enter')addCompany()"><button class="bmain g" onclick="addCompany()"><i class="ti ti-plus"></i> Toevoegen</button></div>
-      <div class="comp-grid" id="comp-grid"></div>
-    </div>
-
-    <!-- INSTELLINGEN -->
-    <div id="view-settings" style="display:none">
-      <div class="stitle">Instellingen</div><div class="ssub">Gebruikers, e-mail en handtekening</div>
-      <!-- GEBRUIKERSBEHEER — alleen zichtbaar voor Admin -->
-      <div class="settings-section" id="user-mgmt-section">
-        <div class="settings-title"><i class="ti ti-users-group"></i> Gebruikers beheren</div>
-        <div style="font-size:12px;color:#888;margin-bottom:12px">Alleen admins kunnen gebruikers toevoegen of verwijderen.</div>
-        <div id="user-mgmt-rows"></div>
-        <div style="margin-top:14px;padding-top:12px;border-top:.5px solid #eee">
-          <div class="ptitle" style="font-size:12px;margin-bottom:10px"><i class="ti ti-user-plus"></i> Nieuwe gebruiker</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
-            <div class="fg"><label class="fl">Naam *</label><input class="fi" id="new-user-name" placeholder="bijv. Emma" style="font-size:12px"></div>
-            <div class="fg"><label class="fl">Rol *</label>
-              <select class="fi" id="new-user-role" style="font-size:12px">
-                <option value="">— Kies rol —</option>
-                <option value="Admin">Admin</option>
-                <option value="Sales">Sales</option>
-                <option value="Recruitment">Recruitment</option>
-              </select>
-            </div>
-            <div class="fg"><label class="fl">Wachtwoord *</label><input class="fi" id="new-user-pass" type="password" placeholder="••••••" style="font-size:12px"></div>
-            <button class="bmain g" onclick="addUser()" style="font-size:11px;padding:7px 12px"><i class="ti ti-plus"></i> Toevoegen</button>
-          </div>
-        </div>
-      </div>
-      <div class="settings-section"><div class="settings-title"><i class="ti ti-mail"></i> E-mailadressen</div><div id="user-email-rows"></div></div>
-      <div class="settings-section"><div class="settings-title"><i class="ti ti-pencil"></i> Handtekening</div>
-        <textarea class="fi" id="sig-input" rows="5" style="font-size:12px;font-family:monospace"></textarea>
-        <div style="margin-top:7px"><button class="bmain g" onclick="saveSignature()"><i class="ti ti-check"></i> Opslaan</button></div>
-      </div>
-      <div class="settings-section"><div class="settings-title"><i class="ti ti-brand-gmail"></i> Gmail integratie</div>
-        <div style="font-size:12px;color:#888;line-height:1.7">E-mails via <strong>Gmail MCP</strong>.<br><strong>Concept</strong> → Gmail Concepten.<br><strong>Direct</strong> → concept + Gmail opent.<br><strong>Bijlagen</strong> → bestanden meegestuurd.<br><br>Activeren: <strong>Settings → Connectors → Gmail</strong>.</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="modal" id="modal"><div class="minn" style="width:700px;max-height:90vh"><div class="mhdr"><div><div style="font-size:15px;font-weight:600;color:#1a1a1a" id="m-name"></div><div style="font-size:12px;color:#888;margin-top:2px" id="m-role"></div></div><button class="mcls" onclick="closeModal()"><i class="ti ti-x"></i></button></div><div id="m-body"></div></div></div>
-<div class="modal" id="vac-modal"><div class="minn" style="width:520px"><div class="mhdr"><div><div style="font-size:14px;font-weight:600;color:#1a1a1a" id="vm-title"></div></div><button class="mcls" onclick="document.getElementById('vac-modal').style.display='none'"><i class="ti ti-x"></i></button></div><div id="vm-body"></div></div></div>
-<div class="modal" id="merge-modal">
-  <div class="minn" style="width:500px">
-    <div class="mhdr">
-      <div style="font-size:14px;font-weight:600;color:#1a1a1a">CV koppelen — bevestiging</div>
-      <button class="mcls" onclick="document.getElementById('merge-modal').style.display='none'"><i class="ti ti-x"></i></button>
-    </div>
-    <div id="merge-body"></div>
-  </div>
-</div>
-
-<div class="modal" id="bulk-modal">
-  <div class="minn" style="width:680px;max-height:88vh">
-    <div class="mhdr">
-      <div>
-        <div style="font-size:14px;font-weight:700;color:#1a1a1a">CV bestanden importeren</div>
-        <div style="font-size:11px;color:#888;margin-top:2px" id="bulk-summary"></div>
-      </div>
-      <button class="mcls" onclick="document.getElementById('bulk-modal').style.display='none'"><i class="ti ti-x"></i></button>
-    </div>
-    <div id="bulk-body" style="overflow-y:auto;max-height:60vh"></div>
-    <div style="border-top:.5px solid #eee;padding-top:12px;margin-top:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <button class="bmain g" onclick="confirmBulkImport()"><i class="ti ti-check"></i> Bevestig alle selecties</button>
-      <button class="bmain o" onclick="document.getElementById('bulk-modal').style.display='none'">Annuleren</button>
-      <span style="font-size:11px;color:#aaa;margin-left:auto" id="bulk-selected-count"></span>
-    </div>
-  </div>
-</div>
-<div class="toast" id="toast"></div>
-
-<script>
 
 // ══════════════════════════════════════════════
+// SUPABASE DATABASE LAYER
+// ══════════════════════════════════════════════
+const SUPABASE_URL = 'https://avircyzuhmpysqjnyadh.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2aXJjeXp1aG1weXNxam55YWRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMzM0NDksImV4cCI6MjA5NTkwOTQ0OX0.Bly2QRlSNlyvQxbBi8tuEVny8p2YsF2lgwYTrge5b40';
+
+async function sbFetch(path, options = {}) {
+  // Use the base URL without /rest/v1 for the project URL
+  const baseUrl = SUPABASE_URL.replace('/rest/v1','').replace(/\/$/, '');
+  const url = baseUrl + '/rest/v1/' + path;
+  try {
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': options.prefer || 'return=representation',
+        ...(options.headers || {})
+      }
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('Supabase HTTP error', res.status, path, err);
+      throw new Error('HTTP ' + res.status + ': ' + err);
+    }
+    const text = await res.text();
+    return text ? JSON.parse(text) : [];
+  } catch(e) {
+    console.error('sbFetch failed for', path, e.message);
+    throw e;
+  }
+}
+
+const DB = {
+  // CANDIDATES
+  async getCandidates() {
+    const rows = await sbFetch('candidates?order=created_at.asc');
+    return rows.map(r => ({
+      id: r.id, name: r.name, role: r.role,
+      talentClass: r.talent_class, city: r.city, province: r.province,
+      availability: r.availability, salesOwner: r.sales_owner,
+      recruitOwner: r.recruit_owner, bureau: r.bureau, status: r.status,
+      language: r.language || 'nl', skills: r.skills || [],
+      notes: r.notes, notesHistory: r.notes_history || [],
+      driveUrl: r.drive_url, push: r.push || false,
+      archived: r.archived || false, archivedDate: r.archived_date,
+      source: r.source
+    }));
+  },
+  async upsertCandidate(cv) {
+    const row = {
+      id: cv.id, name: cv.name, role: cv.role,
+      talent_class: cv.talentClass, city: cv.city, province: cv.province,
+      availability: cv.availability, sales_owner: cv.salesOwner,
+      recruit_owner: cv.recruitOwner, bureau: cv.bureau, status: cv.status,
+      language: cv.language || 'nl', skills: cv.skills || [],
+      notes: cv.notes, notes_history: cv.notesHistory || [],
+      drive_url: cv.driveUrl, push: cv.push || false,
+      archived: cv.archived || false, archived_date: cv.archivedDate,
+      source: cv.source, updated_at: new Date().toISOString()
+    };
+    await sbFetch('candidates?on_conflict=id', {
+      method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify(row)
+    });
+  },
+  async deleteCandidate(id) {
+    await sbFetch('candidates?id=eq.' + id, { method: 'DELETE' });
+  },
+
+  // COMPANIES
+  async getCompanies() {
+    const rows = await sbFetch('companies?order=name.asc');
+    return rows.map(r => r.name);
+  },
+  async addCompany(name) {
+    await sbFetch('companies', { method: 'POST', body: JSON.stringify({ name }) });
+  },
+  async deleteCompany(name) {
+    await sbFetch('companies?name=eq.' + encodeURIComponent(name), { method: 'DELETE' });
+  },
+
+  // VACATURES
+  async getVacatures() {
+    const rows = await sbFetch('vacatures?order=created_at.asc');
+    return rows.map(r => ({
+      id: r.id, company: r.company, role: r.role, status: r.status,
+      notes: r.notes, candidateIds: r.candidate_ids || [],
+      kanbanData: r.kanban_data || {}, createdDate: r.created_date
+    }));
+  },
+  async upsertVacature(v) {
+    const row = {
+      id: v.id, company: v.company, role: v.role, status: v.status,
+      notes: v.notes, candidate_ids: v.candidateIds || [],
+      kanban_data: v.kanbanData || {}, created_date: v.createdDate,
+      updated_at: new Date().toISOString()
+    };
+    await sbFetch('vacatures?on_conflict=id', {
+      method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify(row)
+    });
+  },
+  async deleteVacature(id) {
+    await sbFetch('vacatures?id=eq.' + id, { method: 'DELETE' });
+  },
+
+  // OFFER LOG
+  async getOfferLog() {
+    const rows = await sbFetch('offer_log?order=created_at.desc&limit=500');
+    return rows.map(r => ({
+      id: r.id, date: r.date, candidateId: r.candidate_id,
+      candidateName: r.candidate_name, company: r.company,
+      contact: r.contact, role: r.role, user: r.user,
+      note: r.note, emailed: r.emailed, emailMode: r.email_mode,
+      draftId: r.draft_id, hasAttachments: r.has_attachments, isPush: r.is_push
+    }));
+  },
+  async addOfferLog(entry) {
+    const row = {
+      id: entry.id, date: entry.date, candidate_id: entry.candidateId,
+      candidate_name: entry.candidateName, company: entry.company,
+      contact: entry.contact, role: entry.role, user: entry.user,
+      note: entry.note, emailed: entry.emailed, email_mode: entry.emailMode,
+      draft_id: entry.draftId, has_attachments: entry.hasAttachments, is_push: entry.isPush
+    };
+    await sbFetch('offer_log', { method: 'POST', body: JSON.stringify(row) });
+  },
+
+  // USERS
+  async getUsers() {
+    const rows = await sbFetch('app_users?order=name.asc');
+    return rows.map(r => ({ name: r.name, role: r.role, pass: r.pass, email: r.email || '' }));
+  },
+  async upsertUser(u) {
+    await sbFetch('app_users?on_conflict=name', {
+      method: 'POST', prefer: 'resolution=merge-duplicates',
+      body: JSON.stringify({ name: u.name, role: u.role, pass: u.pass, email: u.email || '' })
+    });
+  },
+  async deleteUser(name) {
+    await sbFetch('app_users?name=eq.' + encodeURIComponent(name), { method: 'DELETE' });
+  },
+
+  // SETTINGS
+  async getSetting(key) {
+    const rows = await sbFetch('settings?key=eq.' + key);
+    return rows[0]?.value || null;
+  },
+  async setSetting(key, value) {
+    await sbFetch('settings?on_conflict=key', {
+      method: 'POST', prefer: 'resolution=merge-duplicates',
+      body: JSON.stringify({ key, value, updated_at: new Date().toISOString() })
+    });
+  }
+};
+// ══════════════════════════════════════════════
+const COLS=[{bg:'#e8f2ff',tx:'#1a56a8'},{bg:'#fef3e2',tx:'#a05a00'},{bg:'#f3e8ff',tx:'#6b21a8'},{bg:'#e8f5e9',tx:'#2e7d32'},{bg:'#fde8e8',tx:'#9b1c1c'},{bg:'#e8f5f0',tx:'#065f46'},{bg:'#fef9e7',tx:'#78350f'}];
+// ── DEFAULT USERS (naam, rol, wachtwoord hash-vrij voor MVP)
+const DEFAULT_USERS = [
+  {name:'Julieta', role:'Sales',       pass:'harvest2026', email:''},
+  {name:'Frank',   role:'Sales',       pass:'harvest2026', email:''},
+  {name:'Marlie',  role:'Admin',       pass:'harvest2026', email:'jeen.beckers@harvest.nl'},
+  {name:'Bastijn', role:'Recruitment', pass:'harvest2026', email:''},
+  {name:'Wessal',  role:'Recruitment', pass:'harvest2026', email:''},
+];
+let appUsers = [...DEFAULT_USERS];
+let currentUserObj = null;
+const USERS=['Julieta','Frank','Marlie','Bastijn','Wessal'];
+const UCLS={Julieta:'up-j',Frank:'up-f',Marlie:'up-m',Bastijn:'up-b',Wessal:'up-w'};
+const DEFAULT_COMPANIES=['ABN AMRO','ASN Bank','ASR','BNG','CGI','DELA','Essent','Firan','GVB','KPN','Lumera','RIVM','Tikkie','Triodosbank','UWV'];
+const DEFAULT_SIG=`Met vriendelijke groet,\n\nHarvest Lead Programs B.V.\nwww.harvest.nl`;
+const DEFAULT_EMAILS={Marlie:'jeen.beckers@harvest.nl',Julieta:'',Frank:''};
+
+function colFor(n){let h=0;for(let c of n)h=(h+c.charCodeAt(0))%COLS.length;return COLS[h];}
+function ini(n){return n.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase();}
+function today(){return new Date().toISOString().slice(0,10);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function dHTMLe(s){return s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'");}
+function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):'';}
+
+let CU='Marlie',sel=new Set(),offerMode='register',logFilter='all';
+let activeFilters={sales:'all',recruit:'all',bureau:'all',cv:'all',push:'all',tc:'all',role:'all'};
+let cvLib=[],offerLog=[],companies=[...DEFAULT_COMPANIES],vacatures=[];
+let userEmails={...DEFAULT_EMAILS},signature=DEFAULT_SIG,selectedCompany='';
+const cvHtmlStore={};
+let attachments=[];
+
+const CSV_SEED_CVS=[{"id": "csv_wike_duivenvoorden", "name": "Wike Duivenvoorden", "role": "Software Engineer · Software Engineering", "talentClass": "SE", "city": "Haarlem", "province": "Noord-Holland", "availability": "per direct", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Sebastiaan", "status": "Codility", "dateInProcess": "28/5/26", "driveUrl": "", "notes": "Status: Codility", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_yesim_ulusoy", "name": "Yesim Ulusoy", "role": "Software Engineer · BSc. informatiekunde", "talentClass": "SE", "city": "Rotterdam", "province": "Zuid-Holland", "availability": "per juli", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Sebastiaan", "status": "Codility", "dateInProcess": "20/5/26", "driveUrl": "", "notes": "Status: Codility", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_dina_bellouki", "name": "Dina Bellouki", "role": "Software Engineer · Computing Science", "talentClass": "SE", "city": "Arnhem", "province": "Gelderland", "availability": "per direct", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Codility", "dateInProcess": "19/5/26", "driveUrl": "", "notes": "Status: Codility", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_muna_mahamud", "name": "Muna Mahamud", "role": "Software Engineer · HBO Informatica", "talentClass": "SE", "city": "Hoorn", "province": "Noord-Holland", "availability": "per juli", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Ngage", "status": "Codility", "dateInProcess": "5/5/26", "driveUrl": "", "notes": "Status: Codility", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_bram_ottenschot", "name": "Bram Ottenschot", "role": "Software Engineer · Computer Science", "talentClass": "SE", "city": "Twente", "province": "Overijssel", "availability": "per okt", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "2e gesprek", "dateInProcess": "27/4/26", "driveUrl": "", "notes": "Status: 2e gesprek", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_gert_jan_schaap", "name": "Gert Jan Schaap", "role": "Software Engineer · Computer Science", "talentClass": "SE", "city": "Rotterdam", "province": "Noord-Brabant", "availability": "per dec", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "1e gesprek", "dateInProcess": "4/5/26", "driveUrl": "", "notes": "Status: 1e gesprek", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_rachna_mallara", "name": "Rachna Mallara", "role": "Software Engineer · Information studies", "talentClass": "SE", "city": "Den Bosch", "province": "Noord-Brabant", "availability": "per aug", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Voorgesteld", "dateInProcess": "30/4/26", "driveUrl": "", "notes": "Status: Voorgesteld · Voorgesteld bij: ABN AMRO", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_mohamed_bentaher", "name": "Mohamed Bentaher", "role": "Software Engineer · Computing Science", "talentClass": "SE", "city": "Amsterdam", "province": "Noord-Holland", "availability": "1/8/26", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "2e gesprek", "dateInProcess": "16/4/26", "driveUrl": "", "notes": "Status: 2e gesprek · geen banken", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_sophia_van_lieshout", "name": "Sophia van Lieshout", "role": "Software Engineer · BSc. Informatica", "talentClass": "SE", "city": "Den Haag", "province": "Zuid-Holland", "availability": "per direct", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Aangenomen", "dateInProcess": "7/4/26", "driveUrl": "https://drive.google.com/drive/folders/1PkdYlLEtOZ_aohbiUK5HAImagIjV-5qE", "notes": "Status: Aangenomen", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_maosheng_jiang", "name": "Maosheng Jiang", "role": "Software Engineer", "talentClass": "SE", "city": "Rotterdam", "province": "Zuid-Holland", "availability": "Per aug", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Actief zoeken", "dateInProcess": "19/3/26", "driveUrl": "", "notes": "Status: Actief zoeken · Voorgesteld bij: CGI · SDU - Julieta heeft hem voorgesteld bij Sdu. Marlie gaat hem voorstellen voor CGI", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_imke_van_ooijen", "name": "Imke van Ooijen", "role": "Software Engineer", "talentClass": "SE", "city": "Hoofddorp", "province": "Noord-Holland", "availability": "Per sept", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Actief zoeken", "dateInProcess": "19/3/26", "driveUrl": "", "notes": "Status: Actief zoeken · Voorgesteld bij: ABN AMRO · Selectiedag - Voorgesteld bij ABN AMRO", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_lisa_rabbers", "name": "Lisa Rabbers", "role": "Software Engineer · Computer Science", "talentClass": "SE", "city": "Eindhoven", "province": "Noord-Brabant", "availability": "Per direct", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Voorgesteld", "dateInProcess": "4/3/26", "driveUrl": "https://drive.google.com/drive/folders/1ZkIgjbuYtZTBhPnkII47RhZI3Nkaphre", "notes": "Status: Voorgesteld · Voorgesteld bij: Dela, ASN Bank · VGZ - Julieta heeft haar voorgesteld bij Dela en gaat voorstellen bij VGZ", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_shreya_sebastian", "name": "Shreya Sebastian", "role": "Software Engineer", "talentClass": "SE", "city": "Eindhoven", "province": "Noord-Brabant", "availability": "per juli", "salesOwner": "", "recruitOwner": "Bastijn", "bureau": "PT", "status": "Voorgesteld", "dateInProcess": "28/4/26", "driveUrl": "", "notes": "Status: Voorgesteld · Voorgesteld bij: ABN AMRO · Ligt bij ABN", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_martijn_frericks", "name": "Martijn Frericks", "role": "Software Engineer · Computer Science", "talentClass": "SE", "city": "Leiden", "province": "Zuid-Holland", "availability": "per direct", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "PT", "status": "Voorgesteld", "dateInProcess": "28/4/26", "driveUrl": "", "notes": "Status: Voorgesteld · Voorgesteld bij KPN en ABN", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_liesbet_ooghe", "name": "Liesbet Ooghe", "role": "Software Engineer", "talentClass": "SE", "city": "Amsterdam", "province": "Noord-Holland", "availability": "—", "salesOwner": "", "recruitOwner": "", "bureau": "StarApple", "status": "2e gesprek", "dateInProcess": "", "driveUrl": "", "notes": "Status: 2e gesprek", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_xiao_nan_pols", "name": "Xiao Nan Pols", "role": "Software Engineer · HBO, Communication Multimedia Design", "talentClass": "SE", "city": "Hoorn", "province": "Noord-Holland", "availability": "Per direct", "salesOwner": "", "recruitOwner": "Bastijn", "bureau": "Ngage", "status": "1e gesprek", "dateInProcess": "4/6/26", "driveUrl": "", "notes": "Status: 1e gesprek · Voorgesteld bij: ABN - front end", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_jenelle_davelaar", "name": "Jenelle Davelaar", "role": "Software Engineer · HBO-ICT software engineering", "talentClass": "SE", "city": "Purmerend", "province": "Noord-Holland", "availability": "Augustus/september", "salesOwner": "", "recruitOwner": "Bastijn", "bureau": "StarApple", "status": "2e gesprek", "dateInProcess": "4/6/26", "driveUrl": "", "notes": "Status: 2e gesprek · Voorgesteld bij: ABN - front end", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_jasper_laumen", "name": "Jasper Laumen", "role": "Software Engineer · Computer science", "talentClass": "SE", "city": "Nijmegen", "province": "Gelderland", "availability": "September", "salesOwner": "", "recruitOwner": "Bastijn", "bureau": "Ngage", "status": "Codility", "dateInProcess": "4/6/26", "driveUrl": "", "notes": "Status: Codility", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_niels_schutjens", "name": "Niels Schutjens", "role": "Data Engineer · Econometrie", "talentClass": "DE", "city": "Den Bosch", "province": "Noord-Brabant", "availability": "Juni/juli", "salesOwner": "", "recruitOwner": "Bastijn", "bureau": "Eigen Werving", "status": "2e gesprek", "dateInProcess": "20/4/26", "driveUrl": "", "notes": "Status: 2e gesprek · 28 mei technisch gesprek, echt een topper", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_annemarie_dekkers", "name": "Annemarie Dekkers", "role": "Data Engineer · Data Science", "talentClass": "DE", "city": "Almere", "province": "Flevoland", "availability": "per direct", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "1e gesprek", "dateInProcess": "4/5/26", "driveUrl": "", "notes": "Status: 1e gesprek", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_leon_hulshof", "name": "Leon Hulshof", "role": "Data Engineer · Artificial Intelligence", "talentClass": "DE", "city": "Amsterdam", "province": "Noord-Holland", "availability": "per direct", "salesOwner": "", "recruitOwner": "Bastijn", "bureau": "Eigen Werving", "status": "1e gesprek", "dateInProcess": "4/5/26", "driveUrl": "", "notes": "Status: 1e gesprek", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_catherine_rasmussen", "name": "Catherine Rasmussen", "role": "Data Engineer · Information studies", "talentClass": "DE", "city": "Amsterdam", "province": "Noord-Holland", "availability": "per direct", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "2e gesprek", "dateInProcess": "1/8/25", "driveUrl": "", "notes": "Status: 2e gesprek", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_rijk_van_der_meer", "name": "Rijk van der Meer", "role": "Data Engineer · Information studies: data", "talentClass": "DE", "city": "Culemborg", "province": "Utrecht", "availability": "per sept", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Voorgesteld", "dateInProcess": "21/4/26", "driveUrl": "", "notes": "Status: Voorgesteld", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_martijn_makaske", "name": "Martijn Makaske", "role": "Data Engineer · AI", "talentClass": "DE", "city": "Utrecht", "province": "Utrecht", "availability": "—", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "2e gesprek", "dateInProcess": "28/4/26", "driveUrl": "", "notes": "Status: 2e gesprek · Voorgesteld bij: UWV · Marlie wil Martijn voorstellen bij UWV", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_sahar_marossi", "name": "Sahar Marossi", "role": "Data Engineer · Data Science & AI", "talentClass": "DE", "city": "Den Haag", "province": "Zuid-Holland", "availability": "per sept", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Codility", "dateInProcess": "17/4/26", "driveUrl": "", "notes": "Status: Codility · Voorgesteld bij: ABN AMRO", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_roemer_schwaanhuyser", "name": "Roemer Schwaanhuyser", "role": "Data Engineer · Data Science", "talentClass": "DE", "city": "Utrecht", "province": "Utrecht", "availability": "Per sept", "salesOwner": "", "recruitOwner": "Bastijn", "bureau": "Eigen Werving", "status": "Actief zoeken", "dateInProcess": "23/3/26", "driveUrl": "", "notes": "Status: Actief zoeken · Marlie gaat Roemer voorstellen bij UWV", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_berkay_yayla", "name": "Berkay Yayla", "role": "Data Engineer · Data Science", "talentClass": "DE", "city": "Amsterdam", "province": "Noord-Holland", "availability": "Per direct", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Actief zoeken", "dateInProcess": "20/3/26", "driveUrl": "https://drive.google.com/drive/folders/1wLF2e2MddEnCYGL44CrNQY-Xzmic5O5-", "notes": "Status: Actief zoeken · Voorgesteld bij: UWV", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_roman_oort", "name": "Roman Oort", "role": "Data Engineer · BSc+MSc AI", "talentClass": "DE", "city": "Amsterdam", "province": "Noord-Holland", "availability": "Per direct", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Actief zoeken", "dateInProcess": "", "driveUrl": "https://drive.google.com/drive/folders/1IAQeGhLZlhBA4LL3zVoa3xWi-Xlhidwk", "notes": "Status: Actief zoeken · Voorgesteld bij: ABN AMRO · Wessal checkt of hij ABN interessant vindt", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_alex_van_der_plas", "name": "Alex van der Plas", "role": "Data Engineer · Mathematics", "talentClass": "DE", "city": "Eindhoven", "province": "Noord-Brabant", "availability": "Per direct", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Actief zoeken", "dateInProcess": "2/1/26", "driveUrl": "", "notes": "Status: Actief zoeken · Voorgesteld bij: ASN Bank · Contact Wessal, locatie erg flexibel", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_zoya_van_meel", "name": "Zoya van Meel", "role": "Data Engineer · Computer Science, AI & Data track", "talentClass": "DE", "city": "Eindhoven", "province": "Noord-Brabant", "availability": "Per direct", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Actief zoeken", "dateInProcess": "8/1/26", "driveUrl": "https://drive.google.com/drive/folders/1oqrCVim0QQqdfEErTFTFNhFxb6NgxLHa", "notes": "Status: Actief zoeken · Eventueel RIVM SE", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_kerim_dzhumageldyev", "name": "Kerim Dzhumageldyev", "role": "Data Engineer · Systems and Control", "talentClass": "DE", "city": "Assendelft", "province": "Zuid-Holland", "availability": "Per direct", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Voorgesteld", "dateInProcess": "18/12/25", "driveUrl": "https://drive.google.com/drive/folders/1yqPPMFYaSQQLdQsPsIw2M6eMlceGt5Oj", "notes": "Status: Voorgesteld · Voorgesteld bij: ABN AMRO · Checken voor ABN", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_finola_parkinson", "name": "Finola Parkinson", "role": "Business Analist", "talentClass": "BA", "city": "Utrecht", "province": "Utrecht", "availability": "Per juni", "salesOwner": "", "recruitOwner": "Bastijn", "bureau": "Eigen Werving", "status": "Voorgesteld", "dateInProcess": "", "driveUrl": "", "notes": "Status: Voorgesteld · Voorgesteld bij: RIVM · Julieta heeft haar voorgesteld bij Sdu", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_mila_kasteel", "name": "Mila Kasteel", "role": "Business Analist · BA", "talentClass": "BA", "city": "Randstad", "province": "Utrecht", "availability": "Per direct", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Op gesprek", "dateInProcess": "", "driveUrl": "", "notes": "Status: Op gesprek · Julieta heeft haar voorgesteld bij Sdu, Marlie gaat haar voorstellen bij NN", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_kaylee_wu", "name": "Kaylee Wu", "role": "Business Analist · Information studies", "talentClass": "BA", "city": "Amsterdam", "province": "Noord-Holland", "availability": "per juli", "salesOwner": "", "recruitOwner": "Bastijn", "bureau": "PT", "status": "Op gesprek", "dateInProcess": "16/4/26", "driveUrl": "", "notes": "Status: Op gesprek", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_jasper_prinsen", "name": "Jasper Prinsen", "role": "Business Analist · Information studies en Business Administration", "talentClass": "BA", "city": "Amsterdam", "province": "Noord-Holland", "availability": "Per direct", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Voorgesteld", "dateInProcess": "7/4/26", "driveUrl": "", "notes": "Status: Voorgesteld · Dubbele master", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_yme_bartels", "name": "Yme Bartels", "role": "Business Analist · Business Analytics & Econometrics", "talentClass": "BA", "city": "Rotterdam", "province": "Zuid-Holland", "availability": "Per direct", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Voorgesteld", "dateInProcess": "7/4/26", "driveUrl": "https://drive.google.com/drive/folders/1hCjum5lSqAxoxc5Psp7WH5Ntoe7GMDIq", "notes": "Status: Voorgesteld · Dubbele master - 23 april voorgesteld bij ABN AMRO, afgewezen", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_siebren_van_der_werf", "name": "Siebren van der Werf", "role": "Business Analist · Data Science & AI", "talentClass": "BA", "city": "Amsterdam", "province": "Noord-Holland", "availability": "Per direct", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Op gesprek", "dateInProcess": "30/1/26", "driveUrl": "https://drive.google.com/drive/folders/17uG4AlJ83jAKCytaqIDLuTxVAgQW-20Y", "notes": "Status: Op gesprek · Voorgesteld bij LinkedIn", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_niels_barnhoorn", "name": "Niels Barnhoorn", "role": "Business Analist · Business Information Technology Management", "talentClass": "BA", "city": "Noordwijk", "province": "Noord-Holland", "availability": "Per juli", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Op gesprek", "dateInProcess": "1/4/26", "driveUrl": "https://drive.google.com/drive/folders/1kgkxItW4-FVbsPAKMZUqyaA1EfkDB50t", "notes": "Status: Op gesprek · Voorgesteld bij: ABN AMRO", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_jort_visser", "name": "Jort Visser", "role": "Business Analist · ICT in Business", "talentClass": "BA", "city": "Leiden", "province": "Zuid-Holland", "availability": "Per sept", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "2e gesprek", "dateInProcess": "1/10/25", "driveUrl": "", "notes": "Status: 2e gesprek · Selectiedag", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_lisa_aalbrecht", "name": "Lisa Aalbrecht", "role": "Business Analist", "talentClass": "BA", "city": "Nijmegen", "province": "Gelderland", "availability": "Per sept", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Voorgesteld", "dateInProcess": "19/3/26", "driveUrl": "https://drive.google.com/drive/folders/1alYylMkT8mrXIW9-T-ejgJIqXBTUHe1J", "notes": "Status: Voorgesteld · Selectiedag", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}, {"id": "csv_wietske_de_bondt", "name": "Wietske de Bondt", "role": "Business Analist", "talentClass": "BA", "city": "Eindhoven", "province": "Noord-Brabant", "availability": "Per sept", "salesOwner": "", "recruitOwner": "Wessal", "bureau": "Eigen Werving", "status": "Actief zoeken", "dateInProcess": "19/3/26", "driveUrl": "https://drive.google.com/drive/folders/1dfRqFaROsEBmiBDg-V2D-_hoPMTH_VcI", "notes": "Status: Actief zoeken · Selectiedag", "skills": [], "language": "nl", "push": false, "archived": false, "source": "csv"}];
+const SEED_CVS=[
+  {id:'p_jenelle',name:'Jenelle Davelaar',role:'Frontend Engineer · Vue & React · TypeScript',city:'Purmerend',availability:'Aug/Sept',salesOwner:'Marlie',recruitOwner:'Bastijn',bureau:'PT',skills:['Vue','React','TypeScript','CSS'],language:'en',push:false,archived:false},
+  {id:'p_jeroen',name:'Jeroen Pullen',role:'Full-Stack Software Engineer',city:'Eindhoven',availability:'Sept 2026',salesOwner:'Julieta',recruitOwner:'Wessal',bureau:'Ngage',skills:['Java','Spring Boot','Angular','TypeScript'],language:'nl',push:false,archived:false},
+  {id:'p_shreya',name:'Shreya Sebastian',role:'Junior ML Engineer · Python & AI',city:'Den Haag',availability:'Juni 2026',salesOwner:'Marlie',recruitOwner:'Bastijn',bureau:'StarApple',skills:['Python','ML','PyTorch','MLOps'],language:'en',push:true,archived:false},
+  {id:'p_yesim',name:'Yesim Ulusoy',role:'Frontend & QA Engineer · HCI',city:'Amsterdam',availability:'Aug 2026',salesOwner:'Frank',recruitOwner:'Bastijn',bureau:'Eigen Werving',skills:['Python','HTML/CSS','Figma','UX/UI'],language:'en',push:false,archived:false},
+  {id:'p_martijn',name:'Martijn Frericks',role:'DevOps Engineer · Software Engineering',city:'Utrecht',availability:'Direct',salesOwner:'Frank',recruitOwner:'Bastijn',bureau:'PT',skills:['Java','Docker','GitHub Actions','Spring Boot'],language:'nl',push:true,archived:false},
+  {id:'p_rachna',name:'Rachna Mallara',role:'Backend Engineer · Python & Embedded Systems',city:'Rotterdam',availability:'Juli 2026',salesOwner:'Marlie',recruitOwner:'Wessal',bureau:'Sebastiaan',skills:['Python','NLP','scikit-learn','C++'],language:'en',push:false,archived:false},
+  {id:'p_sahar',name:'Sahar Marossi',role:'Data Engineer · MSc Data Science & AI, TU Delft',city:'Delft',availability:'Direct',salesOwner:'Julieta',recruitOwner:'Wessal',bureau:'Eigen Werving',skills:['Python','SQL','dbt','Kafka'],language:'en',push:false,archived:false},
+  {id:'p_liesbet',name:'Liesbet Ooghe',role:'Frontend Engineer · UX Design',city:'Gent',availability:'Sept 2026',salesOwner:'Frank',recruitOwner:'Bastijn',bureau:'Ngage',skills:['Python','CSS','NumPy','PyTorch'],language:'en',push:false,archived:false},
+];
+
+// ── STORAGE
+
+// ── AUTH
+async function doLogin(){
+  const nameInput = document.getElementById('login-user').value.trim();
+  const passInput = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  // Case-insensitive name match
+  const user = appUsers.find(u => u.name.toLowerCase() === nameInput.toLowerCase() && u.pass === passInput);
+  if(!user){
+    errEl.style.display='block';
+    document.getElementById('login-user').classList.add('error');
+    document.getElementById('login-pass').classList.add('error');
+    return;
+  }
+  errEl.style.display='none';
+  document.getElementById('login-user').classList.remove('error');
+  document.getElementById('login-pass').classList.remove('error');
+  currentUserObj = user;
+  CU = user.name;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='';
+  document.getElementById('topbar-username').textContent = user.name;
+  document.getElementById('topbar-role').textContent = user.role;
+  // Restrict settings access
+  applyRolePermissions(user);
+  // Init app
+  await loadFromStorage();
+  showTab('lib');
+}
+
+function doLogout(){
+  if(!confirm('Uitloggen?')) return;
+  currentUserObj = null;
+  CU = '';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+}
+
+function applyRolePermissions(user){
+  // Hide settings tab for non-admins (they can still access email settings)
+  const isAdmin = user.role === 'Admin';
+  const mgmt = document.getElementById('user-mgmt-section');
+  if(mgmt) mgmt.style.display = isAdmin ? '' : 'none';
+}
+
+// ── USER MANAGEMENT
+// async function saveUsers(){ defined above with DB
+
+
+async function addUser(){
+  const name = document.getElementById('new-user-name').value.trim();
+  const role = document.getElementById('new-user-role').value;
+  const pass = document.getElementById('new-user-pass').value;
+  if(!name||!role||!pass){ showToast('Vul alle velden in'); return; }
+  if(appUsers.find(u=>u.name.toLowerCase()===name.toLowerCase())){ showToast('Gebruiker bestaat al'); return; }
+  appUsers.push({name, role, pass, email:''});
+  try{ await DB.upsertUser({name,role,pass,email:''}); }catch(e){ console.error(e); }
+  ['new-user-name','new-user-pass'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('new-user-role').value='';
+  renderUserMgmt();
+  showToast('✓ '+name+' toegevoegd');
+}
+
+async function deleteUser(name){
+  if(name===CU){ showToast('Je kan jezelf niet verwijderen'); return; }
+  if(!confirm('Gebruiker '+name+' verwijderen?')) return;
+  appUsers = appUsers.filter(u=>u.name!==name);
+  try{ await DB.deleteUser(name); }catch(e){ console.error(e); }
+  renderUserMgmt();
+  showToast(name+' verwijderd');
+}
+
+async function changePass(name){
+  const inp = document.getElementById('pass-inp-'+name);
+  if(!inp||!inp.value.trim()){ showToast('Vul een nieuw wachtwoord in'); return; }
+  const user = appUsers.find(u=>u.name===name);
+  if(user){ user.pass = inp.value.trim(); inp.value=''; }
+  await saveUsers();
+  showToast('✓ Wachtwoord gewijzigd voor '+name);
+}
+
+function renderUserMgmt(){
+  const el = document.getElementById('user-mgmt-rows');
+  if(!el) return;
+  el.innerHTML = appUsers.map(u=>`
+    <div class="user-mgmt-row">
+      <div class="ava" style="width:28px;height:28px;font-size:11px;background:${colFor(u.name).bg};color:${colFor(u.name).tx};flex-shrink:0">${ini(u.name)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:#1a1a1a">${esc(u.name)} ${u.name===CU?'<span style="font-size:10px;color:#aaa">(jij)</span>':''}</div>
+        <div style="font-size:11px;color:#888">${u.email||'geen e-mail'}</div>
+      </div>
+      <span class="role-badge role-${u.role.toLowerCase()}">${u.role}</span>
+      <div style="display:flex;gap:5px;align-items:center">
+        <input type="password" id="pass-inp-${esc(u.name)}" placeholder="Nieuw wachtwoord" style="padding:4px 8px;border:.5px solid #ddd;border-radius:5px;font-size:11px;width:130px;font-family:inherit">
+        <button class="bsm p" onclick="changePass('${esc(u.name)}')" style="font-size:10px"><i class="ti ti-key" style="font-size:10px"></i></button>
+        ${u.name!==CU?`<button class="bsm" onclick="deleteUser('${esc(u.name)}')" style="font-size:10px;color:#aaa"><i class="ti ti-trash" style="font-size:10px"></i></button>`:''}
+      </div>
+    </div>`).join('');
+}
+
+
+// loadFromStorage defined above with DB
+════════════════════════════════════
 // SUPABASE DATABASE LAYER
 // ══════════════════════════════════════════════
 const SUPABASE_URL = 'https://avircyzuhmpysqjnyadh.supabase.co';
@@ -2095,20 +2072,8 @@ async function loadFromStorage(){
   }catch(e){cvLib=[...CSV_SEED_CVS];offerLog=[];companies=[...DEFAULT_COMPANIES];userEmails={...DEFAULT_EMAILS};signature=DEFAULT_SIG;vacatures=[];setBadge('local');}
   refreshAll();
 }
-async function saveLib(){ try{ for(const cv of cvLib) await DB.upsertCandidate(cv); } catch(e){ console.error(e); } }
-async function saveLog(){ /* logs saved individually via addOfferLog */ }
-async function saveCompanies(){ /* saved via DB.addCompany / DB.deleteCompany */ }
-async function saveEmails(){ /* emails stored in app_users */ }
-async function saveSig(){ try{ await DB.setSetting("signature", signature); } catch(e){ console.error(e); } }
-async function saveVac(){ try{ for(const v of vacatures) await DB.upsertVacature(v); } catch(e){ console.error(e); } }
-function setBadge(st){const b=document.getElementById('syncbadge');if(!b)return;b.textContent=st==='ok'?'✓ live':'⚠ offline';b.className='syncbadge '+(st==='ok'?'sync-ok':'sync-wait');}
+// async function saveLib(){ defined above with DB
 
-// ── FILTERS
-function setFilter(type,val,el){
-  activeFilters[type]=val;
-  document.getElementById('filter-'+type).querySelectorAll('.fchip').forEach(c=>c.classList.remove('active'));
-  el.classList.add('active');renderCVList();
-}
 function resetFilters(){
   activeFilters={sales:'all',recruit:'all',bureau:'all',cv:'all',push:'all',tc:'all',role:'all'};
   ['filter-sales','filter-recruit','filter-bureau','filter-cv','filter-push','filter-tc','filter-role'].forEach(id=>{
@@ -3617,4 +3582,5 @@ function downloadCVasPDF(id){
 
 // Login required — loadFromStorage() is called after doLogin()
 document.getElementById("login-user")?.focus();
+
 </script>
