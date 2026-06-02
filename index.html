@@ -1052,7 +1052,16 @@ async function saveUsers(){
   try{ for(var i=0;i<appUsers.length;i++) await DB.upsertUser(appUsers[i]); }
   catch(e){ console.error(e); }
 }
-async function saveLog(){}
+async function saveLog(){
+  const last = offerLog[0];
+  if(last){ 
+    try{ 
+      await DB.addOfferLog(last); 
+    }catch(err){ 
+      console.error('saveLog error:', err); 
+    } 
+  }
+}
 async function saveCompanies(){}
 async function saveEmails(){}
 async function loadFromStorage(){
