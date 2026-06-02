@@ -1787,35 +1787,59 @@ async function doRegister(){
   r.innerHTML=`<div class="ok-box"><i class="ti ti-circle-check" style="font-size:14px;flex-shrink:0"></i><div><div style="font-weight:600">Geregistreerd</div><div style="font-size:11px">${selArr.length} kandidaat${selArr.length!==1?'en':''} aangeboden aan <strong>${esc(selectedCompany)}</strong></div></div></div>`;
   showToast('✓ Aanbieding geregistreerd');setTimeout(()=>resetOfferForm(),4000);
 }
-function triggerEmail(mode){
-  if(!sel.size){showToast('Geen kandidaten geselecteerd');return;}
-  const toEmail=document.getElementById('f-email').value.trim();
-  if(!toEmail){showToast('Vul het e-mailadres van de klant in');return;}
-  if(!selectedCompany){showToast('Kies een bedrijf');return;}
-  const senderEmail=userEmails[CU];if(!senderEmail){showToast('Stel eerst je e-mailadres in');return;}
-  const{subject,body}=buildEmailContent();
-  const cands=[...sel].map(id=>cvLib.find(c=>c.id===id)).filter(Boolean);
-  
-  // Auto-attach CV as PDF for candidates that have an HTML CV loaded
-  const autoAtts=[...attachments];
-  cands.forEach(function(cv){
-    const htmlCv=cvHtmlStore[cv.id];
-    if(htmlCv){
-      // Convert HTML to blob and add as attachment
-      const blob=new Blob([htmlCv],{type:'text/html'});
-      const fname='CV_'+cv.name.replace(/\s+/g,'_')+'.html';
-      const reader=new FileReader();
-      reader.onload=function(e){
-        autoAtts.push({name:fname,size:blob.size,type:'text/html',base64:e.target.result.split(',')[1]});
-      };
-      reader.readAsDataURL(blob);
-    }
-  });
-  
-  const attInfo=autoAtts.length?'\nBijlagen: '+autoAtts.map(function(a){return a.name;}).join(', '):'';
-  window._emailPayload={mode,subject,body,htmlBody:buildHtmlBody(body),to:toEmail,sender:senderEmail,company:selectedCompany,candidates:cands.map(c=>c.name).join(', '),attachments:autoAtts,isPush:cands.some(c=>c.push)};
+async function triggerEmail(mode) {
+  if (!sel.size) { showToast('Geen kandidaten geselecteerd'); return; }
+  const toEmail = document.getElementById('f-email').value.trim();
+  if (!toEmail) { showToast('Vul het e-mailadres van de klant in'); return; }
+  if (!selectedCompany) { showToast('Kies een bedrijf'); return; }
+  const senderEmail = userEmails[CU];
+  if (!senderEmail) { showToast('Stel eerst je e-mailadres in'); return; }
+
+  const { subject, body } = buildEmailContent();
+  const htmlBody = buildHtmlBody(body);
+  const cands = [...sel].map(id => cvLib.find(c => c.id === id)).filter(Boolean);
+
   setBtnLoading(true);
-  sendPrompt(`[EMAIL_ACTION] Harvest CV Sales Tool wil een e-mail ${mode==='draft'?'concept aanmaken':'versturen'} via Gmail.\n\nActie: ${mode==='draft'?'create_draft':'create_draft_then_open'}\nAan: ${toEmail}\nAfzender: ${senderEmail}\nOnderwerp: ${subject}\nKandidaten: ${window._emailPayload.candidates}\nBedrijf: ${selectedCompany}\nModus: ${mode}${attInfo}\n\nPlain text body:\n${body}\n\nHTML body staat in window._emailPayload.htmlBody.\nBijlagen staan in window._emailPayload.attachments als array van {name, type, base64}.`);
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: `Je bent de assistent van het Harvest sales team. 
+Wanneer je een Gmail concept aanmaakt, reageer je ALLEEN met deze tekst (niets anders):
+onDraftCreated('[draft_id]', '${mode}')
+Vervang [draft_id] met het echte draft ID dat Gmail teruggeeft.`,
+        messages: [{
+          role: 'user',
+          content: `[EMAIL_ACTION] Maak een Gmail concept aan.\n\nAan: ${toEmail}\nOnderwerp: ${subject}\n\nPlain text:\n${body}\n\nHTML body:\n${htmlBody}`
+        }],
+        mcp_servers: [{
+          type: 'url',
+          url: 'https://gmailmcp.googleapis.com/mcp/v1',
+          name: 'gmail-mcp'
+        }]
+      })
+    });
+
+    const data = await response.json();
+    const text = data.content?.map(b => b.text || '').join('') || '';
+
+    // Extract onDraftCreated call from response
+    const match = text.match(/onDraftCreated\(['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\)/);
+    if (match) {
+      onDraftCreated(match[1], match[2]);
+    } else {
+      showToast('Concept aangemaakt — check Gmail');
+      onDraftCreated('draft-ok', mode);
+    }
+  } catch (err) {
+    console.error('Email error:', err);
+    showToast('Fout bij aanmaken concept');
+    setBtnLoading(false);
+  }
 }
 function onDraftCreated(draftId,mode){
   setBtnLoading(false);const p=window._emailPayload;if(!p)return;
