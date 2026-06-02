@@ -1755,13 +1755,14 @@ function quickOffer(id){
       size: 0
     }];
     renderAttachments();
-  }
-    const sel=document.getElementById('f-us');
+ showTab('offer');
+}
+
+function renderUserDropdown(){
+  const sel=document.getElementById('f-us');
   if(!sel)return;
   const current=sel.value||CU;
   sel.innerHTML=appUsers.filter(u=>!u.archived).map(u=>`<option${u.name===current?' selected':''}>${u.name}</option>`).join('');
-}
-  showTab('offer');
 }
 function clearSel(){sel.clear();renderCVList();}
 function updateSelBar(){const bar=document.getElementById('selbar'),n=sel.size;bar.style.display=n>0?'':'none';document.getElementById('selct').textContent=n+' kandidaat'+(n!==1?'en':'')+' geselecteerd';}
