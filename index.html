@@ -2434,8 +2434,8 @@ function openModal(id){
 </label>
 <label class="bsm" style="font-size:11px;cursor:pointer">
   <i class="ti ti-file-type-pdf" style="font-size:10px"></i> ${cv.pdfUrl?'Vervang PDF':'PDF uploaden'}
-  <input type="file" accept=".pdf" style="display:none" onchange="uploadPDFForCandidate('${id}',this)">
-</label>'}
+<input type="file" accept=".pdf" style="display:none" onchange="uploadPDFForCandidate('${id}',this)">
+</label>
     </div>`;
 
   document.getElementById('modal').style.display='flex';
