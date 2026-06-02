@@ -2522,6 +2522,15 @@ function closeVacModal(){document.getElementById('vac-modal').style.display='non
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('modal').style.display='none';document.getElementById('vac-modal').style.display='none';document.getElementById('merge-modal').style.display='none';document.getElementById('bulk-modal').style.display='none';}});
 
 // ── GENERAL
+function refreshAll(){
+  renderCVList();
+  renderPushTab();
+  renderDashboard();
+  renderCompanies();
+  renderSettings();
+  updateBadges();
+}
+
 function updateBadges(){
   const active=cvLib.filter(cv=>!cv.archived).length;
   const pushCount=cvLib.filter(cv=>cv.push&&!cv.archived).length;
