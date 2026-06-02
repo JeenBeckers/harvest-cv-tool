@@ -1010,25 +1010,6 @@ function renderUserMgmt(){
     </div>`).join('');
 }
 
-
-function showLoadingOverlay(show){
-  var el = document.getElementById('loading-overlay');
-  if(!el && show){
-    el = document.createElement('div');
-    el.id = 'loading-overlay';
-    el.style.cssText='position:fixed;inset:0;background:#F5EFE4;z-index:8888;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px';
-    el.innerHTML='<div style="width:36px;height:36px;border:3px solid #e8f2ec;border-top-color:#1a5c35;border-radius:50%;animation:spin .7s linear infinite"></div><div style="font-size:13px;color:#1a5c35;font-weight:600">Harvest laden...</div>';
-    document.body.appendChild(el);
-  }
-  if(el) el.style.display = show ? 'flex' : 'none';
-}
-
-function setBadge(st){
-  var b=document.getElementById('syncbadge');
-  if(!b)return;
-  b.textContent=st==='ok'?'✓ sync':'⚠ lokaal';
-  b.className='syncbadge '+(st==='ok'?'sync-ok':'sync-wait');
-}
 async function loadFromStorage(){
   showLoadingOverlay(true);
   try{
@@ -1036,6 +1017,7 @@ async function loadFromStorage(){
       DB.getCandidates(),DB.getCompanies(),DB.getVacatures(),
       DB.getOfferLog(),DB.getUsers(),DB.getSetting('signature')
     ]);
+    console.log('DB loaded:', cands.length, 'candidates');
     cvLib=cands.length?cands:[...CSV_SEED_CVS];
     companies=comps.length?comps:[...DEFAULT_COMPANIES];
     vacatures=vacs; offerLog=logs;
@@ -1646,24 +1628,11 @@ function getSortedList(list){
 
 function setFilter(type,val,el){
   activeFilters[type]=val;
-  var group=document.getElementById('filter-'+type);
-  if(group) group.querySelectorAll('.fchip').forEach(function(c){c.classList.remove('active');});
+  var grp=document.getElementById('filter-'+type);
+  if(grp) grp.querySelectorAll('.fchip').forEach(function(c){c.classList.remove('active');});
   if(el) el.classList.add('active');
   renderCVList();
 }
-function resetFilters(){
-  activeFilters={sales:'all',recruit:'all',bureau:'all',cv:'all',push:'all',tc:'all',role:'all'};
-  ['filter-sales','filter-recruit','filter-bureau','filter-cv','filter-push','filter-tc','filter-role'].forEach(function(id){
-    var el=document.getElementById(id);
-    if(el) el.querySelectorAll('.fchip').forEach(function(c,i){c.classList.toggle('active',i===0);});
-  });
-  renderCVList();
-}
-function toggleAll(checked){
-  applyFilters([...cvLib]).forEach(function(cv){if(checked)sel.add(cv.id);else sel.delete(cv.id);});
-  renderCVList();
-}
-function toggleSel(id,checked){if(checked)sel.add(id);else sel.delete(id);renderCVList();}
 function renderCVList(){
   renderCVHeader();
   let list=getSortedList(applyFilters([...cvLib]));
