@@ -1816,6 +1816,7 @@ async function triggerEmail(mode) {
       base64: a.base64
     }))
   }),
+});
     const data = await response.json();
     const text = data.content?.map(b => b.text || '').join('') || '';
 
