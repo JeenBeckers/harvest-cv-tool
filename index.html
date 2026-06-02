@@ -1803,27 +1803,15 @@ async function triggerEmail(mode) {
 
   try {
     const response = await fetch('https://eodw8uthc3r2ubk.m.pipedream.net', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 1000,
-        system: `Je bent de assistent van het Harvest sales team. 
-Wanneer je een Gmail concept aanmaakt, reageer je ALLEEN met deze tekst (niets anders):
-onDraftCreated('[draft_id]', '${mode}')
-Vervang [draft_id] met het echte draft ID dat Gmail teruggeeft.`,
-        messages: [{
-          role: 'user',
-          content: `[EMAIL_ACTION] Maak een Gmail concept aan.\n\nAan: ${toEmail}\nOnderwerp: ${subject}\n\nPlain text:\n${body}\n\nHTML body:\n${htmlBody}`
-        }],
-        mcp_servers: [{
-          type: 'url',
-          url: 'https://gmailmcp.googleapis.com/mcp/v1',
-          name: 'gmail-mcp'
-        }]
-      })
-    });
-
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    to: toEmail,
+    subject: subject,
+    htmlBody: buildHtmlBody(body),
+    sender: senderEmail
+  }),
+});
     const data = await response.json();
     const text = data.content?.map(b => b.text || '').join('') || '';
 
