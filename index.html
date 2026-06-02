@@ -1824,7 +1824,8 @@ window._emailPayload = {
   company: selectedCompany,
   candidates: cands.map(c => c.name).join(', '),
   attachments,
-  isPush: cands.some(c => c.push)
+  isPush: cands.some(c => c.push),
+  user: document.getElementById('f-us').value
 };
   try {
     const response = await fetch('https://eodw8uthc3r2ubk.m.pipedream.net', {
@@ -1866,7 +1867,7 @@ function onDraftCreated(draftId,mode){
   logAndReset(p,mode,draftId);showToast(mode==='send'?'✓ Open Gmail om te versturen':'✓ Concept opgeslagen');
 }
 async function logAndReset(p,mode,draftId){
-  const us=document.getElementById('f-us').value,cp=document.getElementById('f-cp').value.trim(),ro=document.getElementById('f-ro').value.trim(),no=document.getElementById('f-no').value.trim(),d=today();
+  const us=p.user || document.getElementById('f-us').value,cp=document.getElementById('f-cp').value.trim(),ro=document.getElementById('f-ro').value.trim(),no=document.getElementById('f-no').value.trim(),d=today();
   const emailEntries=[];[...sel].forEach(id=>{const cv=cvLib.find(c=>c.id===id);if(!cv)return;const entry={id:'l'+Date.now()+'_'+Math.random().toString(36).slice(2),date:d,candidateId:id,candidateName:cv.name,company:p.company,contact:cp,role:ro,user:us,note:no,emailed:true,emailMode:mode,draftId,hasAttachments:attachments.length>0,isPush:cv.push};offerLog.unshift(entry);emailEntries.push(entry);});
   for(const e of emailEntries){ try{ await DB.addOfferLog(e); }catch(err){ console.error(err); } }updateBadges();setTimeout(()=>{resetOfferForm();document.getElementById('email-result').style.display='none';document.getElementById('email-warn').innerHTML='';},5000);
 }
