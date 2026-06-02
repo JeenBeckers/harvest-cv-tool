@@ -1809,9 +1809,13 @@ async function triggerEmail(mode) {
     to: toEmail,
     subject: subject,
     htmlBody: buildHtmlBody(body),
-    sender: senderEmail
+    sender: senderEmail,
+    attachments: attachments.map(a => ({
+      name: a.name,
+      type: a.type,
+      base64: a.base64
+    }))
   }),
-});
     const data = await response.json();
     const text = data.content?.map(b => b.text || '').join('') || '';
 
