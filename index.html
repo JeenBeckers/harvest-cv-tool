@@ -1737,24 +1737,15 @@ function toggleAll(checked){applyFilters([...cvLib]).forEach(cv=>{if(checked)sel
 function quickOffer(id){
   sel.clear();
   sel.add(id);
-  // Auto-add PDF if candidate has one
   const cv = cvLib.find(c => c.id === id);
   if (cv && cv.pdfUrl) {
-    fetch(cv.pdfUrl)
-      .then(r => r.blob())
-      .then(blob => {
-        const reader = new FileReader();
-        reader.onload = e => {
-          attachments = [{
-            name: 'Harvest · CV · ' + cv.name + '.pdf',
-            type: 'application/pdf',
-            base64: e.target.result.split(',')[1],
-            size: blob.size
-          }];
-          renderAttachments();
-        };
-        reader.readAsDataURL(blob);
-      });
+    attachments = [{
+      name: 'Harvest · CV · ' + cv.name + '.pdf',
+      type: 'application/pdf',
+      url: cv.pdfUrl,
+      size: 0
+    }];
+    renderAttachments();
   }
   showTab('offer');
 }
@@ -1834,10 +1825,10 @@ async function triggerEmail(mode) {
     htmlBody: buildHtmlBody(body),
     sender: senderEmail,
     attachments: attachments.map(a => ({
-      name: a.name,
-      type: a.type,
-      base64: a.base64
-    }))
+  name: a.name,
+  type: a.type,
+  url: a.url
+}))
   }),
 });
     const data = await response.json();
