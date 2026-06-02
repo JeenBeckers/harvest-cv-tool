@@ -2631,7 +2631,7 @@ async function uploadPDFForCandidate(id, input) {
   showToast('PDF uploaden...');
   
   const fileName = `${id}_${Date.now()}.pdf`;
-  const uploadUrl = `${SUPABASE_URL}/storage/v1/object/cvs/${fileName}`;
+  const uploadUrl = `${SUPABASE_URL}/storage/v1/object/CVs/${fileName}`;
   
   const res = await fetch(uploadUrl, {
     method: 'POST',
@@ -2646,7 +2646,7 @@ async function uploadPDFForCandidate(id, input) {
 
   if (!res.ok) { showToast('Upload mislukt'); return; }
 
-  const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/cvs/${fileName}`;
+  const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/CVs/${fileName}`;
   
   const cv = cvLib.find(c => c.id === id);
   if (cv) {
