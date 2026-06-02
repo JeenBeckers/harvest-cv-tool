@@ -386,7 +386,6 @@
     <div class="login-field">
       <label class="login-label">Wachtwoord</label>
       <input class="login-input" id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-    <button style="width:100%;padding:10px;background:#1a5c35;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;margin-top:12px" onclick="doLogin()">Inloggen</button>
     </div>
     <button class="login-btn" onclick="doLogin()">Inloggen</button>
     <div class="login-error" id="login-error">Gebruikersnaam of wachtwoord onjuist</div>
@@ -706,7 +705,7 @@
   </div>
 </div>
 <div class="toast" id="toast"></div>
-<script>
+<script><script>
 
 
 
@@ -1056,6 +1055,7 @@ function showLoadingOverlay(show){
     document.body.appendChild(el);
   }
   if(el) el.style.display = show ? 'flex' : 'none';
+}
 // ══════════════════════════════════════════════
 // SUPABASE DATABASE LAYER
 // ══════════════════════════════════════════════
@@ -3207,4 +3207,4 @@ function downloadCVasPDF(id){
 // Login required — loadFromStorage() is called after doLogin()
 document.getElementById("login-user")?.focus();
 
-</script>
+</script></script>
