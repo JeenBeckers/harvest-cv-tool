@@ -1734,7 +1734,30 @@ function renderCVList(){
 }
 function toggleSel(id,checked){if(checked)sel.add(id);else sel.delete(id);renderCVList();}
 function toggleAll(checked){applyFilters([...cvLib]).forEach(cv=>{if(checked)sel.add(cv.id);else sel.delete(cv.id);});renderCVList();}
-function quickOffer(id){sel.clear();sel.add(id);showTab('offer');}
+function quickOffer(id){
+  sel.clear();
+  sel.add(id);
+  // Auto-add PDF if candidate has one
+  const cv = cvLib.find(c => c.id === id);
+  if (cv && cv.pdfUrl) {
+    fetch(cv.pdfUrl)
+      .then(r => r.blob())
+      .then(blob => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          attachments = [{
+            name: 'Harvest · CV · ' + cv.name + '.pdf',
+            type: 'application/pdf',
+            base64: e.target.result.split(',')[1],
+            size: blob.size
+          }];
+          renderAttachments();
+        };
+        reader.readAsDataURL(blob);
+      });
+  }
+  showTab('offer');
+}
 function clearSel(){sel.clear();renderCVList();}
 function updateSelBar(){const bar=document.getElementById('selbar'),n=sel.size;bar.style.display=n>0?'':'none';document.getElementById('selct').textContent=n+' kandidaat'+(n!==1?'en':'')+' geselecteerd';}
 function viewCVFull(id){const html=cvHtmlStore[id];if(!html)return;const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);window.open(url,'_blank');setTimeout(()=>URL.revokeObjectURL(url),30000);}
