@@ -2684,7 +2684,7 @@ async function uploadPDFForCandidate(id, input) {
     cv.pdfUrl = publicUrl;
     await DB.upsertCandidate(cv);
     showToast('PDF opgeslagen!');
-    openRecord(id);
+    openModal(id);
   }
   input.value = '';
 }
