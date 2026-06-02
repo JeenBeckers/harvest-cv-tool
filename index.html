@@ -2382,7 +2382,14 @@ function openModal(id){
       <button class="bmain o" onclick="quickOffer('${id}');closeModal()"><i class="ti ti-send" style="font-size:11px"></i> Aanbieden</button>
       <button class="bsm ${cv.push?'warn':''}" onclick="togglePush('${id}')" style="font-size:11px"><i class="ti ti-bolt" style="font-size:10px"></i> ${cv.push?'Push verwijderen':'Push markeren'}</button>
       <button class="bsm" onclick="archiveCV('${id}')" style="font-size:11px;color:#aaa"><i class="ti ti-archive" style="font-size:10px"></i> Archiveren</button>
-      ${hasFile?`<label class="bsm" style="font-size:11px;cursor:pointer;margin-left:auto"><i class="ti ti-upload" style="font-size:10px"></i> Vervang CV<input type="file" accept=".html" style="display:none" onchange="uploadCVForCandidate('${id}',this)"></label>`:`<label class="bsm" style="font-size:11px;cursor:pointer;margin-left:auto"><i class="ti ti-upload" style="font-size:10px"></i> HTML CV uploaden<input type="file" accept=".html" style="display:none" onchange="uploadCVForCandidate('${id}',this)"></label>`}
+     <label class="bsm" style="font-size:11px;cursor:pointer;margin-left:auto">
+  <i class="ti ti-upload" style="font-size:10px"></i> ${hasFile?'Vervang CV':'HTML CV uploaden'}
+  <input type="file" accept=".html" style="display:none" onchange="uploadCVForCandidate('${id}',this)">
+</label>
+<label class="bsm" style="font-size:11px;cursor:pointer">
+  <i class="ti ti-file-type-pdf" style="font-size:10px"></i> ${cv.pdfUrl?'Vervang PDF':'PDF uploaden'}
+  <input type="file" accept=".pdf" style="display:none" onchange="uploadPDFForCandidate('${id}',this)">
+</label>'}
     </div>`;
 
   document.getElementById('modal').style.display='flex';
@@ -2595,7 +2602,29 @@ function showMergeSuggestion(id, detectedName, content, currentName){
     </div>`;
   window.mergeContent = content;
 }
-
+async function uploadPDFForCandidate(id, input) {
+  const file = input.files[0];
+  if (!file) return;
+  showToast('PDF uploaden...');
+  
+  const fileName = `${id}_${Date.now()}.pdf`;
+  const { data, error } = await window.SB
+    .storage
+    .from('cvs')
+    .upload(fileName, file, { contentType: 'application/pdf', upsert: true });
+  
+  if (error) { showToast('Upload mislukt'); return; }
+  
+  const { data: urlData } = window.SB.storage.from('cvs').getPublicUrl(fileName);
+  
+  const cv = cvLib.find(c => c.id === id);
+  if (cv) {
+    cv.pdfUrl = urlData.publicUrl;
+    await DB.updateCV(cv);
+    showToast('PDF opgeslagen!');
+    openRecord(id);
+  }
+}
 function showMergeConfirm(id, detectedName, content, currentName){
   document.getElementById('merge-modal').style.display='flex';
   document.getElementById('merge-body').innerHTML=`
