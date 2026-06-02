@@ -958,8 +958,7 @@ function applyRolePermissions(user){
 }
 
 // ── USER MANAGEMENT
-async function saveUsers(){
-  try{ await window.storage.set('hcvst_users',JSON.stringify(appUsers),true); }catch(e){}
+catch(e){}
 }
 
 async function addUser(){
@@ -1013,6 +1012,50 @@ function renderUserMgmt(){
     </div>`).join('');
 }
 
+
+function showLoadingOverlay(show){
+  var el=document.getElementById('loading-overlay');
+  if(!el && show){
+    el=document.createElement('div');
+    el.id='loading-overlay';
+    el.style.cssText='position:fixed;inset:0;background:#F5EFE4;z-index:8888;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px';
+    el.innerHTML='<div style="width:36px;height:36px;border:3px solid #e8f2ec;border-top-color:#1a5c35;border-radius:50%;animation:spin .7s linear infinite"></div><div style="font-size:13px;color:#1a5c35;font-weight:600">Harvest laden...</div>';
+    document.body.appendChild(el);
+  }
+  if(el) el.style.display=show?'flex':'none';
+}
+function setBadge(st){
+  var b=document.getElementById('syncbadge');
+  if(!b)return;
+  b.textContent=st==='ok'?'sync ok':'lokaal';
+  b.className='syncbadge '+(st==='ok'?'sync-ok':'sync-wait');
+}
+function setFilter(type,val,el){
+  activeFilters[type]=val;
+  var grp=document.getElementById('filter-'+type);
+  if(grp) grp.querySelectorAll('.fchip').forEach(function(c){c.classList.remove('active');});
+  if(el) el.classList.add('active');
+  renderCVList();
+}
+async function saveLib(){
+  try{ for(var i=0;i<cvLib.length;i++) await DB.upsertCandidate(cvLib[i]); }
+  catch(e){ console.error('saveLib:',e); }
+}
+async function saveVac(){
+  try{ for(var i=0;i<vacatures.length;i++) await DB.upsertVacature(vacatures[i]); }
+  catch(e){ console.error('saveVac:',e); }
+}
+async function saveSig(){
+  try{ await DB.setSetting('signature',signature); }
+  catch(e){ console.error(e); }
+}
+async function saveUsers(){
+  try{ for(var i=0;i<appUsers.length;i++) await DB.upsertUser(appUsers[i]); }
+  catch(e){ console.error(e); }
+}
+async function saveLog(){}
+async function saveCompanies(){}
+async function saveEmails(){}
 async function loadFromStorage(){
   showLoadingOverlay(true);
   try{
@@ -1039,7 +1082,6 @@ async function loadFromStorage(){
   showLoadingOverlay(false);
   refreshAll();
 }
-// async function saveLib(){ defined above with DB
 
 function resetFilters(){
   activeFilters={sales:'all',recruit:'all',bureau:'all',cv:'all',push:'all',tc:'all',role:'all'};
