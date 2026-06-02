@@ -1022,6 +1022,13 @@ function showLoadingOverlay(show){
   }
   if(el) el.style.display = show ? 'flex' : 'none';
 }
+
+function setBadge(st){
+  var b=document.getElementById('syncbadge');
+  if(!b)return;
+  b.textContent=st==='ok'?'✓ sync':'⚠ lokaal';
+  b.className='syncbadge '+(st==='ok'?'sync-ok':'sync-wait');
+}
 async function loadFromStorage(){
   showLoadingOverlay(true);
   try{
