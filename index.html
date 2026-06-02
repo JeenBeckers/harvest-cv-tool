@@ -533,7 +533,7 @@
         <div class="frow t">
           <div class="fg"><label class="fl">E-mailadres klant</label><input class="fi" id="f-email" placeholder="contact@bedrijf.nl" type="email" oninput="updatePreview()"></div>
           <div class="fg"><label class="fl">Rol / Vacature</label><input class="fi" id="f-ro" placeholder="Senior Backend Engineer" type="text" oninput="updatePreview()"></div>
-          <div class="fg"><label class="fl">Aangeboden door</label><select class="fi" id="f-us" onchange="updatePreview()"><option>Jeen</option><option>Julieta</option><option>Frank</option></select></div>
+          <div class="fg"><label class="fl">Aangeboden door</label><select class="fi" id="f-us" onchange="updatePreview()"></select>
         </div>
         <div class="frow s"><div class="fg"><label class="fl">Notitie</label><textarea class="fi" id="f-no" rows="2" placeholder="warm lead, tweede ronde…" oninput="updatePreview()"></textarea></div></div>
       </div>
@@ -1756,6 +1756,11 @@ function quickOffer(id){
     }];
     renderAttachments();
   }
+    const sel=document.getElementById('f-us');
+  if(!sel)return;
+  const current=sel.value||CU;
+  sel.innerHTML=appUsers.filter(u=>!u.archived).map(u=>`<option${u.name===current?' selected':''}>${u.name}</option>`).join('');
+}
   showTab('offer');
 }
 function clearSel(){sel.clear();renderCVList();}
@@ -2516,8 +2521,7 @@ function closeVacModal(){document.getElementById('vac-modal').style.display='non
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('modal').style.display='none';document.getElementById('vac-modal').style.display='none';document.getElementById('merge-modal').style.display='none';document.getElementById('bulk-modal').style.display='none';}});
 
 // ── GENERAL
-function refreshAll(){renderCVList();renderPushTab();renderDashboard();renderCompanies();renderVacatures();renderArchive();updateBadges();}
-function updateBadges(){
+refreshAllfunction updateBadges(){
   const active=cvLib.filter(cv=>!cv.archived).length;
   const pushCount=cvLib.filter(cv=>cv.push&&!cv.archived).length;
   const archiveCount=cvLib.filter(cv=>cv.archived).length;
@@ -2538,7 +2542,7 @@ function setUser(u){
 }
 function showTab(t){
   ['lib','push','offer','vac','dash','archive','companies','settings'].forEach(x=>{document.getElementById('view-'+x).style.display=x===t?'':'none';document.getElementById('tab-'+x).classList.toggle('active',x===t);});
-  if(t==='offer'){renderOfferPanel();document.getElementById('f-us').value=CU;setOfferMode(offerMode);}
+  if(t==='offer'){renderOfferPanel();renderUserDropdown();setOfferMode(offerMode);}
   if(t==='dash')renderDashboard();
   if(t==='lib')renderCVList();
   if(t==='push')renderPushTab();
