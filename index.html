@@ -1643,6 +1643,27 @@ function getSortedList(list){
     return 0;
   });
 }
+
+function setFilter(type,val,el){
+  activeFilters[type]=val;
+  var group=document.getElementById('filter-'+type);
+  if(group) group.querySelectorAll('.fchip').forEach(function(c){c.classList.remove('active');});
+  if(el) el.classList.add('active');
+  renderCVList();
+}
+function resetFilters(){
+  activeFilters={sales:'all',recruit:'all',bureau:'all',cv:'all',push:'all',tc:'all',role:'all'};
+  ['filter-sales','filter-recruit','filter-bureau','filter-cv','filter-push','filter-tc','filter-role'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.querySelectorAll('.fchip').forEach(function(c,i){c.classList.toggle('active',i===0);});
+  });
+  renderCVList();
+}
+function toggleAll(checked){
+  applyFilters([...cvLib]).forEach(function(cv){if(checked)sel.add(cv.id);else sel.delete(cv.id);});
+  renderCVList();
+}
+function toggleSel(id,checked){if(checked)sel.add(id);else sel.delete(id);renderCVList();}
 function renderCVList(){
   renderCVHeader();
   let list=getSortedList(applyFilters([...cvLib]));
