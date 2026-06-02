@@ -1796,7 +1796,12 @@ async function doRegister(){
   const us=document.getElementById('f-us').value,cp=document.getElementById('f-cp').value.trim(),ro=document.getElementById('f-ro').value.trim(),no=document.getElementById('f-no').value.trim(),d=today();
   const selArr=[...sel];
   selArr.forEach(id=>{const cv=cvLib.find(c=>c.id===id);if(!cv)return;offerLog.unshift({id:'l'+Date.now()+'_'+Math.random().toString(36).slice(2),date:d,candidateId:id,candidateName:cv.name,company:selectedCompany,contact:cp,role:ro,user:us,note:no,emailed:false,emailMode:'none',isPush:cv.push});});
-  await saveLog();updateBadges();
+for(const id of selArr){
+  const cv=cvLib.find(c=>c.id===id);if(!cv)continue;
+  const entry=offerLog.find(e=>e.candidateId===id&&e.date===d&&e.company===selectedCompany);
+  if(entry){try{await DB.addOfferLog(entry);}catch(err){console.error(err);}}
+}
+updateBadges();
   const r=document.getElementById('register-result');r.style.display='block';
   r.innerHTML=`<div class="ok-box"><i class="ti ti-circle-check" style="font-size:14px;flex-shrink:0"></i><div><div style="font-weight:600">Geregistreerd</div><div style="font-size:11px">${selArr.length} kandidaat${selArr.length!==1?'en':''} aangeboden aan <strong>${esc(selectedCompany)}</strong></div></div></div>`;
   showToast('✓ Aanbieding geregistreerd');setTimeout(()=>resetOfferForm(),4000);
