@@ -1061,7 +1061,27 @@ async function loadFromStorage(){
   showLoadingOverlay(false);
   refreshAll();
 }
-// async function saveLib(){ defined above with DB
+
+async function saveLib(){
+  try{ for(var i=0;i<cvLib.length;i++) await DB.upsertCandidate(cvLib[i]); }
+  catch(e){ console.error('saveLib:',e); }
+}
+async function saveVac(){
+  try{ for(var i=0;i<vacatures.length;i++) await DB.upsertVacature(vacatures[i]); }
+  catch(e){ console.error('saveVac:',e); }
+}
+async function saveSig(){
+  try{ await DB.setSetting('signature',signature); }
+  catch(e){ console.error('saveSig:',e); }
+}
+async function saveUsers(){
+  try{ for(var i=0;i<appUsers.length;i++) await DB.upsertUser(appUsers[i]); }
+  catch(e){ console.error('saveUsers:',e); }
+}
+async function saveLog(){}
+async function saveCompanies(){}
+async function saveEmails(){}
+
 
 function resetFilters(){
   activeFilters={sales:'all',recruit:'all',bureau:'all',cv:'all',push:'all',tc:'all',role:'all'};
