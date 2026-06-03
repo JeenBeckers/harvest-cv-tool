@@ -1076,12 +1076,11 @@ async function loadFromStorage(){
     if(!cands.length){ for(const cv of CSV_SEED_CVS) await DB.upsertCandidate(cv).catch(()=>{}); }
     if(!comps.length){ for(const c of DEFAULT_COMPANIES) await DB.addCompany(c).catch(()=>{}); }
     if(!users.length){ for(const u of DEFAULT_USERS) await DB.upsertUser(u).catch(()=>{}); }
-    setBadge('ok');
+    console.log('DB loaded ok');
   }catch(e){
     console.error('DB load failed:',e);
     cvLib=[...CSV_SEED_CVS];offerLog=[];companies=[...DEFAULT_COMPANIES];
     appUsers=[...DEFAULT_USERS];signature=DEFAULT_SIG;vacatures=[];
-    setBadge('local');
   }
   refreshAll();
 }
