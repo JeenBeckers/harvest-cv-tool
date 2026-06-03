@@ -1058,7 +1058,6 @@ function renderUserMgmt(){
 }
 
 async function loadFromStorage(){
-  showLoadingOverlay(true);
   try{
     const [cands,comps,vacs,logs,users,sig]=await Promise.all([
       DB.getCandidates(),
@@ -1084,7 +1083,6 @@ async function loadFromStorage(){
     appUsers=[...DEFAULT_USERS];signature=DEFAULT_SIG;vacatures=[];
     setBadge('local');
   }
-  showLoadingOverlay(false);
   refreshAll();
 }
 // async function saveLib(){ defined above with DB
