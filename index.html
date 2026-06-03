@@ -422,9 +422,9 @@ b,strong{font-weight:500}
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo">
-      <div class="login-logom">H</div>
+      <div class="login-logom">J</div>
       <div>
-        <div class="login-title">Harvest · CV Sales Tool</div>
+        <div class="login-title">Jordan</div>
         <div class="login-sub">Log in om verder te gaan</div>
       </div>
     </div>
@@ -443,8 +443,8 @@ b,strong{font-weight:500}
 <div id="app" style="display:none">
   <div class="topbar">
     <div class="logo">
-      <div class="logom">H</div>
-      <div><div class="logot">Harvest · CV Sales Tool <span style="font-size:10px;opacity:.6;margin-left:4px">v10</span></div><div class="logos">Kandidaten aanbieden aan partijen</div></div>
+      <div class="logom">J</div>
+      <div><div class="logot">Jordan <span style="font-size:10px;opacity:.6;margin-left:4px">v1</span></div><div class="logos">Talent Sales Platform</div></div>
     </div>
     <div class="userpicker">
       <span class="ulabel">Ingelogd als:</span>
@@ -800,7 +800,7 @@ const DB = {
       notes: r.notes, notesHistory: r.notes_history || [],
       driveUrl: r.drive_url, push: r.push || false,
       archived: r.archived || false, archivedDate: r.archived_date,
-      source: r.source
+      source: r.source, recruitStatus: r.recruit_status || 'vrij'
     }));
   },
   async upsertCandidate(cv) {
@@ -813,7 +813,8 @@ const DB = {
       notes: cv.notes, notes_history: cv.notesHistory || [],
       drive_url: cv.driveUrl, push: cv.push || false,
       archived: cv.archived || false, archived_date: cv.archivedDate,
-      source: cv.source, updated_at: new Date().toISOString()
+      source: cv.source, recruit_status: cv.recruitStatus || 'vrij',
+      updated_at: new Date().toISOString()
     };
     await sbFetch('candidates?on_conflict=id', {
       method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify(row)
@@ -1248,7 +1249,7 @@ function renderKanban(v){
       <div class="kanban-push-label">⚡ Push</div>
       <div class="kanban-push-cards" id="kpush-${stage.key}"
         ondragover="event.preventDefault();this.classList.add('drag-over')"
-        ondragleave="this.classList.remove('drag-over')"
+        ondragleave="if(!this.contains(event.relatedTarget))this.classList.remove('drag-over')"
         ondrop="dropCard(event,'${stage.key}','${v.id}')">
         ${pushCards.map(id=>renderKanbanCard(id,stage.key,v.id)).join('')}
         ${!pushCards.length?`<div class="kanban-push-empty">Geen push kandidaten</div>`:''}
@@ -1262,7 +1263,7 @@ function renderKanban(v){
       ${pushZone}
       <div class="kanban-cards" id="kcards-${stage.key}"
         ondragover="event.preventDefault();this.classList.add('drag-over')"
-        ondragleave="this.classList.remove('drag-over')"
+        ondragleave="if(!this.contains(event.relatedTarget))this.classList.remove('drag-over')"
         ondrop="dropCard(event,'${stage.key}','${v.id}')">
         ${normCards.map(id=>renderKanbanCard(id,stage.key,v.id)).join('')}
         ${!normCards.length?`<div class="kanban-empty">Sleep kandidaat hier</div>`:''}
@@ -1403,8 +1404,7 @@ function dragEnd(e){
 }
 async function dropCard(e,toStage,vacId){
   e.preventDefault();
-  const col=document.getElementById(`kcards-${toStage}`);
-  if(col)col.classList.remove('drag-over');
+  document.querySelectorAll('.kanban-cards.drag-over,.kanban-push-cards.drag-over').forEach(el=>el.classList.remove('drag-over'));
   if(!_dragCandId||!_dragFromStage) return;
   if(_dragFromStage===toStage){ _dragCandId=null;_dragFromStage=null;return; }
   const v=vacatures.find(x=>x.id===vacId);if(!v)return;
@@ -1689,6 +1689,21 @@ function renderCVList(){
     const color=colFor(cv.name),cnt=offerLog.filter(l=>l.candidateId===cv.id).length;
     const isSel=sel.has(cv.id),hasFile=!!cvHtmlStore[cv.id];
     const hasDrive=!!(cv.driveUrl);
+    // Recruit status badge
+    const recStatus = cv.recruitStatus || 'vrij';
+    const recBadge = recStatus === 'in_proces'
+      ? `<span class="tag" style="background:#e8f0fe;color:#1a56a8">In proces</span>`
+      : `<span class="tag" style="background:var(--hgl);color:var(--muted)">Vrij</span>`;
+    // Sales status badge
+    const inVacStages = ['voorgesteld','gesprek','gesprek2','aangenomen'];
+    const isVoorgesteld = vacatures.some(v =>
+      inVacStages.some(s => (v.kanbanData?.[s] || []).includes(cv.id))
+    );
+    const salesBadge = cv.push
+      ? `<span class="tag" style="background:var(--pushl);color:var(--push)">⚡ Active Push</span>`
+      : isVoorgesteld
+        ? `<span class="tag" style="background:#e8f0fe;color:#1a56a8">Voorgesteld</span>`
+        : `<span class="tag" style="background:var(--hgl);color:var(--muted)">Active Search</span>`;
     const skills=(cv.skills||[]).map(s=>`<span class="tag tag-skill">${esc(s)}</span>`).join('');
     const linkedVacs=vacatures.filter(v=>v.candidateIds.includes(cv.id));
     const cvBadge=hasFile
@@ -1709,6 +1724,8 @@ function renderCVList(){
       tc: `<td><span style="font-size:10px;font-weight:700;color:var(--hg)">${esc(cv.talentClass||'')}</span></td>`,
       cv: `<td>${cvBadge}</td>`,
       push: `<td><span class="push-toggle ${cv.push?'on':''}" onclick="togglePush('${cv.id}')" title="${cv.push?'Push verwijderen':'Als push markeren'}">${cv.push?'⚡ Push':'⚡'}</span></td>`,
+      salesStatus: `<td>${salesBadge}</td>`,
+      recruitStatus: `<td>${recBadge}</td>`,
       vac: `<td>${linkedVacs.length?linkedVacs.map(v=>`<span class="tag tag-vac" style="cursor:pointer" onclick="openVacModal('${v.id}')" title="${esc(v.company)}">${esc(v.role.split(' ')[0])}</span>`).join(''):'<span style="color:#ddd;font-size:10px">—</span>'}</td>`,
       province: `<td style="font-size:11px;color:var(--muted)">${esc(cv.province||'—')}</td>`,
       date: `<td style="font-size:11px;color:var(--muted)">${esc(cv.dateInProcess||'—')}</td>`,
@@ -2315,6 +2332,11 @@ function openModal(id){
         <select class="ri" id="ed-status" onchange="markChanged(this)">${statusOpts}</select></div>
       <div class="rf"><label class="rl">Talent Class</label>
         <select class="ri" id="ed-tc" onchange="markChanged(this)">${tcOpts}</select></div>
+      <div class="rf"><label class="rl">Recruitment status</label>
+        <select class="ri" id="ed-recruit-status" onchange="markChanged(this)">
+          <option value="vrij" ${(cv.recruitStatus||'vrij')==='vrij'?'selected':''}>Vrij</option>
+          <option value="in_proces" ${cv.recruitStatus==='in_proces'?'selected':''}>In proces</option>
+        </select></div>
     </div>
     <div class="rf" style="margin-bottom:8px"><label class="rl">Skills (komma-gescheiden)</label>
       <input class="ri" id="ed-skills" value="${esc((cv.skills||[]).join(', '))}" oninput="markChanged(this)"></div>
@@ -2374,6 +2396,7 @@ async function saveEdit(id){
   cv.status=document.getElementById('ed-status')?.value||'';
   cv.talentClass=document.getElementById('ed-tc')?.value||'';
   cv.notes=document.getElementById('ed-notes')?.value.trim()||'';
+  cv.recruitStatus=document.getElementById('ed-recruit-status')?.value||'vrij';
   const skillsRaw=document.getElementById('ed-skills')?.value||'';
   cv.skills=skillsRaw.split(',').map(s=>s.trim()).filter(Boolean).slice(0,10);
   try{ await DB.upsertCandidate(cv); } catch(e){ console.error(e); }
