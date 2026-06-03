@@ -533,7 +533,7 @@
         <div class="frow t">
           <div class="fg"><label class="fl">E-mailadres klant</label><input class="fi" id="f-email" placeholder="contact@bedrijf.nl" type="email" oninput="updatePreview()"></div>
           <div class="fg"><label class="fl">Rol / Vacature</label><input class="fi" id="f-ro" placeholder="Senior Backend Engineer" type="text" oninput="updatePreview()"></div>
-          <div class="fg"><label class="fl">Aangeboden door</label><select class="fi" id="f-us" onchange="updatePreview()"></select>
+          <div class="fg"><label class="fl">Aangeboden door</label><select class="fi" id="f-us" onchange="updatePreview()"></select></div>
         </div>
         <div class="frow s"><div class="fg"><label class="fl">Notitie</label><textarea class="fi" id="f-no" rows="2" placeholder="warm lead, tweede ronde…" oninput="updatePreview()"></textarea></div></div>
       </div>
@@ -2505,14 +2505,7 @@ function closeVacModal(){document.getElementById('vac-modal').style.display='non
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('modal').style.display='none';document.getElementById('vac-modal').style.display='none';document.getElementById('merge-modal').style.display='none';document.getElementById('bulk-modal').style.display='none';}});
 
 // ── GENERAL
-function refreshAll(){
-  renderCVList();
-  renderPushTab();
-  renderDashboard();
-  renderCompanies();
-  renderSettings();
-  updateBadges();
-}
+function refreshAll(){renderCVList();renderPushTab();renderDashboard();renderCompanies();renderVacatures();renderArchive();updateBadges();}
 
 function updateBadges(){
   const active=cvLib.filter(cv=>!cv.archived).length;
