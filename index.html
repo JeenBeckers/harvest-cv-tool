@@ -1058,36 +1058,33 @@ function renderUserMgmt(){
 }
 
 async function loadFromStorage(){
+  showLoadingOverlay(true);
   try{
-    // Load users
-    try{
-      const usR=await window.storage.get('hcvst_users',true).catch(()=>null);
-      if(usR?.value){ const parsed=JSON.parse(usR.value); if(parsed?.length) appUsers=parsed; }
-      else { await window.storage.set('hcvst_users',JSON.stringify(DEFAULT_USERS),true); }
-    }catch(e){}
-    const [cvR,coR,emR,sigR,vacR]=await Promise.all([
-      window.storage.get('hcvst_lib',true),window.storage.get('hcvst_companies',true),
-      window.storage.get('hcvst_emails',true),window.storage.get('hcvst_sig',true),
-      window.storage.get('hcvst_vac',true),
+    const [cands,comps,vacs,logs,users,sig]=await Promise.all([
+      DB.getCandidates(),
+      DB.getCompanies(),
+      DB.getVacatures(),
+      DB.getOfferLog(),
+      DB.getUsers(),
+      DB.getSetting('signature')
     ]);
-    const colR = await window.storage.get('hcvst_cols', true).catch(()=>null);
-    if(colR?.value){ try{ const saved=JSON.parse(colR.value); if(Array.isArray(saved)&&saved.length) visibleCols=saved; }catch(e){} }
-    cvLib=(cvR?.value)?JSON.parse(cvR.value):[...CSV_SEED_CVS];
-    cvLib=cvLib.map(cv=>({push:false,archived:false,salesOwner:cv.contactPerson||cv.salesOwner||'',recruitOwner:'',bureau:'',...cv}));
-    if(!cvLib.length)cvLib=[...CSV_SEED_CVS];
-    offerLog=[];
-    companies=(coR?.value)?JSON.parse(coR.value):[...DEFAULT_COMPANIES];if(!companies.length)companies=[...DEFAULT_COMPANIES];
-    userEmails=(emR?.value)?JSON.parse(emR.value):{...DEFAULT_EMAILS};
-    signature=(sigR?.value)||DEFAULT_SIG;
-    vacatures=(vacR?.value)?JSON.parse(vacR.value):[];
-    if(!cvR?.value)await window.storage.set('hcvst_lib',JSON.stringify(cvLib),true);
-    await window.storage.set('hcvst_log',JSON.stringify([]),true);
-    if(!coR?.value)await window.storage.set('hcvst_companies',JSON.stringify(companies),true);
-    if(!emR?.value)await window.storage.set('hcvst_emails',JSON.stringify(userEmails),true);
-    if(!sigR?.value)await window.storage.set('hcvst_sig',signature,true);
-    if(!vacR?.value)await window.storage.set('hcvst_vac',JSON.stringify([]),true);
+    cvLib=cands.length?cands:[...CSV_SEED_CVS];
+    companies=comps.length?comps:[...DEFAULT_COMPANIES];
+    vacatures=vacs;
+    offerLog=logs;
+    appUsers=users.length?users:[...DEFAULT_USERS];
+    signature=sig||DEFAULT_SIG;
+    if(!cands.length){ for(const cv of CSV_SEED_CVS) await DB.upsertCandidate(cv).catch(()=>{}); }
+    if(!comps.length){ for(const c of DEFAULT_COMPANIES) await DB.addCompany(c).catch(()=>{}); }
+    if(!users.length){ for(const u of DEFAULT_USERS) await DB.upsertUser(u).catch(()=>{}); }
     setBadge('ok');
-  }catch(e){cvLib=[...CSV_SEED_CVS];offerLog=[];companies=[...DEFAULT_COMPANIES];userEmails={...DEFAULT_EMAILS};signature=DEFAULT_SIG;vacatures=[];setBadge('local');}
+  }catch(e){
+    console.error('DB load failed:',e);
+    cvLib=[...CSV_SEED_CVS];offerLog=[];companies=[...DEFAULT_COMPANIES];
+    appUsers=[...DEFAULT_USERS];signature=DEFAULT_SIG;vacatures=[];
+    setBadge('local');
+  }
+  showLoadingOverlay(false);
   refreshAll();
 }
 // async function saveLib(){ defined above with DB
