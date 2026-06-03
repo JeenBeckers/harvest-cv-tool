@@ -1029,13 +1029,6 @@ function setBadge(st){
   b.textContent=st==='ok'?'sync ok':'lokaal';
   b.className='syncbadge '+(st==='ok'?'sync-ok':'sync-wait');
 }
-function setFilter(type,val,el){
-  activeFilters[type]=val;
-  var grp=document.getElementById('filter-'+type);
-  if(grp) grp.querySelectorAll('.fchip').forEach(function(c){c.classList.remove('active');});
-  if(el) el.classList.add('active');
-  renderCVList();
-}
 async function saveLib(){
   try{ for(var i=0;i<cvLib.length;i++) await DB.upsertCandidate(cvLib[i]); }
   catch(e){ console.error('saveLib:',e); }
@@ -1142,16 +1135,6 @@ async function bulkArchive(){
 }
 
 // ── VACATURES
-async function addVacature(){
-  const co=document.getElementById('vac-co').value.trim();
-  const role=document.getElementById('vac-role').value.trim();
-  if(!co||!role){showToast('Bedrijf en rol zijn verplicht');return;}
-  vacatures.push({id:'v'+Date.now(),company:co,role,status:document.getElementById('vac-status').value,notes:document.getElementById('vac-notes').value.trim(),candidateIds:[],createdDate:today()});
-  ['vac-co','vac-role','vac-notes'].forEach(x=>document.getElementById(x).value='');
-  document.getElementById('vac-status').value='open';
-  await saveVac();renderVacatures();updateBadges();
-  toggleAddPanel('add-vac-panel','');showToast('✓ Vacature toegevoegd');
-}
 async function deleteVacature(id){
   if(!confirm('Vacature verwijderen?'))return;
   vacatures=vacatures.filter(v=>v.id!==id);
@@ -2551,7 +2534,7 @@ function setUser(u){
   renderDashboard();updatePreview();
 }
 function showTab(t){
-  ['lib','push','offer','vac','dash','archive','companies','settings'].forEach(x=>{document.getElementById('view-'+x).style.display=x===t?'':'none';document.getElementById('tab-'+x).classList.toggle('active',x===t);});
+  ['lib','push','offer','vac','dash','archive','companies','settings'].forEach(x=>{document.getElementById('view-'+x).style.display=x===t?'block':'none';document.getElementById('tab-'+x).classList.toggle('active',x===t);});
   if(t==='offer'){renderOfferPanel();renderUserDropdown();setOfferMode(offerMode);}
   if(t==='dash')renderDashboard();
   if(t==='lib')renderCVList();
