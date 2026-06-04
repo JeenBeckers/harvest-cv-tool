@@ -1199,6 +1199,17 @@ async function bulkArchive(){
   await saveLib();sel.clear();refreshAll();showToast(`Kandidaten gearchiveerd`);
 }
 
+// ── SAVE VACATURES
+async function saveVac(){
+  try{
+    const v=vacatures.find(x=>x.id===window._activeVacId);
+    if(v) await DB.upsertVacature(v);
+  }catch(e){ console.error('saveVac failed:',e); }
+}
+async function saveAllVacs(){
+  try{ for(const v of vacatures) await DB.upsertVacature(v).catch(()=>{}); }catch(e){ console.error(e); }
+}
+
 // ── VACATURES
 async function addVacature(){
   const co=document.getElementById('vac-co').value.trim();
