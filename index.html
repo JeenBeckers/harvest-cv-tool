@@ -995,9 +995,9 @@ function loadSession(){
 
 async function doLogin(){
   const nameInput = document.getElementById('login-user').value.trim();
-  const passInput = document.getElementById('login-pass').value;
+  const passInput = document.getElementById('login-pass').value.trim();
   const errEl = document.getElementById('login-error');
-  // Case-insensitive name match
+  // Case-insensitive name match, trimmed password
   const user = appUsers.find(u => u.name.toLowerCase() === nameInput.toLowerCase() && u.pass === passInput);
   if(!user){
     errEl.style.display='block';
@@ -1009,7 +1009,7 @@ async function doLogin(){
   document.getElementById('login-user').classList.remove('error');
   document.getElementById('login-pass').classList.remove('error');
   saveSession(user);
-  await startSession(user);
+  await startSession(user, true); // data already loaded in init
 }
 
 async function startSession(user, skipLoad=false){
