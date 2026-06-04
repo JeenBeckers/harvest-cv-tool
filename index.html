@@ -698,6 +698,16 @@ b,strong{font-weight:500}
     <!-- INSTELLINGEN -->
     <div id="view-settings" style="display:none">
       <div class="stitle">Instellingen</div><div class="ssub">Gebruikers, e-mail en handtekening</div>
+      <!-- EIGEN WACHTWOORD WIJZIGEN — zichtbaar voor iedereen -->
+      <div class="settings-section">
+        <div class="settings-title"><i class="ti ti-lock"></i> Mijn wachtwoord wijzigen</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;max-width:480px">
+          <div class="fg"><label class="fl">Nieuw wachtwoord</label><input class="fi" id="own-pass-new" type="password" placeholder="••••••••" style="font-size:12px"></div>
+          <div class="fg"><label class="fl">Herhaal wachtwoord</label><input class="fi" id="own-pass-confirm" type="password" placeholder="••••••••" style="font-size:12px" onkeydown="if(event.key==='Enter')changeOwnPass()"></div>
+          <button class="bmain g" onclick="changeOwnPass()" style="font-size:11px;padding:7px 12px"><i class="ti ti-check"></i> Opslaan</button>
+        </div>
+        <div id="own-pass-msg" style="font-size:12px;margin-top:8px;display:none"></div>
+      </div>
       <!-- GEBRUIKERSBEHEER — alleen zichtbaar voor Admin -->
       <div class="settings-section" id="user-mgmt-section">
         <div class="settings-title"><i class="ti ti-users-group"></i> Gebruikers beheren</div>
@@ -921,12 +931,12 @@ const DB = {
 const COLS=[{bg:'#e8f2ff',tx:'#1a56a8'},{bg:'#fef3e2',tx:'#a05a00'},{bg:'#f3e8ff',tx:'#6b21a8'},{bg:'#e8f5e9',tx:'#2e7d32'},{bg:'#fde8e8',tx:'#9b1c1c'},{bg:'#e8f5f0',tx:'#065f46'},{bg:'#fef9e7',tx:'#78350f'}];
 // ── DEFAULT USERS (naam, rol, wachtwoord hash-vrij voor MVP)
 const DEFAULT_USERS = [
-  {name:'Julieta', role:'Sales',       pass:'harvest2026', email:''},
-  {name:'Frank',   role:'Sales',       pass:'harvest2026', email:''},
-  {name:'Jeen',    role:'Admin',       pass:'harvest2026', email:'jeen.beckers@harvest.nl'},
-  {name:'Marlie',  role:'Admin',       pass:'harvest2026', email:''},
-  {name:'Bastijn', role:'Recruitment', pass:'harvest2026', email:''},
-  {name:'Wessal',  role:'Recruitment', pass:'harvest2026', email:''},
+  {name:'Julieta', role:'Sales',       pass:'Hoofdstraat 152', email:'julieta.van.hierden@harvest.nl'},
+  {name:'Frank',   role:'Sales',       pass:'Hoofdstraat 152', email:'frank.schaeffer@harvest.nl'},
+  {name:'Jeen',    role:'Admin',       pass:'Hoofdstraat 152', email:'jeen.beckers@harvest.nl'},
+  {name:'Marlie',  role:'Admin',       pass:'Hoofdstraat 152', email:'marlie.ekdom@harvest.nl'},
+  {name:'Bastijn', role:'Recruitment', pass:'Hoofdstraat 152', email:'bastijn.de.groot@harvest.nl'},
+  {name:'Wessal',  role:'Recruitment', pass:'Hoofdstraat 152', email:'wessal.wafa@harvest.nl'},
 ];
 let appUsers = [...DEFAULT_USERS];
 let currentUserObj = null;
@@ -1058,6 +1068,24 @@ async function deleteUser(name){
   try{ await DB.deleteUser(name); }catch(e){ console.error(e); }
   renderUserMgmt();
   showToast(name+' verwijderd');
+}
+
+async function changeOwnPass(){
+  const np = document.getElementById('own-pass-new').value.trim();
+  const cp = document.getElementById('own-pass-confirm').value.trim();
+  const msg = document.getElementById('own-pass-msg');
+  msg.style.display = 'block';
+  if(!np){ msg.style.color='var(--push)'; msg.textContent='Vul een nieuw wachtwoord in.'; return; }
+  if(np !== cp){ msg.style.color='var(--push)'; msg.textContent='Wachtwoorden komen niet overeen.'; return; }
+  if(np.length < 6){ msg.style.color='var(--push)'; msg.textContent='Wachtwoord moet minimaal 6 tekens zijn.'; return; }
+  const user = appUsers.find(u=>u.name===CU);
+  if(user){ user.pass = np; }
+  await saveUsers();
+  saveSession(user); // refresh session
+  document.getElementById('own-pass-new').value='';
+  document.getElementById('own-pass-confirm').value='';
+  msg.style.color='green'; msg.textContent='✓ Wachtwoord opgeslagen!';
+  setTimeout(()=>{ msg.style.display='none'; },3000);
 }
 
 async function changePass(name){
