@@ -1460,15 +1460,20 @@ let _dragCandId=null, _dragFromStage=null;
 function dragStart(e,candId,stageKey){
   _dragCandId=candId; _dragFromStage=stageKey;
   e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain', candId); // required by most browsers
   setTimeout(()=>{ const el=document.getElementById(`kcard-${candId}-${stageKey}`); if(el)el.classList.add('dragging'); },0);
 }
 function dragEnd(e){
   document.querySelectorAll('.kanban-card.dragging').forEach(el=>el.classList.remove('dragging'));
-  document.querySelectorAll('.kanban-cards.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  _dragCandId=null; _dragFromStage=null;
 }
 async function dropCard(e,toStage,vacId){
   e.preventDefault();
-  document.querySelectorAll('.kanban-cards.drag-over,.kanban-push-cards.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  e.stopPropagation();
+  document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  // Recover candId from dataTransfer if globals were lost
+  if(!_dragCandId) _dragCandId=e.dataTransfer.getData('text/plain');
   if(!_dragCandId||!_dragFromStage) return;
   if(_dragFromStage===toStage){ _dragCandId=null;_dragFromStage=null;return; }
   const v=vacatures.find(x=>x.id===vacId);if(!v)return;
