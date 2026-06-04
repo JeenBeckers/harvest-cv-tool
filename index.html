@@ -1147,7 +1147,21 @@ async function loadFromStorage(){
   }
   refreshAll();
 }
-// async function saveLib(){ defined above with DB
+async function saveLib(singleCv){
+  try{
+    if(singleCv){ await DB.upsertCandidate(singleCv); }
+    else{ for(const cv of cvLib) await DB.upsertCandidate(cv).catch(()=>{}); }
+  }catch(e){ console.error('saveLib failed:',e); }
+}
+
+function setFilter(key,val,el){
+  activeFilters[key]=val;
+  const wrap=el.closest('.fchip-wrap');
+  if(wrap) wrap.querySelectorAll('.fchip').forEach(c=>c.classList.remove('active','push-active'));
+  if(val==='push') el.classList.add('push-active');
+  else el.classList.add('active');
+  renderCVList();
+}
 
 function resetFilters(){
   activeFilters={sales:'all',recruit:'all',bureau:'all',cv:'all',push:'all',tc:'all',role:'all'};
@@ -1173,7 +1187,7 @@ function applyFilters(list){
 async function togglePush(id){
   const cv=cvLib.find(c=>c.id===id);if(!cv)return;
   cv.push=!cv.push;
-  await saveLib();renderCVList();renderPushTab();renderDashboard();updateBadges();
+  await saveLib(cv);renderCVList();renderPushTab();renderDashboard();updateBadges();
   showToast(cv.push?`⚡ ${cv.name} als push gemarkeerd`:`${cv.name} push verwijderd`);
 }
 async function bulkPush(){
@@ -1186,12 +1200,12 @@ async function bulkPush(){
 async function archiveCV(id){
   const cv=cvLib.find(c=>c.id===id);if(!cv)return;
   cv.archived=true;cv.archivedDate=today();
-  await saveLib();sel.delete(id);refreshAll();closeModal();showToast(`${cv.name} gearchiveerd`);
+  await saveLib(cv);sel.delete(id);refreshAll();closeModal();showToast(`${cv.name} gearchiveerd`);
 }
 async function restoreCV(id){
   const cv=cvLib.find(c=>c.id===id);if(!cv)return;
   cv.archived=false;delete cv.archivedDate;
-  await saveLib();refreshAll();showToast(`${cv.name} hersteld`);
+  await saveLib(cv);refreshAll();showToast(`${cv.name} hersteld`);
 }
 async function bulkArchive(){
   if(!sel.size)return;
