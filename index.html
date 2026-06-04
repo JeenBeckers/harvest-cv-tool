@@ -1307,7 +1307,7 @@ function renderKanban(v){
     const cards=v.kanbanData[stage.key]||[];
     const pushCards=cards.filter(id=>cvLib.find(c=>c.id===id)?.push);
     const normCards=cards.filter(id=>!cvLib.find(c=>c.id===id)?.push);
-    const pushZone=`<div class="kanban-push-zone">
+    const pushZone=`<div class="kanban-push-zone" ondragover="event.preventDefault()">
       <div class="kanban-push-label">⚡ Push</div>
       <div class="kanban-push-cards" id="kpush-${stage.key}"
         ondragover="event.preventDefault();this.classList.add('drag-over')"
@@ -1317,7 +1317,9 @@ function renderKanban(v){
         ${!pushCards.length?`<div class="kanban-push-empty">Geen push kandidaten</div>`:''}
       </div>
     </div>`;
-    return`<div class="kanban-col ${stage.cls}" id="kcol-${stage.key}">
+    return`<div class="kanban-col ${stage.cls}" id="kcol-${stage.key}"
+      ondragover="event.preventDefault()"
+      ondrop="dropCard(event,'${stage.key}','${v.id}')">
       <div class="kanban-col-header">
         <span class="kanban-col-title">${stage.label}</span>
         <span class="kanban-col-count" id="kcount-${stage.key}">${cards.length}</span>
@@ -1330,7 +1332,7 @@ function renderKanban(v){
         ${normCards.map(id=>renderKanbanCard(id,stage.key,v.id)).join('')}
         ${!normCards.length?`<div class="kanban-empty">Sleep kandidaat hier</div>`:''}
       </div>
-      <div class="kanban-add-btn">
+      <div class="kanban-add-btn" ondragover="event.preventDefault()">
         <button onclick="showKanbanAddPanel('${stage.key}','${v.id}')"><i class="ti ti-plus" style="font-size:10px"></i> Kandidaat toevoegen</button>
       </div>
     </div>`;
