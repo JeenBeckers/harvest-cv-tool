@@ -997,8 +997,12 @@ async function doLogin(){
   const nameInput = document.getElementById('login-user').value.trim();
   const passInput = document.getElementById('login-pass').value.trim();
   const errEl = document.getElementById('login-error');
-  // Case-insensitive name match, trimmed password
-  const user = appUsers.find(u => u.name.toLowerCase() === nameInput.toLowerCase() && u.pass === passInput);
+  // Match by name OR email (case-insensitive), trimmed password
+  const user = appUsers.find(u =>
+    (u.name.toLowerCase() === nameInput.toLowerCase() ||
+     (u.email && u.email.toLowerCase() === nameInput.toLowerCase())) &&
+    u.pass === passInput
+  );
   if(!user){
     errEl.style.display='block';
     document.getElementById('login-user').classList.add('error');
