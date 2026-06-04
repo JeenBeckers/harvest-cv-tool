@@ -965,6 +965,24 @@ const SEED_CVS=[
 // ── STORAGE
 
 // ── AUTH
+const SESSION_KEY = 'jordan_session';
+const SESSION_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+function saveSession(user){
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ name: user.name, role: user.role, exp: Date.now() + SESSION_TTL }));
+}
+function clearSession(){
+  localStorage.removeItem(SESSION_KEY);
+}
+function loadSession(){
+  try{
+    const s = JSON.parse(localStorage.getItem(SESSION_KEY)||'null');
+    if(s && s.exp > Date.now()) return s;
+    clearSession();
+  }catch(e){}
+  return null;
+}
+
 async function doLogin(){
   const nameInput = document.getElementById('login-user').value.trim();
   const passInput = document.getElementById('login-pass').value;
@@ -980,21 +998,25 @@ async function doLogin(){
   errEl.style.display='none';
   document.getElementById('login-user').classList.remove('error');
   document.getElementById('login-pass').classList.remove('error');
+  saveSession(user);
+  await startSession(user);
+}
+
+async function startSession(user, skipLoad=false){
   currentUserObj = user;
   CU = user.name;
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='';
   document.getElementById('topbar-username').textContent = user.name;
   document.getElementById('topbar-role').textContent = user.role;
-  // Restrict settings access
   applyRolePermissions(user);
-  // Init app
-  await loadFromStorage();
+  if(!skipLoad) await loadFromStorage();
   showTab('lib');
 }
 
 function doLogout(){
   if(!confirm('Uitloggen?')) return;
+  clearSession();
   currentUserObj = null;
   CU = '';
   document.getElementById('login-screen').style.display='flex';
@@ -2623,7 +2645,16 @@ function downloadCVasPDF(id){
   showToast('Gebruik "Opslaan als PDF" in het printvenster');
 }
 
-// Login required — loadFromStorage() is called after doLogin()
-document.getElementById("login-user")?.focus();
+// Auto-login if valid session exists
+(async () => {
+  await loadFromStorage(); // load data + appUsers
+  const sess = loadSession();
+  if(sess){
+    const user = appUsers.find(u => u.name === sess.name) || { name: sess.name, role: sess.role, pass: '' };
+    await startSession(user, true); // skipLoad=true, data already loaded
+  } else {
+    document.getElementById("login-user")?.focus();
+  }
+})();
 
 </script>
