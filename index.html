@@ -234,6 +234,26 @@ b,strong{font-weight:500}
 
 /* ── SETTINGS ── */
 .settings-section{background:#fff;border:1px solid var(--border);border-radius:var(--rad);padding:14px;margin-bottom:12px}
+/* ── AI MATCH CHAT ── */
+.match-layout{display:grid;grid-template-columns:340px 1fr;gap:14px;height:calc(100vh - 140px);min-height:400px}
+.match-left{display:flex;flex-direction:column;gap:10px}
+.match-vac-box{background:#fff;border:1px solid var(--border);border-radius:var(--rad);padding:12px;display:flex;flex-direction:column;gap:8px;flex:1}
+.match-vac-box label{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.match-vac-box textarea{flex:1;resize:none;border:1px solid var(--border);border-radius:var(--rad);padding:8px 10px;font-size:12px;font-family:var(--font);color:var(--hg);background:var(--beige);outline:none;min-height:160px}
+.match-vac-box textarea:focus{border-color:var(--hg)}
+.match-filter-info{font-size:11px;color:var(--muted);background:var(--hgl);border-radius:var(--rad);padding:7px 10px}
+.match-right{background:#fff;border:1px solid var(--border);border-radius:var(--rad);display:flex;flex-direction:column;overflow:hidden}
+.match-chat-header{padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;font-weight:500;color:var(--hg);display:flex;align-items:center;gap:7px;flex-shrink:0}
+.match-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.match-msg{max-width:88%;padding:10px 13px;border-radius:var(--rad);font-size:12px;line-height:1.6;white-space:pre-wrap}
+.match-msg.user{background:var(--hg);color:var(--beige);align-self:flex-end;border-radius:var(--rad) var(--rad) 3px var(--rad)}
+.match-msg.assistant{background:var(--hgl);color:var(--hg);align-self:flex-start;border-radius:var(--rad) var(--rad) var(--rad) 3px}
+.match-msg.thinking{color:var(--muted);font-style:italic;background:transparent;padding:4px 0}
+.match-input-row{display:flex;gap:7px;padding:10px 14px;border-top:1px solid var(--border);flex-shrink:0}
+.match-input-row input{flex:1;border:1px solid var(--border);border-radius:var(--rad);padding:7px 10px;font-size:12px;font-family:var(--font);color:var(--hg);outline:none;background:var(--beige)}
+.match-input-row input:focus{border-color:var(--hg)}
+.match-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;flex:1;color:var(--muted);font-size:12px}
+.match-empty i{font-size:32px;opacity:.3}
 .settings-title{font-size:13px;font-weight:400;color:var(--hg);margin-bottom:9px;display:flex;align-items:center;gap:6px}
 .user-email-row{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--hgl)}
 .user-email-row:last-child{border-bottom:none}
@@ -470,6 +490,7 @@ b,strong{font-weight:500}
     <div class="navtab" onclick="showTab('dash')" id="tab-dash"><i class="ti ti-chart-bar"></i> Dashboard <span class="nbadge" id="nb-dash">0</span></div>
     <div class="navtab" onclick="showTab('archive')" id="tab-archive"><i class="ti ti-archive"></i> Archief <span class="nbadge" id="nb-archive">0</span></div>
     <div class="navtab" onclick="showTab('companies')" id="tab-companies"><i class="ti ti-building"></i> Bedrijven <span class="nbadge" id="nb-co">0</span></div>
+    <div class="navtab" onclick="showTab('match')" id="tab-match"><i class="ti ti-sparkles"></i> AI Match</div>
     <div class="navtab" onclick="showTab('settings')" id="tab-settings"><i class="ti ti-settings"></i> Instellingen</div>
   </div>
   <div class="content">
@@ -694,6 +715,53 @@ b,strong{font-weight:500}
       <div class="stitle">Bedrijven</div><div class="ssub">Klanten beheren</div>
       <div class="add-comp-row"><input type="text" id="new-co-input" placeholder="Naam nieuw bedrijf…" onkeydown="if(event.key==='Enter')addCompany()"><button class="bmain g" onclick="addCompany()"><i class="ti ti-plus"></i> Toevoegen</button></div>
       <div class="comp-grid" id="comp-grid"></div>
+    </div>
+
+    <!-- AI MATCH -->
+    <div id="view-match" style="display:none">
+      <div class="stitle"><i class="ti ti-sparkles" style="font-size:13px"></i> AI Match</div>
+      <div class="ssub" style="margin-bottom:12px">Plak een vacature en krijg een aanbeveling van passende kandidaten uit de pipeline</div>
+      <div class="match-layout">
+        <!-- Left: vacancy input -->
+        <div class="match-left">
+          <div class="match-vac-box">
+            <label>Vacature</label>
+            <textarea id="match-vac-input" placeholder="Plak hier de vacaturetekst of beschrijf de rol…&#10;&#10;Bijv:&#10;We zoeken een Data Engineer met ervaring in Python, dbt en cloud. Beschikbaar per direct, locatie Amsterdam of remote."></textarea>
+            <div class="match-filter-info" id="match-filter-info">Alle <strong id="match-cand-count">0</strong> actieve kandidaten worden meegenomen</div>
+            <button class="bmain g" onclick="startMatch()" id="match-btn" style="font-size:12px"><i class="ti ti-sparkles"></i> Match kandidaten</button>
+          </div>
+          <div style="background:#fff;border:1px solid var(--border);border-radius:var(--rad);padding:10px 12px">
+            <div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">Filter kandidaten</div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px">
+              <button class="fchip active" id="mf-all" onclick="setMatchFilter('all',this)">Alle</button>
+              <button class="fchip" id="mf-direct" onclick="setMatchFilter('direct',this)">Direct beschikbaar</button>
+              <button class="fchip" id="mf-se" onclick="setMatchFilter('SE',this)">SE</button>
+              <button class="fchip" id="mf-de" onclick="setMatchFilter('DE',this)">DE</button>
+              <button class="fchip" id="mf-ba" onclick="setMatchFilter('BA',this)">BA</button>
+            </div>
+          </div>
+        </div>
+        <!-- Right: chat -->
+        <div class="match-right">
+          <div class="match-chat-header">
+            <i class="ti ti-robot" style="font-size:14px;color:var(--muted)"></i>
+            <span>AI Recruitment Assistent</span>
+            <span id="match-chat-count" style="margin-left:auto;font-size:10px;color:var(--muted)"></span>
+            <button onclick="clearMatchChat()" style="font-size:10px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:3px" title="Gesprek wissen"><i class="ti ti-trash"></i></button>
+          </div>
+          <div class="match-messages" id="match-messages">
+            <div class="match-empty" id="match-empty">
+              <i class="ti ti-sparkles"></i>
+              <div>Plak een vacature en klik op <strong>Match kandidaten</strong></div>
+              <div style="font-size:11px">Of stel een vrije vraag over de pipeline</div>
+            </div>
+          </div>
+          <div class="match-input-row">
+            <input type="text" id="match-followup" placeholder="Stel een vervolgvraag… bijv. 'Wie heeft ervaring met React?'" onkeydown="if(event.key==='Enter')sendMatchMessage()">
+            <button class="bmain g" onclick="sendMatchMessage()" style="font-size:11px;padding:7px 11px"><i class="ti ti-send"></i></button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- INSTELLINGEN -->
@@ -2559,7 +2627,10 @@ function setUser(u){
   renderDashboard();updatePreview();
 }
 function showTab(t){
-  ['lib','push','offer','vac','dash','archive','companies','settings'].forEach(x=>{document.getElementById('view-'+x).style.display=x===t?'':'none';document.getElementById('tab-'+x).classList.toggle('active',x===t);});
+  ['lib','push','offer','vac','dash','archive','companies','match','settings'].forEach(x=>{
+    const v=document.getElementById('view-'+x); if(v) v.style.display=x===t?'':'none';
+    const tb=document.getElementById('tab-'+x); if(tb) tb.classList.toggle('active',x===t);
+  });
   if(t==='offer'){renderOfferPanel();document.getElementById('f-us').value=CU;setOfferMode(offerMode);}
   if(t==='dash')renderDashboard();
   if(t==='lib')renderCVList();
@@ -2568,8 +2639,127 @@ function showTab(t){
   if(t==='archive')renderArchive();
   if(t==='companies')renderCompanies();
   if(t==='settings')renderSettings();
+  if(t==='match')initMatchTab();
   if(t==='vac'){ document.querySelector('.content').style.padding = '0'; } else { document.querySelector('.content').style.padding = '16px'; }
 }
+// ── AI MATCH
+let _matchFilter = 'all';
+let _matchHistory = [];
+
+function initMatchTab(){
+  updateMatchCandCount();
+}
+
+function getMatchCandidates(){
+  let list = cvLib.filter(cv => !cv.archived);
+  if(_matchFilter === 'direct') list = list.filter(cv => /per\s*direct|^direct$/i.test((cv.availability||'').trim()));
+  if(_matchFilter === 'SE') list = list.filter(cv => cv.talentClass === 'SE');
+  if(_matchFilter === 'DE') list = list.filter(cv => cv.talentClass === 'DE');
+  if(_matchFilter === 'BA') list = list.filter(cv => cv.talentClass === 'BA');
+  return list;
+}
+
+function updateMatchCandCount(){
+  const n = getMatchCandidates().length;
+  const el = document.getElementById('match-cand-count');
+  const info = document.getElementById('match-filter-info');
+  if(el) el.textContent = n;
+  if(info){
+    if(_matchFilter === 'all') info.innerHTML = `Alle <strong>${n}</strong> actieve kandidaten worden meegenomen`;
+    else if(_matchFilter === 'direct') info.innerHTML = `<strong>${n}</strong> direct beschikbare kandidaten`;
+    else info.innerHTML = `<strong>${n}</strong> ${_matchFilter} kandidaten`;
+  }
+}
+
+function setMatchFilter(val, el){
+  _matchFilter = val;
+  document.querySelectorAll('#view-match .fchip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  updateMatchCandCount();
+}
+
+function appendMatchMsg(role, text){
+  const container = document.getElementById('match-messages');
+  const empty = document.getElementById('match-empty');
+  if(empty) empty.remove();
+  const div = document.createElement('div');
+  div.className = 'match-msg ' + role;
+  div.textContent = text;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+async function callMatchAPI(userMessage, isVacancy=false){
+  const candidates = getMatchCandidates();
+  const btn = document.getElementById('match-btn');
+  if(btn) btn.disabled = true;
+
+  const thinkingDiv = appendMatchMsg('thinking', '…aan het analyseren');
+
+  const payload = {
+    candidates: candidates.map(c => ({
+      name: c.name, role: c.role, city: c.city,
+      availability: c.availability, skills: c.skills || [],
+      bureau: c.bureau, status: c.status, talentClass: c.talentClass
+    })),
+    history: _matchHistory,
+    ...(isVacancy ? { vacancy: userMessage } : { message: userMessage })
+  };
+
+  try {
+    const res = await fetch('/api/match', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    thinkingDiv.remove();
+    if(data.error){ appendMatchMsg('assistant', '❌ ' + data.error); return; }
+    appendMatchMsg('assistant', data.reply);
+    // Add to history
+    _matchHistory.push({ role: 'user', content: userMessage });
+    _matchHistory.push({ role: 'assistant', content: data.reply });
+    // Keep last 10 turns
+    if(_matchHistory.length > 20) _matchHistory = _matchHistory.slice(-20);
+    const countEl = document.getElementById('match-chat-count');
+    if(countEl) countEl.textContent = (_matchHistory.length/2) + ' berichten';
+  } catch(e) {
+    thinkingDiv.remove();
+    appendMatchMsg('assistant', '❌ Fout: ' + e.message);
+  } finally {
+    if(btn) btn.disabled = false;
+  }
+}
+
+async function startMatch(){
+  const vac = document.getElementById('match-vac-input').value.trim();
+  if(!vac){ showToast('Vul eerst een vacature in'); return; }
+  appendMatchMsg('user', vac);
+  await callMatchAPI(vac, true);
+}
+
+async function sendMatchMessage(){
+  const inp = document.getElementById('match-followup');
+  const msg = inp.value.trim();
+  if(!msg) return;
+  inp.value = '';
+  appendMatchMsg('user', msg);
+  await callMatchAPI(msg, false);
+}
+
+function clearMatchChat(){
+  _matchHistory = [];
+  const container = document.getElementById('match-messages');
+  container.innerHTML = `<div class="match-empty" id="match-empty">
+    <i class="ti ti-sparkles"></i>
+    <div>Plak een vacature en klik op <strong>Match kandidaten</strong></div>
+    <div style="font-size:11px">Of stel een vrije vraag over de pipeline</div>
+  </div>`;
+  const countEl = document.getElementById('match-chat-count');
+  if(countEl) countEl.textContent = '';
+}
+
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';clearTimeout(window._tt);window._tt=setTimeout(()=>t.style.display='none',2500);}
 
 function uploadCVForCandidate(id, input){
