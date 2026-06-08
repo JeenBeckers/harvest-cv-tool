@@ -468,6 +468,18 @@ b,strong{font-weight:500}
 .week-tbl tr.current-week td{background:rgba(9,43,19,.03);font-weight:400}
 .week-tbl .wk-num{font-size:10px;color:var(--muted);font-weight:400}
 .week-tbl .wk-bar{display:inline-block;height:6px;border-radius:2px;background:var(--hg);opacity:.25;margin-left:5px;vertical-align:middle;min-width:2px}
+/* trend chart */
+.trend-wrap{display:flex;align-items:flex-end;gap:3px;height:80px;min-width:max-content}
+.trend-col{display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;width:36px}
+.trend-bars{display:flex;align-items:flex-end;gap:1px;height:64px;width:100%}
+.trend-bar{flex:1;border-radius:2px 2px 0 0;min-height:2px;transition:height .3s}
+.trend-bar.b-voor{background:var(--push);opacity:.7}
+.trend-bar.b-gesp{background:var(--hg);opacity:.6}
+.trend-bar.b-aang{background:var(--hg);opacity:1}
+.trend-label{font-size:8px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;max-width:36px;text-overflow:ellipsis}
+.trend-legend{display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.trend-leg-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)}
+.trend-leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
 .kanban-card-owner{font-size:9px;color:var(--muted);background:var(--hgl);padding:1px 5px;border-radius:2px;display:inline-block;margin-top:3px}
 
 /* ── LOGIN ── */
@@ -790,10 +802,18 @@ b,strong{font-weight:500}
           <div class="vkpi"><div class="vkpi-label">Op gesprek</div><div class="vkpi-val" id="kpi-gesp">0</div><div class="vkpi-sub">1e + 2e gesprek</div></div>
           <div class="vkpi push-accent"><div class="vkpi-label">Aangenomen</div><div class="vkpi-val" id="kpi-aang">0</div><div class="vkpi-sub">geplaatst</div></div>
         </div>
-        <div class="sdiv" style="margin-bottom:8px">Per weeknummer</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+          <span class="sdiv" style="margin-bottom:0;border:none;padding:0">Historische ontwikkeling</span>
+          <div style="display:flex;gap:3px">
+            <button class="owner-chip active" id="period-btn-week" onclick="setHistPeriod('week',this)">Per week</button>
+            <button class="owner-chip" id="period-btn-month" onclick="setHistPeriod('month',this)">Per maand</button>
+          </div>
+        </div>
+        <!-- Trend chart -->
+        <div id="trend-chart" style="background:#fff;border:1px solid var(--border);border-radius:var(--rad);padding:12px 14px;margin-bottom:8px;overflow-x:auto"></div>
         <div class="week-table-wrap">
-          <table class="week-tbl">
-            <thead><tr><th>Week</th><th>Vacatures open</th><th>Voorgesteld</th><th>Op gesprek</th><th>Aangenomen</th></tr></thead>
+          <table class="week-tbl" id="hist-table">
+            <thead id="hist-thead"></thead>
             <tbody id="week-tbody"></tbody>
           </table>
         </div>
@@ -2305,40 +2325,143 @@ async function snapshotCurrentWeek() {
   await DB.setWeekStats(_weekStatsCache);
 }
 
+let _histPeriod = 'week'; // 'week' | 'month'
+
+const MONTH_NL = ['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+
+function weekKeyToMonthKey(wk) {
+  // 'YYYY-WNN' → approximate month from week number
+  const [year, wPart] = wk.split('-W');
+  const wNum = parseInt(wPart);
+  // Jan 4 is always in week 1; approximate month
+  const jan4 = new Date(parseInt(year), 0, 4);
+  const d = new Date(jan4.getTime() + (wNum - 1) * 7 * 86400000);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function getRow(ws) {
+  if (_vacOwnerFilter === 'all') return ws;
+  return ws.per_owner?.[_vacOwnerFilter] || {};
+}
+
+function buildMonthBuckets() {
+  const buckets = {};
+  Object.entries(_weekStatsCache).sort().forEach(([wk, ws]) => {
+    const mk = weekKeyToMonthKey(wk);
+    if (!buckets[mk]) buckets[mk] = { vacatures: 0, voorgesteld: 0, gesprek: 0, aangenomen: 0, weeks: 0 };
+    const row = getRow(ws);
+    buckets[mk].vacatures = Math.max(buckets[mk].vacatures, ws.vacatures || 0); // take peak
+    buckets[mk].voorgesteld = Math.max(buckets[mk].voorgesteld, row.voorgesteld || 0);
+    buckets[mk].gesprek = Math.max(buckets[mk].gesprek, row.gesprek || 0);
+    buckets[mk].aangenomen = Math.max(buckets[mk].aangenomen, row.aangenomen || 0);
+    buckets[mk].weeks++;
+  });
+  return buckets;
+}
+
+function renderTrendChart(periods, dataFn, labelFn, currentKey) {
+  const chart = document.getElementById('trend-chart');
+  if (!periods.length) { chart.innerHTML = ''; return; }
+  const display = periods.slice().reverse(); // oldest→newest
+  const maxVoor = Math.max(...display.map(k => dataFn(k).voorgesteld || 0), 1);
+  const maxGesp = Math.max(...display.map(k => dataFn(k).gesprek || 0), 1);
+  const maxAang = Math.max(...display.map(k => dataFn(k).aangenomen || 0), 1);
+  const maxAll = Math.max(maxVoor, maxGesp, maxAang, 1);
+  const cols = display.map(k => {
+    const d = dataFn(k);
+    const voor = d.voorgesteld || 0, gesp = d.gesprek || 0, aang = d.aangenomen || 0;
+    const hV = Math.max(2, Math.round((voor/maxAll)*60));
+    const hG = Math.max(2, Math.round((gesp/maxAll)*60));
+    const hA = Math.max(2, Math.round((aang/maxAll)*60));
+    const isCur = k === currentKey;
+    return `<div class="trend-col" title="${labelFn(k)}: ${voor} voorgesteld / ${gesp} gesprek / ${aang} aangenomen">
+      <div class="trend-bars">
+        <div class="trend-bar b-voor" style="height:${hV}px"></div>
+        <div class="trend-bar b-gesp" style="height:${hG}px"></div>
+        <div class="trend-bar b-aang" style="height:${hA}px"></div>
+      </div>
+      <div class="trend-label" style="${isCur?'font-weight:500;color:var(--hg)':''}">${labelFn(k)}</div>
+    </div>`;
+  }).join('');
+  chart.innerHTML = `
+    <div class="trend-legend">
+      <span class="trend-leg-item"><span class="trend-leg-dot" style="background:var(--push);opacity:.7"></span>Voorgesteld</span>
+      <span class="trend-leg-item"><span class="trend-leg-dot" style="background:var(--hg);opacity:.6"></span>Op gesprek</span>
+      <span class="trend-leg-item"><span class="trend-leg-dot" style="background:var(--hg)"></span>Aangenomen</span>
+    </div>
+    <div class="trend-wrap">${cols}</div>`;
+}
+
 function renderVacPerformance() {
-  // KPIs
+  // KPIs (always live)
   const s = computeVacStats(_vacOwnerFilter);
   document.getElementById('kpi-vac').textContent = s.vacatures;
   document.getElementById('kpi-voor').textContent = s.voorgesteld;
   document.getElementById('kpi-gesp').textContent = s.gesprek;
   document.getElementById('kpi-aang').textContent = s.aangenomen;
 
-  // Weekly table (most recent 12 weeks, desc)
-  const currentKey = isoWeekKey(new Date());
-  const allKeys = Object.keys(_weekStatsCache).sort().reverse().slice(0, 12);
   const tb = document.getElementById('week-tbody');
-  if (!allKeys.length) {
+  const thead = document.getElementById('hist-thead');
+  const currentWeekKey = isoWeekKey(new Date());
+
+  if (!Object.keys(_weekStatsCache).length) {
+    document.getElementById('trend-chart').innerHTML = '';
     tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);font-style:italic;padding:14px">Nog geen historische data — kom volgende week terug</td></tr>';
     return;
   }
-  const maxVoor = Math.max(...allKeys.map(k => _weekStatsCache[k]?.voorgesteld || 0), 1);
-  tb.innerHTML = allKeys.map(key => {
-    const ws = _weekStatsCache[key] || {};
-    const row = (_vacOwnerFilter === 'all') ? ws : (ws.per_owner?.[_vacOwnerFilter] || {});
-    const vac = (_vacOwnerFilter === 'all') ? (ws.vacatures || 0) : (ws.vacatures || 0);
-    const voor = row.voorgesteld || 0;
-    const gesp = row.gesprek || 0;
-    const aang = row.aangenomen || 0;
-    const barW = Math.max(2, Math.round((voor / maxVoor) * 60));
-    const isCurrent = key === currentKey;
-    return `<tr class="${isCurrent ? 'current-week' : ''}">
-      <td><span class="wk-num">${key}${isCurrent ? ' · nu' : ''}</span></td>
-      <td>${vac}</td>
-      <td>${voor}<span class="wk-bar" style="width:${barW}px"></span></td>
-      <td>${gesp}</td>
-      <td>${aang}</td>
-    </tr>`;
-  }).join('');
+
+  if (_histPeriod === 'week') {
+    const allKeys = Object.keys(_weekStatsCache).sort().reverse().slice(0, 24);
+    renderTrendChart(allKeys, k => {
+      const ws = _weekStatsCache[k] || {};
+      return _vacOwnerFilter === 'all' ? ws : (ws.per_owner?.[_vacOwnerFilter] || {});
+    }, k => 'W' + k.split('-W')[1], currentWeekKey);
+    thead.innerHTML = '<tr><th>Week</th><th>Vacatures</th><th>Voorgesteld</th><th>Op gesprek</th><th>Aangenomen</th></tr>';
+    const maxVoor = Math.max(...allKeys.map(k => (_weekStatsCache[k]?.voorgesteld||0)), 1);
+    tb.innerHTML = allKeys.map(key => {
+      const ws = _weekStatsCache[key] || {};
+      const row = _vacOwnerFilter === 'all' ? ws : (ws.per_owner?.[_vacOwnerFilter] || {});
+      const vac = ws.vacatures || 0, voor = row.voorgesteld || 0;
+      const gesp = row.gesprek || 0, aang = row.aangenomen || 0;
+      const barW = Math.max(2, Math.round((voor/maxVoor)*60));
+      const isCur = key === currentWeekKey;
+      return `<tr class="${isCur?'current-week':''}">
+        <td><span class="wk-num">${key}${isCur?' · nu':''}</span></td>
+        <td>${vac}</td>
+        <td>${voor}<span class="wk-bar" style="width:${barW}px"></span></td>
+        <td>${gesp}</td><td>${aang}</td></tr>`;
+    }).join('');
+  } else {
+    // Monthly view
+    const buckets = buildMonthBuckets();
+    const monthKeys = Object.keys(buckets).sort().reverse().slice(0, 12);
+    const currentMonthKey = weekKeyToMonthKey(currentWeekKey);
+    renderTrendChart(monthKeys, k => buckets[k], k => {
+      const [y, m] = k.split('-');
+      return MONTH_NL[parseInt(m)-1] + ' ' + y.slice(2);
+    }, currentMonthKey);
+    thead.innerHTML = '<tr><th>Maand</th><th>Vacatures</th><th>Voorgesteld</th><th>Op gesprek</th><th>Aangenomen</th></tr>';
+    const maxVoor = Math.max(...monthKeys.map(k => buckets[k]?.voorgesteld||0), 1);
+    tb.innerHTML = monthKeys.map(key => {
+      const b = buckets[key] || {};
+      const [y, m] = key.split('-');
+      const label = MONTH_NL[parseInt(m)-1] + ' ' + y;
+      const barW = Math.max(2, Math.round(((b.voorgesteld||0)/maxVoor)*60));
+      const isCur = key === currentMonthKey;
+      return `<tr class="${isCur?'current-week':''}">
+        <td><span class="wk-num">${label}${isCur?' · nu':''}</span></td>
+        <td>${b.vacatures||0}</td>
+        <td>${b.voorgesteld||0}<span class="wk-bar" style="width:${barW}px"></span></td>
+        <td>${b.gesprek||0}</td><td>${b.aangenomen||0}</td></tr>`;
+    }).join('');
+  }
+}
+
+function setHistPeriod(p, el) {
+  _histPeriod = p;
+  document.querySelectorAll('#period-btn-week,#period-btn-month').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderVacPerformance();
 }
 
 function setVacOwnerFilter(owner, el) {
