@@ -420,6 +420,31 @@ b,strong{font-weight:500}
 .push-add-panel select{width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:3px;font-size:12px;margin-bottom:6px;font-family:var(--font);font-weight:300}
 .push-add-panel select:focus{outline:none;border-color:var(--push)}
 
+/* ── CAMPAGNE ── */
+.camp-item{padding:10px 12px;border-bottom:1px solid var(--hgl);cursor:pointer;transition:background .1s;background:linear-gradient(135deg,rgba(100,60,180,.03) 0%,transparent 100%)}
+.camp-item:hover{background:var(--hgl)}
+.camp-item.active{background:#f0ebff;border-left:3px solid #6b21a8}
+.camp-badge{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:400;background:#f0ebff;color:#6b21a8;margin-bottom:3px}
+.camp-naam{font-size:12px;font-weight:400;color:var(--hg);margin-bottom:1px}
+.camp-meta{font-size:10px;color:var(--muted);margin-bottom:5px;font-weight:300}
+.camp-progress-wrap{margin-top:4px}
+.camp-progress-bar{height:5px;background:var(--hgl);border-radius:3px;overflow:hidden;margin-bottom:2px}
+.camp-progress-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#6b21a8,#a855f7);transition:width .4s}
+.camp-progress-fill.done{background:var(--hg)}
+.camp-progress-label{font-size:9px;color:var(--muted);display:flex;justify-content:space-between}
+.camp-header-card{background:#fff;border-bottom:1px solid var(--border);padding:14px 18px}
+.camp-header-title{font-size:14px;font-weight:400;color:var(--hg);margin-bottom:2px;display:flex;align-items:center;gap:8px}
+.camp-header-meta{font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:300}
+.camp-header-progress{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.camp-kpi{background:var(--hgl);border-radius:var(--rad);padding:8px 10px;text-align:center}
+.camp-kpi-val{font-size:20px;font-weight:300;color:var(--hg)}
+.camp-kpi-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:1px}
+.camp-big-bar{height:10px;background:#f0ebff;border-radius:5px;overflow:hidden;margin-top:8px}
+.camp-big-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#6b21a8,#a855f7);transition:width .4s}
+.camp-big-fill.done{background:var(--hg)}
+.camp-owner-pill{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;font-size:10px;background:#e0f2fe;color:#075985;font-weight:400}
+.vac-owner-pill{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;font-size:10px;background:var(--hgl);color:var(--hg);font-weight:400}
+
 /* ── VAC DASHBOARD ── */
 .vac-perf-section{margin-bottom:18px}
 .vac-perf-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
@@ -669,16 +694,62 @@ b,strong{font-weight:500}
         <!-- LEFT: vacaturelijst -->
         <div class="vac-sidebar">
           <div class="vac-sidebar-header">
-            <span class="vac-sidebar-title">Vacatures</span>
-            <button class="bsm p" onclick="showAddVacPanel()" style="font-size:10px"><i class="ti ti-plus" style="font-size:10px"></i> Nieuw</button>
+            <span class="vac-sidebar-title">Vacatures &amp; Campagnes</span>
+            <div style="display:flex;gap:4px">
+              <button class="bsm p" onclick="showAddVacPanel()" style="font-size:10px" title="Vacature toevoegen"><i class="ti ti-briefcase" style="font-size:10px"></i> Vacature</button>
+              <button class="bsm" onclick="showAddCampagnePanel()" style="font-size:10px;background:var(--hg);color:var(--beige);border-color:var(--hg)" title="Campagne toevoegen"><i class="ti ti-speakerphone" style="font-size:10px"></i> Campagne</button>
+            </div>
           </div>
+          <!-- Sidebar totalen balk -->
+          <div id="vac-sidebar-totals" style="padding:8px 12px;background:var(--hgl);border-bottom:1px solid var(--border);font-size:10px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap"></div>
+          <!-- Add vacature form -->
           <div id="add-vac-inline" style="display:none;padding:12px;border-bottom:.5px solid #eee;background:#faf9f6">
+            <div style="font-size:11px;font-weight:400;color:var(--hg);margin-bottom:8px;display:flex;align-items:center;gap:5px"><i class="ti ti-briefcase" style="font-size:11px"></i> Nieuwe vacature</div>
             <div class="fg" style="margin-bottom:6px"><label class="fl">Bedrijf *</label><input class="fi" id="vac-co" placeholder="bijv. ABN AMRO" type="text" style="font-size:12px"></div>
             <div class="fg" style="margin-bottom:6px"><label class="fl">Rol *</label><input class="fi" id="vac-role" placeholder="bijv. Senior Backend Engineer" type="text" style="font-size:12px"></div>
+            <div class="fg" style="margin-bottom:6px"><label class="fl">Eigenaar (Sales)</label>
+              <select class="fi" id="vac-owner" style="font-size:12px">
+                <option value="">— Kies eigenaar —</option>
+                <option>Marlie</option><option>Julieta</option><option>Frank</option>
+              </select>
+            </div>
             <div class="fg" style="margin-bottom:6px"><label class="fl">Notities</label><textarea class="fi" id="vac-notes" rows="2" placeholder="Details, eisen…" style="font-size:12px"></textarea></div>
             <div class="actbar">
               <button class="bmain g" onclick="addVacature()" style="font-size:11px;padding:6px 12px"><i class="ti ti-check"></i> Toevoegen</button>
-              <button class="bmain o" onclick="document.getElementById('add-vac-inline').style.display='none'" style="font-size:11px;padding:6px 10px">Annuleren</button>
+              <button class="bmain o" onclick="document.getElementById('add-vac-inline').style.display='none';document.getElementById('add-campagne-inline').style.display='none'" style="font-size:11px;padding:6px 10px">Annuleren</button>
+            </div>
+          </div>
+          <!-- Add campagne form -->
+          <div id="add-campagne-inline" style="display:none;padding:12px;border-bottom:.5px solid #eee;background:#f5f0ff">
+            <div style="font-size:11px;font-weight:400;color:var(--hg);margin-bottom:8px;display:flex;align-items:center;gap:5px"><i class="ti ti-speakerphone" style="font-size:11px"></i> Nieuwe campagne</div>
+            <div class="fg" style="margin-bottom:6px"><label class="fl">Naam campagne *</label><input class="fi" id="camp-naam" placeholder="bijv. HBO Afstudeercampagne 2025" type="text" style="font-size:12px"></div>
+            <div class="frow" style="gap:6px;margin-bottom:6px">
+              <div class="fg"><label class="fl">Periode</label>
+                <select class="fi" id="camp-periode" style="font-size:12px">
+                  <option>September 2025</option><option>Februari 2026</option><option>September 2026</option><option>Februari 2027</option>
+                </select>
+              </div>
+              <div class="fg"><label class="fl">Vertical</label>
+                <select class="fi" id="camp-vertical" style="font-size:12px">
+                  <option value="All">Alle verticals</option><option value="SE">Software Engineering</option><option value="DE">Data Engineering</option><option value="BA">Business Analytics</option>
+                </select>
+              </div>
+            </div>
+            <div class="frow" style="gap:6px;margin-bottom:6px">
+              <div class="fg"><label class="fl">Eigenaar (Sales)</label>
+                <select class="fi" id="camp-owner" style="font-size:12px">
+                  <option value="">— Kies eigenaar —</option>
+                  <option>Marlie</option><option>Julieta</option><option>Frank</option>
+                </select>
+              </div>
+              <div class="fg"><label class="fl">Doel plaatsingen</label>
+                <input class="fi" id="camp-target" type="number" min="1" max="50" value="8" style="font-size:12px">
+              </div>
+            </div>
+            <div class="fg" style="margin-bottom:8px"><label class="fl">Notities</label><textarea class="fi" id="camp-notes" rows="2" placeholder="Doelgroep, kanalen, aanpak…" style="font-size:12px"></textarea></div>
+            <div class="actbar">
+              <button class="bmain g" onclick="addCampagne()" style="font-size:11px;padding:6px 12px;background:var(--hg)"><i class="ti ti-check"></i> Aanmaken</button>
+              <button class="bmain o" onclick="document.getElementById('add-campagne-inline').style.display='none';document.getElementById('add-vac-inline').style.display='none'" style="font-size:11px;padding:6px 10px">Annuleren</button>
             </div>
           </div>
           <div id="vac-sidebar-list"></div>
@@ -981,7 +1052,10 @@ const DB = {
     return rows.map(r => ({
       id: r.id, company: r.company, role: r.role, status: r.status,
       notes: r.notes, candidateIds: r.candidate_ids || [],
-      kanbanData: r.kanban_data || {}, createdDate: r.created_date
+      kanbanData: r.kanban_data || {}, createdDate: r.created_date,
+      owner: r.owner || '', type: r.type || 'vacature',
+      periode: r.periode || '', vertical: r.vertical || 'All',
+      target: r.target || null
     }));
   },
   async upsertVacature(v) {
@@ -989,6 +1063,9 @@ const DB = {
       id: v.id, company: v.company, role: v.role, status: v.status,
       notes: v.notes, candidate_ids: v.candidateIds || [],
       kanban_data: v.kanbanData || {}, created_date: v.createdDate,
+      owner: v.owner || '', type: v.type || 'vacature',
+      periode: v.periode || '', vertical: v.vertical || 'All',
+      target: v.target || null,
       updated_at: new Date().toISOString()
     };
     await sbFetch('vacatures?on_conflict=id', {
@@ -1357,17 +1434,7 @@ async function saveAllVacs(){
   try{ for(const v of vacatures) await DB.upsertVacature(v).catch(()=>{}); }catch(e){ console.error(e); }
 }
 
-// ── VACATURES
-async function addVacature(){
-  const co=document.getElementById('vac-co').value.trim();
-  const role=document.getElementById('vac-role').value.trim();
-  if(!co||!role){showToast('Bedrijf en rol zijn verplicht');return;}
-  vacatures.push({id:'v'+Date.now(),company:co,role,status:document.getElementById('vac-status').value,notes:document.getElementById('vac-notes').value.trim(),candidateIds:[],createdDate:today()});
-  ['vac-co','vac-role','vac-notes'].forEach(x=>document.getElementById(x).value='');
-  document.getElementById('vac-status').value='open';
-  await saveVac();renderVacatures();updateBadges();
-  toggleAddPanel('add-vac-panel','');showToast('✓ Vacature toegevoegd');
-}
+// ── VACATURES (old stub removed — addVacature defined below)
 async function deleteVacature(id){
   if(!confirm('Vacature verwijderen?'))return;
   vacatures=vacatures.filter(v=>v.id!==id);
@@ -1395,32 +1462,62 @@ const KANBAN_STAGES = [
 
 function showAddVacPanel(){
   const p=document.getElementById('add-vac-inline');
+  const c=document.getElementById('add-campagne-inline');
+  c.style.display='none';
   p.style.display=p.style.display==='none'?'block':'none';
 }
 
 function renderVacSidebar(){
   const list=document.getElementById('vac-sidebar-list');
   if(!vacatures.length){
-    list.innerHTML='<div class="empty" style="padding:20px 14px">Nog geen vacatures.<br>Klik + Nieuw om te beginnen.</div>';
+    list.innerHTML='<div class="empty" style="padding:20px 14px">Nog geen vacatures.<br>Klik op Vacature of Campagne om te beginnen.</div>';
     document.getElementById('nb-vac').textContent=0;
+    document.getElementById('vac-sidebar-totals').innerHTML='';
     return;
   }
+  // Totals bar
+  const openVacs = vacatures.filter(v=>v.status==='open'&&v.type!=='campagne').length;
+  const activeCamps = vacatures.filter(v=>v.status==='open'&&v.type==='campagne').length;
+  const allKdIds = vacatures.flatMap(v=>Object.values(v.kanbanData||{}).flat());
+  const uniqueInProc = new Set(allKdIds).size;
+  const allAang = vacatures.flatMap(v=>(v.kanbanData?.aangenomen||[]));
+  const totalsEl = document.getElementById('vac-sidebar-totals');
+  if(totalsEl) totalsEl.innerHTML=`
+    <span><i class="ti ti-briefcase" style="font-size:9px"></i> ${openVacs} vacature${openVacs!==1?'s':''}</span>
+    ${activeCamps>0?`<span><i class="ti ti-speakerphone" style="font-size:9px"></i> ${activeCamps} campagne${activeCamps!==1?'s':''}</span>`:''}
+    <span><i class="ti ti-users" style="font-size:9px"></i> ${uniqueInProc} in proces</span>
+    ${allAang.length>0?`<span><i class="ti ti-check" style="font-size:9px"></i> ${allAang.length} aangenomen</span>`:''}`;
+
   document.getElementById('nb-vac').textContent=vacatures.filter(v=>v.status==='open').length;
   list.innerHTML=vacatures.map(v=>{
     const kd=v.kanbanData||{};
-    const total=Object.values(kd).flat().length;
     const isActive=window._activeVacId===v.id;
-    // Count owners of candidates in this vacature
+    const voorgesteld=(kd.voorgesteld||[]).length, gesprek=((kd.gesprek||[]).length+(kd.gesprek2||[]).length), aangenomen=(kd.aangenomen||[]).length;
+
+    if(v.type==='campagne'){
+      const target=v.target||8;
+      const pct=Math.min(100,Math.round((aangenomen/target)*100));
+      return`<div class="camp-item ${v.status==='closed'?'closed':''} ${isActive?'active':''}" onclick="selectVacature('${v.id}')">
+        <div class="camp-badge"><i class="ti ti-speakerphone" style="font-size:8px"></i> Campagne · ${esc(v.periode||'')}</div>
+        <div class="camp-naam">${esc(v.role)}</div>
+        <div class="camp-meta">${v.vertical&&v.vertical!=='All'?v.vertical+' · ':''}${v.owner?`<span style="color:var(--hg)">${esc(v.owner)}</span> · `:''}${voorgesteld+gesprek} in proces</div>
+        <div class="camp-progress-wrap">
+          <div class="camp-progress-bar"><div class="camp-progress-fill ${pct>=100?'done':''}" style="width:${pct}%"></div></div>
+          <div class="camp-progress-label"><span>${aangenomen} / ${target} geplaatst</span><span>${pct}%</span></div>
+        </div>
+      </div>`;
+    }
+    // Regular vacature
     const allIds = Object.values(kd).flat();
     const ownerCounts = {};
     allIds.forEach(id => { const cv=cvLib.find(c=>c.id===id); if(cv?.salesOwner){ ownerCounts[cv.salesOwner]=(ownerCounts[cv.salesOwner]||0)+1; } });
     const ownerTags = Object.entries(ownerCounts).map(([o,n])=>`<span style="font-size:8px;background:var(--hgl);color:var(--hg);padding:1px 4px;border-radius:2px">${esc(o)} ${n}</span>`).join('');
-    const voorgesteld=(kd.voorgesteld||[]).length, gesprek=((kd.gesprek||[]).length+(kd.gesprek2||[]).length), aangenomen=(kd.aangenomen||[]).length;
     return`<div class="vac-list-item ${v.status==='closed'?'closed':''} ${isActive?'active':''}" onclick="selectVacature('${v.id}')">
       <div class="vac-company">${esc(v.company)}</div>
       <div class="vac-role-label">${esc(v.role)}</div>
       <div class="vac-meta">
         <span class="${v.status==='open'?'status-open':'status-closed'}" style="font-size:9px">${v.status==='open'?'Open':'Gesloten'}</span>
+        ${v.owner?`<span style="font-size:9px;color:var(--hg)">${esc(v.owner)}</span>`:''}
         ${voorgesteld>0?`<span style="font-size:9px;color:var(--push)">↑${voorgesteld}</span>`:''}
         ${gesprek>0?`<span style="font-size:9px;color:var(--hg)">💬${gesprek}</span>`:''}
         ${aangenomen>0?`<span style="font-size:9px;color:var(--hg)">✓${aangenomen}</span>`:''}
@@ -1452,11 +1549,52 @@ function renderKanbanHeader(v){
   }
   const kd=v.kanbanData||{};
   const total=Object.values(kd).flat().length;
+  const voorgesteld=(kd.voorgesteld||[]).length,gesprek=((kd.gesprek||[]).length+(kd.gesprek2||[]).length),aangenomen=(kd.aangenomen||[]).length;
+
+  if(v.type==='campagne'){
+    const target=v.target||8;
+    const pct=Math.min(100,Math.round((aangenomen/target)*100));
+    hdr.innerHTML=`<div style="width:100%">
+      <div class="camp-header-card" style="border:none;padding:0 0 12px 0">
+        <div class="camp-header-title">
+          <i class="ti ti-speakerphone" style="font-size:13px;color:#6b21a8"></i>
+          ${esc(v.role)}
+          <span class="${v.status==='open'?'status-open':'status-closed'}" style="cursor:pointer;font-size:10px" onclick="toggleVacStatus('${v.id}')">${v.status==='open'?'Actief':'Gesloten'}</span>
+        </div>
+        <div class="camp-header-meta">
+          ${v.periode?`📅 ${esc(v.periode)}`:''}
+          ${v.vertical&&v.vertical!=='All'?' · '+v.vertical:''}
+          ${v.owner?` · <span class="camp-owner-pill"><i class="ti ti-user" style="font-size:9px"></i>${esc(v.owner)}</span>`:''}
+        </div>
+        <div class="camp-header-progress">
+          <div class="camp-kpi"><div class="camp-kpi-val">${voorgesteld}</div><div class="camp-kpi-label">Voorgesteld</div></div>
+          <div class="camp-kpi"><div class="camp-kpi-val">${gesprek}</div><div class="camp-kpi-label">Op gesprek</div></div>
+          <div class="camp-kpi"><div class="camp-kpi-val">${aangenomen}</div><div class="camp-kpi-label">Aangenomen</div></div>
+          <div class="camp-kpi"><div class="camp-kpi-val">${target}</div><div class="camp-kpi-label">Doel</div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px">
+          <span>${aangenomen} van ${target} plaatsingen (${pct}%)</span>
+          <button class="bsm" onclick="deleteVacature('${v.id}')" style="font-size:10px;color:var(--muted);border:none;background:transparent;cursor:pointer"><i class="ti ti-trash" style="font-size:10px"></i></button>
+        </div>
+        <div class="camp-big-bar"><div class="camp-big-fill ${pct>=100?'done':''}" style="width:${pct}%"></div></div>
+      </div>
+    </div>`;
+    return;
+  }
+
   hdr.innerHTML=`
     <div>
-      <div class="kanban-vac-title">${esc(v.company)} — ${esc(v.role)}</div>
-      <div class="kanban-vac-sub">${total} kandidaat${total!==1?'en':''} in het proces${v.notes?' · '+esc(v.notes.slice(0,60)):''}
-        ${v.notes&&v.notes.length>60?'…':''}</div>
+      <div class="kanban-vac-title" style="display:flex;align-items:center;gap:8px">
+        ${esc(v.company)} — ${esc(v.role)}
+        ${v.owner?`<span class="vac-owner-pill"><i class="ti ti-user" style="font-size:9px"></i>${esc(v.owner)}</span>`:''}
+      </div>
+      <div class="kanban-vac-sub">
+        ${total} in proces
+        ${voorgesteld>0?` · <span style="color:var(--push)">${voorgesteld} voorgesteld</span>`:''}
+        ${gesprek>0?` · ${gesprek} op gesprek`:''}
+        ${aangenomen>0?` · <strong>${aangenomen} aangenomen</strong>`:''}
+        ${v.notes?' · '+esc(v.notes.slice(0,50)):''}${v.notes&&v.notes.length>50?'…':''}
+      </div>
     </div>
     <div style="display:flex;gap:6px;align-items:center">
       <span class="${v.status==='open'?'status-open':'status-closed'}" style="cursor:pointer" onclick="toggleVacStatus('${v.id}')" title="Klik om status te wisselen">${v.status==='open'?'Open':'Gesloten'}</span>
@@ -1729,7 +1867,7 @@ async function unlinkCandidateFromVac(vacId,candId){
   const v=vacatures.find(x=>x.id===vacId);if(!v)return;
   v.candidateIds=v.candidateIds.filter(x=>x!==candId);
   KANBAN_STAGES.forEach(s=>{if(v.kanbanData&&v.kanbanData[s.key])v.kanbanData[s.key]=v.kanbanData[s.key].filter(id=>id!==candId);});
-  await saveVac();renderVacSidebar();if(window._activeVacId===vacId)renderKanban(v);showToast('Kandidaat verwijderd');
+  await saveVac();renderVacSidebar();if(window._activeVacId===vacId){renderKanbanHeader(v);renderKanban(v);}showToast('Kandidaat verwijderd');
 }
 function renderVacatures(){ renderVacSidebar(); }
 
@@ -1737,14 +1875,47 @@ async function addVacature(){
   const co=document.getElementById('vac-co').value.trim();
   const role=document.getElementById('vac-role').value.trim();
   if(!co||!role){showToast('Bedrijf en rol zijn verplicht');return;}
-  const newVac={id:'v'+Date.now(),company:co,role,status:'open',notes:document.getElementById('vac-notes').value.trim(),candidateIds:[],kanbanData:{},createdDate:today()};
+  const owner=document.getElementById('vac-owner').value;
+  const newVac={id:'v'+Date.now(),company:co,role,status:'open',owner,notes:document.getElementById('vac-notes').value.trim(),candidateIds:[],kanbanData:{},createdDate:today(),type:'vacature'};
   KANBAN_STAGES.forEach(s=>{newVac.kanbanData[s.key]=[];});
   vacatures.push(newVac);
   ['vac-co','vac-role','vac-notes'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('vac-owner').value='';
   document.getElementById('add-vac-inline').style.display='none';
-  await saveVac();renderVacSidebar();updateBadges();
+  await DB.upsertVacature(newVac);renderVacSidebar();updateBadges();
   selectVacature(newVac.id);
   showToast('✓ Vacature toegevoegd');
+}
+
+async function addCampagne(){
+  const naam=document.getElementById('camp-naam').value.trim();
+  if(!naam){showToast('Naam is verplicht');return;}
+  const owner=document.getElementById('camp-owner').value;
+  const target=parseInt(document.getElementById('camp-target').value)||8;
+  const newCamp={
+    id:'c'+Date.now(), type:'campagne', company:'Campagne', role:naam,
+    status:'open', owner,
+    periode:document.getElementById('camp-periode').value,
+    vertical:document.getElementById('camp-vertical').value,
+    target, notes:document.getElementById('camp-notes').value.trim(),
+    candidateIds:[], kanbanData:{}, createdDate:today()
+  };
+  KANBAN_STAGES.forEach(s=>{newCamp.kanbanData[s.key]=[];});
+  vacatures.push(newCamp);
+  ['camp-naam','camp-notes'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('camp-owner').value='';
+  document.getElementById('camp-target').value='8';
+  document.getElementById('add-campagne-inline').style.display='none';
+  await DB.upsertVacature(newCamp);renderVacSidebar();updateBadges();
+  selectVacature(newCamp.id);
+  showToast('✓ Campagne aangemaakt');
+}
+
+function showAddCampagnePanel(){
+  const vp=document.getElementById('add-vac-inline');
+  const cp=document.getElementById('add-campagne-inline');
+  vp.style.display='none';
+  cp.style.display=cp.style.display==='none'?'block':'none';
 }
 
 // ── PUSH TAB
