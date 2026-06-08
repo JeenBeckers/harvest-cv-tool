@@ -420,6 +420,31 @@ b,strong{font-weight:500}
 .push-add-panel select{width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:3px;font-size:12px;margin-bottom:6px;font-family:var(--font);font-weight:300}
 .push-add-panel select:focus{outline:none;border-color:var(--push)}
 
+/* ── VAC DASHBOARD ── */
+.vac-perf-section{margin-bottom:18px}
+.vac-perf-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.vac-perf-title{font-size:12px;font-weight:400;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.owner-chips{display:flex;gap:4px;flex-wrap:wrap}
+.owner-chip{padding:3px 10px;border-radius:3px;font-size:11px;border:1px solid var(--border);background:#fff;color:var(--hg);cursor:pointer;transition:all .12s;font-family:var(--font);font-weight:300}
+.owner-chip:hover{border-color:var(--hg)}
+.owner-chip.active{background:var(--hg);color:var(--beige);border-color:var(--hg)}
+.vkpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.vkpi{background:#fff;border:1px solid var(--border);border-radius:var(--rad);padding:12px 14px}
+.vkpi-label{font-size:10px;font-weight:400;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.vkpi-val{font-size:28px;font-weight:300;color:var(--hg);line-height:1}
+.vkpi-sub{font-size:10px;color:var(--muted);margin-top:3px;font-weight:300}
+.vkpi.accent{border-left:3px solid var(--hg)}
+.vkpi.push-accent{border-left:3px solid var(--push)}
+.week-table-wrap{background:#fff;border:1px solid var(--border);border-radius:var(--rad);overflow:hidden;margin-bottom:4px}
+.week-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.week-tbl th{background:var(--hgl);padding:7px 10px;text-align:left;font-weight:400;color:var(--muted);font-size:10px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.week-tbl td{padding:8px 10px;border-bottom:1px solid var(--hgl);color:var(--hg);font-weight:300;font-size:12px}
+.week-tbl tr:last-child td{border-bottom:none}
+.week-tbl tr.current-week td{background:rgba(9,43,19,.03);font-weight:400}
+.week-tbl .wk-num{font-size:10px;color:var(--muted);font-weight:400}
+.week-tbl .wk-bar{display:inline-block;height:6px;border-radius:2px;background:var(--hg);opacity:.25;margin-left:5px;vertical-align:middle;min-width:2px}
+.kanban-card-owner{font-size:9px;color:var(--muted);background:var(--hgl);padding:1px 5px;border-radius:2px;display:inline-block;margin-top:3px}
+
 /* ── LOGIN ── */
 #login-screen{position:fixed;inset:0;background:var(--beige);z-index:9999;display:flex;align-items:center;justify-content:center}
 .login-box{background:#fff;border-radius:var(--rad);padding:32px 36px;width:360px;max-width:90vw;border:1px solid var(--border)}
@@ -675,7 +700,34 @@ b,strong{font-weight:500}
     <div id="view-dash" style="display:none">
       <div class="stitle">Dashboard</div>
       <div class="ssub" id="dashsub">Teamoverzicht</div>
-      <div class="sgrid5" id="sgrid"></div>
+
+      <!-- VACATURE PERFORMANCE -->
+      <div class="sdiv" style="margin-bottom:10px">Vacature performance</div>
+      <div class="vac-perf-section">
+        <div class="vac-perf-header">
+          <span class="vac-perf-title">Filter op eigenaar</span>
+          <div class="owner-chips" id="owner-chips">
+            <button class="owner-chip active" onclick="setVacOwnerFilter('all',this)">Iedereen</button>
+            <button class="owner-chip" onclick="setVacOwnerFilter('Marlie',this)">Marlie</button>
+            <button class="owner-chip" onclick="setVacOwnerFilter('Julieta',this)">Julieta</button>
+            <button class="owner-chip" onclick="setVacOwnerFilter('Frank',this)">Frank</button>
+          </div>
+        </div>
+        <div class="vkpi-grid" id="vkpi-grid">
+          <div class="vkpi accent"><div class="vkpi-label">Vacatures open</div><div class="vkpi-val" id="kpi-vac">0</div><div class="vkpi-sub">actieve vacatures</div></div>
+          <div class="vkpi"><div class="vkpi-label">Voorgesteld</div><div class="vkpi-val" id="kpi-voor">0</div><div class="vkpi-sub">unieke kandidaten</div></div>
+          <div class="vkpi"><div class="vkpi-label">Op gesprek</div><div class="vkpi-val" id="kpi-gesp">0</div><div class="vkpi-sub">1e + 2e gesprek</div></div>
+          <div class="vkpi push-accent"><div class="vkpi-label">Aangenomen</div><div class="vkpi-val" id="kpi-aang">0</div><div class="vkpi-sub">geplaatst</div></div>
+        </div>
+        <div class="sdiv" style="margin-bottom:8px">Per weeknummer</div>
+        <div class="week-table-wrap">
+          <table class="week-tbl">
+            <thead><tr><th>Week</th><th>Vacatures open</th><th>Voorgesteld</th><th>Op gesprek</th><th>Aangenomen</th></tr></thead>
+            <tbody id="week-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="sdiv">⚡ Push kandidaten — aanbiedingen</div>
       <div class="push-grid" id="dash-push-grid"></div>
       <div class="sdiv">Per gebruiker</div>
@@ -994,6 +1046,17 @@ const DB = {
       method: 'POST', prefer: 'resolution=merge-duplicates',
       body: JSON.stringify({ key, value, updated_at: new Date().toISOString() })
     });
+  },
+
+  // WEEK STATS (stored as JSON blob in settings)
+  async getWeekStats() {
+    try {
+      const val = await this.getSetting('week_stats');
+      return val ? JSON.parse(val) : {};
+    } catch(e) { return {}; }
+  },
+  async setWeekStats(stats) {
+    try { await this.setSetting('week_stats', JSON.stringify(stats)); } catch(e) { console.error('setWeekStats:', e); }
   }
 };
 // ══════════════════════════════════════════════
@@ -1347,13 +1410,22 @@ function renderVacSidebar(){
     const kd=v.kanbanData||{};
     const total=Object.values(kd).flat().length;
     const isActive=window._activeVacId===v.id;
+    // Count owners of candidates in this vacature
+    const allIds = Object.values(kd).flat();
+    const ownerCounts = {};
+    allIds.forEach(id => { const cv=cvLib.find(c=>c.id===id); if(cv?.salesOwner){ ownerCounts[cv.salesOwner]=(ownerCounts[cv.salesOwner]||0)+1; } });
+    const ownerTags = Object.entries(ownerCounts).map(([o,n])=>`<span style="font-size:8px;background:var(--hgl);color:var(--hg);padding:1px 4px;border-radius:2px">${esc(o)} ${n}</span>`).join('');
+    const voorgesteld=(kd.voorgesteld||[]).length, gesprek=((kd.gesprek||[]).length+(kd.gesprek2||[]).length), aangenomen=(kd.aangenomen||[]).length;
     return`<div class="vac-list-item ${v.status==='closed'?'closed':''} ${isActive?'active':''}" onclick="selectVacature('${v.id}')">
       <div class="vac-company">${esc(v.company)}</div>
       <div class="vac-role-label">${esc(v.role)}</div>
       <div class="vac-meta">
         <span class="${v.status==='open'?'status-open':'status-closed'}" style="font-size:9px">${v.status==='open'?'Open':'Gesloten'}</span>
-        ${total>0?`<span style="font-size:9px;color:var(--muted)">${total} kandidaat${total!==1?'en':''}</span>`:''}
+        ${voorgesteld>0?`<span style="font-size:9px;color:var(--push)">↑${voorgesteld}</span>`:''}
+        ${gesprek>0?`<span style="font-size:9px;color:var(--hg)">💬${gesprek}</span>`:''}
+        ${aangenomen>0?`<span style="font-size:9px;color:var(--hg)">✓${aangenomen}</span>`:''}
       </div>
+      ${ownerTags?`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px">${ownerTags}</div>`:''}
     </div>`;
   }).join('');
   // Auto-select first if none selected
@@ -1547,6 +1619,7 @@ function renderKanbanCard(candId, stageKey, vacId){
       ${cv.bureau?`<span class="tag tag-bureau" style="font-size:9px">${esc(cv.bureau)}</span>`:''}
       <span class="tag tag-av" style="font-size:9px">${esc(cv.availability||'—')}</span>
     </div>
+    ${cv.salesOwner?`<div class="kanban-card-owner"><i class="ti ti-user" style="font-size:8px"></i> ${esc(cv.salesOwner)}</div>`:''}
   </div>`;
 }
 
@@ -2010,9 +2083,109 @@ document.addEventListener('click',e=>{
   if(m&&e.target===m)m.style.display='none';
 });
 
+// ── VAC PERFORMANCE DASHBOARD
+let _vacOwnerFilter = 'all';
+let _weekStatsCache = {}; // { 'YYYY-WW': { vacatures, voorgesteld, gesprek, aangenomen } }
+
+function isoWeekKey(date) {
+  const d = new Date(date || Date.now());
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() + 3 - (d.getDay()+6)%7);
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  const wn = 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay()+6)%7) / 7);
+  return d.getFullYear() + '-W' + String(wn).padStart(2,'0');
+}
+
+function computeVacStats(ownerFilter) {
+  const openVacs = vacatures.filter(v => v.status === 'open');
+  const allVoorgesteld = new Set();
+  const allGesprek = new Set();
+  const allAangenomen = new Set();
+  const filterCand = id => {
+    if (!ownerFilter || ownerFilter === 'all') return true;
+    const cv = cvLib.find(c => c.id === id);
+    if (!cv) return false;
+    const owner = (cv.salesOwner || cv.recruitOwner || '').toLowerCase();
+    return owner.includes(ownerFilter.toLowerCase());
+  };
+  for (const v of vacatures) {
+    const kd = v.kanbanData || {};
+    (kd.voorgesteld || []).filter(filterCand).forEach(id => allVoorgesteld.add(id));
+    (kd.gesprek || []).filter(filterCand).forEach(id => allGesprek.add(id));
+    (kd.gesprek2 || []).filter(filterCand).forEach(id => allGesprek.add(id));
+    (kd.aangenomen || []).filter(filterCand).forEach(id => allAangenomen.add(id));
+  }
+  return {
+    vacatures: ownerFilter === 'all' ? openVacs.length : openVacs.length,
+    voorgesteld: allVoorgesteld.size,
+    gesprek: allGesprek.size,
+    aangenomen: allAangenomen.size,
+  };
+}
+
+async function snapshotCurrentWeek() {
+  const key = isoWeekKey(new Date());
+  const stats = computeVacStats('all');
+  // Per-owner breakdown
+  const owners = ['Marlie','Julieta','Frank'];
+  stats.per_owner = {};
+  for (const o of owners) stats.per_owner[o] = computeVacStats(o);
+  _weekStatsCache[key] = stats;
+  await DB.setWeekStats(_weekStatsCache);
+}
+
+function renderVacPerformance() {
+  // KPIs
+  const s = computeVacStats(_vacOwnerFilter);
+  document.getElementById('kpi-vac').textContent = s.vacatures;
+  document.getElementById('kpi-voor').textContent = s.voorgesteld;
+  document.getElementById('kpi-gesp').textContent = s.gesprek;
+  document.getElementById('kpi-aang').textContent = s.aangenomen;
+
+  // Weekly table (most recent 12 weeks, desc)
+  const currentKey = isoWeekKey(new Date());
+  const allKeys = Object.keys(_weekStatsCache).sort().reverse().slice(0, 12);
+  const tb = document.getElementById('week-tbody');
+  if (!allKeys.length) {
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);font-style:italic;padding:14px">Nog geen historische data — kom volgende week terug</td></tr>';
+    return;
+  }
+  const maxVoor = Math.max(...allKeys.map(k => _weekStatsCache[k]?.voorgesteld || 0), 1);
+  tb.innerHTML = allKeys.map(key => {
+    const ws = _weekStatsCache[key] || {};
+    const row = (_vacOwnerFilter === 'all') ? ws : (ws.per_owner?.[_vacOwnerFilter] || {});
+    const vac = (_vacOwnerFilter === 'all') ? (ws.vacatures || 0) : (ws.vacatures || 0);
+    const voor = row.voorgesteld || 0;
+    const gesp = row.gesprek || 0;
+    const aang = row.aangenomen || 0;
+    const barW = Math.max(2, Math.round((voor / maxVoor) * 60));
+    const isCurrent = key === currentKey;
+    return `<tr class="${isCurrent ? 'current-week' : ''}">
+      <td><span class="wk-num">${key}${isCurrent ? ' · nu' : ''}</span></td>
+      <td>${vac}</td>
+      <td>${voor}<span class="wk-bar" style="width:${barW}px"></span></td>
+      <td>${gesp}</td>
+      <td>${aang}</td>
+    </tr>`;
+  }).join('');
+}
+
+function setVacOwnerFilter(owner, el) {
+  _vacOwnerFilter = owner;
+  document.querySelectorAll('#owner-chips .owner-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderVacPerformance();
+}
+
 // ── DASHBOARD
-function renderDashboard(){
+async function renderDashboard(){
   document.getElementById('dashsub').textContent='Ingelogd als '+CU+' · gedeeld teamoverzicht';
+  // Load + snapshot week stats
+  try {
+    _weekStatsCache = await DB.getWeekStats();
+    await snapshotCurrentWeek();
+  } catch(e) { console.error('week stats:', e); }
+  renderVacPerformance();
   const active=cvLib.filter(cv=>!cv.archived).length,pushCount=cvLib.filter(cv=>cv.push&&!cv.archived).length;
   const myC=offerLog.filter(l=>l.user===CU).length,emailed=offerLog.filter(l=>l.emailed).length,registered=offerLog.filter(l=>!l.emailed).length;
   document.getElementById('sgrid').innerHTML=`
