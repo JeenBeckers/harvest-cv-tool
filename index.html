@@ -844,10 +844,11 @@ b,strong{font-weight:500}
     <div id="view-archive" style="display:none">
       <div class="stitle">Archief</div>
       <div class="ssub">Gearchiveerde kandidaten · herstel om weer actief te maken</div>
+      <div id="archive-summary" style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:300"></div>
       <input type="text" class="search-input" id="archive-search" placeholder="Zoek op naam, rol, stad…" oninput="renderArchive()">
       <div class="cv-table-wrap">
         <table class="cv-tbl">
-          <thead><tr><th>Kandidaat</th><th>Rol</th><th>Stad</th><th>Bureau</th><th>Gearchiveerd</th><th>Acties</th></tr></thead>
+          <thead><tr><th>Kandidaat</th><th>Rol</th><th>Stad</th><th>Bureau</th><th>Status</th><th>Gearchiveerd</th><th>Acties</th></tr></thead>
           <tbody id="archive-tbody"></tbody>
         </table>
       </div>
@@ -1030,6 +1031,7 @@ const DB = {
       notes: r.notes, notesHistory: r.notes_history || [],
       driveUrl: r.drive_url, push: r.push || false,
       archived: r.archived || false, archivedDate: r.archived_date,
+      archivedReason: r.archived_reason || null,
       source: r.source, recruitStatus: r.recruit_status || 'vrij'
     }));
   },
@@ -1043,6 +1045,7 @@ const DB = {
       notes: cv.notes, notes_history: cv.notesHistory || [],
       drive_url: cv.driveUrl, push: cv.push || false,
       archived: cv.archived || false, archived_date: cv.archivedDate,
+      archived_reason: cv.archivedReason || null,
       source: cv.source, recruit_status: cv.recruitStatus || 'vrij',
       updated_at: new Date().toISOString()
     };
@@ -1427,20 +1430,59 @@ async function bulkPush(){
 }
 
 // ── ARCHIVE
+function showArchiveModal(ids, onDone){
+  // Remove old if present
+  document.getElementById('archive-reason-modal')?.remove();
+  const names = ids.map(id=>cvLib.find(c=>c.id===id)?.name).filter(Boolean);
+  const label = names.length===1 ? `<strong>${esc(names[0])}</strong>` : `<strong>${names.length} kandidaten</strong>`;
+  const div = document.createElement('div');
+  div.id = 'archive-reason-modal';
+  div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9000;display:flex;align-items:center;justify-content:center';
+  div.innerHTML = `<div style="background:#fff;border-radius:8px;padding:24px 28px;width:340px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.18);font-family:var(--font)">
+    <div style="font-size:14px;font-weight:400;color:var(--hg);margin-bottom:6px">Archiveren</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:18px;font-weight:300">${label} archiveren — is deze kandidaat aangenomen?</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button onclick="doArchive(${JSON.stringify(ids)},'aangenomen')" style="padding:10px 14px;background:var(--hg);color:var(--beige);border:none;border-radius:4px;font-size:12px;font-family:var(--font);cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px">
+        <i class="ti ti-circle-check" style="font-size:14px"></i>
+        <div><strong>Ja, aangenomen</strong><div style="font-size:10px;opacity:.7;font-weight:300">Kandidaat is geplaatst bij een opdrachtgever</div></div>
+      </button>
+      <button onclick="doArchive(${JSON.stringify(ids)},'anders')" style="padding:10px 14px;background:var(--hgl);color:var(--hg);border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:var(--font);cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px">
+        <i class="ti ti-circle-x" style="font-size:14px;color:var(--muted)"></i>
+        <div><strong>Nee, andere reden</strong><div style="font-size:10px;color:var(--muted);font-weight:300">Bijv. zelf gevonden, afgehaakt, niet fit</div></div>
+      </button>
+      <button onclick="document.getElementById('archive-reason-modal').remove()" style="padding:6px;background:transparent;border:none;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--font);margin-top:2px">Annuleren</button>
+    </div>
+  </div>`;
+  document.body.appendChild(div);
+}
+
+async function doArchive(ids, reason){
+  document.getElementById('archive-reason-modal')?.remove();
+  ids.forEach(id=>{
+    const cv=cvLib.find(c=>c.id===id);
+    if(cv){ cv.archived=true; cv.archivedDate=today(); cv.archivedReason=reason; }
+  });
+  if(ids.length===1){
+    await saveLib(cvLib.find(c=>c.id===ids[0]));
+    sel.delete(ids[0]); refreshAll(); closeModal();
+  } else {
+    await saveLib(); sel.clear(); refreshAll();
+  }
+  const label = reason==='aangenomen' ? '✓ Aangenomen & gearchiveerd' : 'Gearchiveerd';
+  showToast(label);
+}
+
 async function archiveCV(id){
-  const cv=cvLib.find(c=>c.id===id);if(!cv)return;
-  cv.archived=true;cv.archivedDate=today();
-  await saveLib(cv);sel.delete(id);refreshAll();closeModal();showToast(`${cv.name} gearchiveerd`);
+  showArchiveModal([id]);
 }
 async function restoreCV(id){
   const cv=cvLib.find(c=>c.id===id);if(!cv)return;
-  cv.archived=false;delete cv.archivedDate;
+  cv.archived=false;delete cv.archivedDate;delete cv.archivedReason;
   await saveLib(cv);refreshAll();showToast(`${cv.name} hersteld`);
 }
 async function bulkArchive(){
   if(!sel.size)return;
-  [...sel].forEach(id=>{const cv=cvLib.find(c=>c.id===id);if(cv){cv.archived=true;cv.archivedDate=today();}});
-  await saveLib();sel.clear();refreshAll();showToast(`Kandidaten gearchiveerd`);
+  showArchiveModal([...sel]);
 }
 
 // ── SAVE VACATURES
@@ -1954,21 +1996,40 @@ function renderPushTab(){
 // ── ARCHIVE VIEW
 function renderArchive(){
   const q=(document.getElementById('archive-search')?.value||'').toLowerCase();
-  const archived=cvLib.filter(cv=>cv.archived&&(!q||(cv.name+cv.role+cv.city).toLowerCase().includes(q)));
-  document.getElementById('nb-archive').textContent=cvLib.filter(cv=>cv.archived).length;
+  const allArchived=cvLib.filter(cv=>cv.archived);
+  const archived=allArchived.filter(cv=>!q||(cv.name+cv.role+cv.city).toLowerCase().includes(q));
+  document.getElementById('nb-archive').textContent=allArchived.length;
+  const aangenomen=allArchived.filter(cv=>cv.archivedReason==='aangenomen').length;
+  const anders=allArchived.filter(cv=>cv.archivedReason==='anders').length;
+  const unknown=allArchived.filter(cv=>!cv.archivedReason).length;
+  // Archive summary bar
+  const summaryEl=document.getElementById('archive-summary');
+  if(summaryEl) summaryEl.innerHTML=allArchived.length?`
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--hg);display:inline-block"></span>${aangenomen} aangenomen</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--muted);display:inline-block"></span>${anders} andere reden</span>
+    ${unknown?`<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--border);display:inline-block"></span>${unknown} onbekend</span>`:''}
+  `:'';
   const tb=document.getElementById('archive-tbody');
-  if(!archived.length){tb.innerHTML='<tr><td colspan="6" class="empty">Geen gearchiveerde kandidaten</td></tr>';return;}
-  tb.innerHTML=archived.map(cv=>`<tr>
-    <td><div style="display:flex;align-items:center;gap:7px"><div class="ava" style="width:26px;height:26px;font-size:10px;background:${colFor(cv.name).bg};color:${colFor(cv.name).tx}">${ini(cv.name)}</div><span style="font-size:12px;font-weight:600">${esc(cv.name)}</span></div></td>
-    <td style="font-size:11px;color:var(--muted)">${esc(cv.role)}</td>
-    <td style="font-size:11px;color:var(--muted)">${esc(cv.city||'—')}</td>
-    <td>${cv.bureau?`<span class="tag tag-bureau">${esc(cv.bureau)}</span>`:'—'}</td>
-    <td style="font-size:11px;color:var(--muted)">${cv.archivedDate||'—'}</td>
-    <td style="white-space:nowrap"><div style="display:flex;gap:3px">
-      <button class="bsm p" onclick="restoreCV('${cv.id}')"><i class="ti ti-restore" style="font-size:10px"></i> Herstellen</button>
-      <button class="bsm" onclick="permanentDelete('${cv.id}')"><i class="ti ti-trash" style="font-size:10px"></i></button>
-    </div></td>
-  </tr>`).join('');
+  if(!archived.length){tb.innerHTML='<tr><td colspan="7" class="empty">Geen gearchiveerde kandidaten</td></tr>';return;}
+  tb.innerHTML=archived.map(cv=>{
+    const reasonBadge = cv.archivedReason==='aangenomen'
+      ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:3px;font-size:10px;background:var(--hgl);color:var(--hg);font-weight:400"><i class="ti ti-circle-check" style="font-size:10px"></i>Aangenomen</span>`
+      : cv.archivedReason==='anders'
+      ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:3px;font-size:10px;background:#f0f0f0;color:var(--muted);font-weight:400"><i class="ti ti-circle-x" style="font-size:10px"></i>Andere reden</span>`
+      : `<span style="font-size:10px;color:var(--muted)">—</span>`;
+    return`<tr>
+      <td><div style="display:flex;align-items:center;gap:7px"><div class="ava" style="width:26px;height:26px;font-size:10px;background:${colFor(cv.name).bg};color:${colFor(cv.name).tx}">${ini(cv.name)}</div><span style="font-size:12px;font-weight:400">${esc(cv.name)}</span></div></td>
+      <td style="font-size:11px;color:var(--muted)">${esc(cv.role)}</td>
+      <td style="font-size:11px;color:var(--muted)">${esc(cv.city||'—')}</td>
+      <td>${cv.bureau?`<span class="tag tag-bureau">${esc(cv.bureau)}</span>`:'—'}</td>
+      <td>${reasonBadge}</td>
+      <td style="font-size:11px;color:var(--muted)">${cv.archivedDate||'—'}</td>
+      <td style="white-space:nowrap"><div style="display:flex;gap:3px">
+        <button class="bsm p" onclick="restoreCV('${cv.id}')"><i class="ti ti-restore" style="font-size:10px"></i> Herstellen</button>
+        <button class="bsm" onclick="permanentDelete('${cv.id}')"><i class="ti ti-trash" style="font-size:10px"></i></button>
+      </div></td>
+    </tr>`;
+  }).join('');
 }
 async function permanentDelete(id){
   if(!confirm('Permanent verwijderen? Dit kan niet ongedaan worden.'))return;
