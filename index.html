@@ -1430,9 +1430,9 @@ async function bulkPush(){
 }
 
 // ── ARCHIVE
-function showArchiveModal(ids, onDone){
-  // Remove old if present
+function showArchiveModal(ids){
   document.getElementById('archive-reason-modal')?.remove();
+  window._pendingArchiveIds = ids; // avoid JSON quoting issues in onclick
   const names = ids.map(id=>cvLib.find(c=>c.id===id)?.name).filter(Boolean);
   const label = names.length===1 ? `<strong>${esc(names[0])}</strong>` : `<strong>${names.length} kandidaten</strong>`;
   const div = document.createElement('div');
@@ -1442,11 +1442,11 @@ function showArchiveModal(ids, onDone){
     <div style="font-size:14px;font-weight:400;color:var(--hg);margin-bottom:6px">Archiveren</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:18px;font-weight:300">${label} archiveren — is deze kandidaat aangenomen?</div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button onclick="doArchive(${JSON.stringify(ids)},'aangenomen')" style="padding:10px 14px;background:var(--hg);color:var(--beige);border:none;border-radius:4px;font-size:12px;font-family:var(--font);cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px">
+      <button onclick="doArchive('aangenomen')" style="padding:10px 14px;background:var(--hg);color:var(--beige);border:none;border-radius:4px;font-size:12px;font-family:var(--font);cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px">
         <i class="ti ti-circle-check" style="font-size:14px"></i>
         <div><strong>Ja, aangenomen</strong><div style="font-size:10px;opacity:.7;font-weight:300">Kandidaat is geplaatst bij een opdrachtgever</div></div>
       </button>
-      <button onclick="doArchive(${JSON.stringify(ids)},'anders')" style="padding:10px 14px;background:var(--hgl);color:var(--hg);border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:var(--font);cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px">
+      <button onclick="doArchive('anders')" style="padding:10px 14px;background:var(--hgl);color:var(--hg);border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:var(--font);cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px">
         <i class="ti ti-circle-x" style="font-size:14px;color:var(--muted)"></i>
         <div><strong>Nee, andere reden</strong><div style="font-size:10px;color:var(--muted);font-weight:300">Bijv. zelf gevonden, afgehaakt, niet fit</div></div>
       </button>
@@ -1456,8 +1456,10 @@ function showArchiveModal(ids, onDone){
   document.body.appendChild(div);
 }
 
-async function doArchive(ids, reason){
+async function doArchive(reason){
   document.getElementById('archive-reason-modal')?.remove();
+  const ids = window._pendingArchiveIds || [];
+  window._pendingArchiveIds = null;
   ids.forEach(id=>{
     const cv=cvLib.find(c=>c.id===id);
     if(cv){ cv.archived=true; cv.archivedDate=today(); cv.archivedReason=reason; }
@@ -1500,13 +1502,19 @@ async function saveAllVacs(){
 async function deleteVacature(id){
   if(!confirm('Vacature verwijderen?'))return;
   vacatures=vacatures.filter(v=>v.id!==id);
-  if(window._activeVacId===id){ window._activeVacId=null; renderKanban(null); }
-  await saveVac();renderVacSidebar();updateBadges();showToast('Vacature verwijderd');
+  if(window._activeVacId===id){
+    window._activeVacId=null;
+    renderKanban(null);
+    renderKanbanHeader(null);
+  }
+  try{ await DB.deleteVacature(id); }catch(e){ console.error('deleteVacature failed:',e); }
+  renderVacSidebar();updateBadges();showToast('Vacature verwijderd');
 }
 async function toggleVacStatus(id){
   const v=vacatures.find(x=>x.id===id);if(!v)return;
   v.status=v.status==='open'?'closed':'open';
-  await saveVac();renderVacSidebar();
+  try{ await DB.upsertVacature(v); }catch(e){ console.error('toggleVacStatus failed:',e); }
+  renderVacSidebar();
   if(window._activeVacId===id) renderKanbanHeader(v);
 }
 
@@ -1792,7 +1800,7 @@ async function addPushToKanban(candId, vacId){
   if(!v.candidateIds) v.candidateIds=[];
   if(!v.candidateIds.includes(candId)) v.candidateIds.push(candId);
   document.querySelectorAll('.push-add-panel').forEach(el=>el.remove());
-  await saveVac();
+  try{ await DB.upsertVacature(v); }catch(e){ console.error('addPushToKanban save failed:',e); }
   renderKanban(v);
   renderKanbanHeader(v);
   renderVacSidebar();
@@ -1854,7 +1862,7 @@ async function dropCard(e,toStage,vacId){
   if(!v.kanbanData[toStage]) v.kanbanData[toStage]=[];
   if(!v.kanbanData[toStage].includes(_dragCandId)) v.kanbanData[toStage].push(_dragCandId);
   _dragCandId=null;_dragFromStage=null;
-  await saveVac();
+  try{ await DB.upsertVacature(v); }catch(e){ console.error('dropCard save failed:',e); }
   renderKanban(v);
   renderKanbanHeader(v);
   renderVacSidebar();
@@ -1896,7 +1904,7 @@ async function addToKanban(stageKey,vacId){
   // Also link to vacature candidateIds
   if(!v.candidateIds) v.candidateIds=[];
   if(!v.candidateIds.includes(candId)) v.candidateIds.push(candId);
-  await saveVac();
+  try{ await DB.upsertVacature(v); }catch(e){ console.error('addToKanban save failed:',e); }
   renderKanban(v);
   renderKanbanHeader(v);
   renderVacSidebar();
@@ -1908,7 +1916,7 @@ async function removeFromKanban(vacId,stageKey,candId){
   if(v.kanbanData&&v.kanbanData[stageKey]){
     v.kanbanData[stageKey]=v.kanbanData[stageKey].filter(id=>id!==candId);
   }
-  await saveVac();
+  try{ await DB.upsertVacature(v); }catch(e){ console.error('removeFromKanban save failed:',e); }
   renderKanban(v);
   renderKanbanHeader(v);
   renderVacSidebar();
