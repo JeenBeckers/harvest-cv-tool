@@ -2041,8 +2041,10 @@ function renderArchive(){
 }
 async function permanentDelete(id){
   if(!confirm('Permanent verwijderen? Dit kan niet ongedaan worden.'))return;
-  cvLib=cvLib.filter(c=>c.id!==id);delete cvHtmlStore[id];
-  await saveLib();renderArchive();updateBadges();showToast('Kandidaat verwijderd');
+  cvLib=cvLib.filter(c=>c.id!==id);
+  delete cvHtmlStore[id];
+  try{ await DB.deleteCandidate(id); }catch(e){ console.error('permanentDelete failed:',e); }
+  renderArchive();updateBadges();showToast('Kandidaat verwijderd');
 }
 
 // ── ADD PANEL TOGGLE
@@ -3326,7 +3328,7 @@ function uploadCVForCandidate(id, input){
           const merged = [...new Set([...(cv.skills||[]), ...newSkills])].slice(0,10);
           const added = merged.filter(s=>!(cv.skills||[]).includes(s));
           cv.skills = merged;
-          saveLib();
+          saveLib(cv);
           const msg = added.length
             ? `✓ CV van ${detectedName} gekoppeld · ${added.length} skill${added.length>1?'s':''} toegevoegd: ${added.slice(0,4).join(', ')}${added.length>4?'…':''}`
             : '✓ CV van ' + detectedName + ' gekoppeld';
@@ -3350,7 +3352,7 @@ function uploadCVForCandidate(id, input){
         const merged = [...new Set([...(cv2.skills||[]), ...newSkills])].slice(0,10);
         const added = merged.filter(s=>!(cv2.skills||[]).includes(s));
         cv2.skills = merged;
-        saveLib();
+        saveLib(cv2);
         showToast(added.length ? `✓ CV gekoppeld · ${added.length} skill${added.length>1?'s':''} toegevoegd` : '✓ CV gekoppeld');
       } else { showToast('✓ CV gekoppeld'); }
       renderCVList();
@@ -3414,7 +3416,7 @@ function confirmMerge(id, content){
     const merged = [...new Set([...(cv.skills||[]), ...newSkills])].slice(0,10);
     const added = merged.filter(s=>!(cv.skills||[]).includes(s));
     cv.skills = merged;
-    saveLib();
+    saveLib(cv);
     const msg = added.length
       ? `✓ CV gekoppeld · ${added.length} skill${added.length>1?'s':''} toegevoegd: ${added.slice(0,4).join(', ')}${added.length>4?'…':''}`
       : '✓ CV gekoppeld aan ' + cv.name;
