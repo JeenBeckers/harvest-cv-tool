@@ -1050,18 +1050,22 @@ const DB = {
       source: cv.source, recruit_status: cv.recruitStatus || 'vrij',
       updated_at: new Date().toISOString()
     };
-    try {
-      await sbFetch('candidates?on_conflict=id', {
-        method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify(row)
-      });
-    } catch(e) {
-      // Fallback: retry without archived_reason if column doesn't exist yet
-      if(String(e.message).includes('archived_reason')) {
-        const {archived_reason, ...rowFallback} = row;
+    const knownOptionalCols = ['archived_reason', 'recruit_status'];
+    let rowToSend = {...row};
+    for(let attempt = 0; attempt < knownOptionalCols.length + 1; attempt++) {
+      try {
         await sbFetch('candidates?on_conflict=id', {
-          method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify(rowFallback)
+          method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify(rowToSend)
         });
-      } else { throw e; }
+        return;
+      } catch(e) {
+        const missingCol = knownOptionalCols.find(col => String(e.message).includes(col));
+        if(missingCol) {
+          console.warn('upsertCandidate: kolom ontbreekt in DB, retry zonder:', missingCol);
+          const {[missingCol]: _removed, ...rest} = rowToSend;
+          rowToSend = rest;
+        } else { throw e; }
+      }
     }
   },
   async deleteCandidate(id) {
