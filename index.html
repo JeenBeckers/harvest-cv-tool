@@ -1381,7 +1381,7 @@ async function loadFromStorage(){
       DB.getUsers(),
       DB.getSetting('signature')
     ]);
-    cvLib=cands.length?cands:[...CSV_SEED_CVS];
+    cvLib=(cands.length?cands:[...CSV_SEED_CVS]).sort((a,b)=>a.name.localeCompare(b.name,'nl'));
     companies=comps.length?comps:[...DEFAULT_COMPANIES];
     vacatures=vacs;
     offerLog=logs;
