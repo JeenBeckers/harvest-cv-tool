@@ -2053,7 +2053,6 @@ function renderArchive(){
       <td style="font-size:11px;color:var(--muted)">${cv.archivedDate||'—'}</td>
       <td style="white-space:nowrap"><div style="display:flex;gap:3px">
         <button class="bsm p" onclick="restoreCV('${cv.id}')"><i class="ti ti-restore" style="font-size:10px"></i> Herstellen</button>
-        <button class="bsm" onclick="permanentDelete('${cv.id}')"><i class="ti ti-trash" style="font-size:10px"></i></button>
       </div></td>
     </tr>`;
   }).join('');
