@@ -819,6 +819,7 @@ b,strong{font-weight:500}
         </div>
       </div>
 
+      <div class="sgrid5" id="sgrid" style="margin-bottom:14px"></div>
       <div class="sdiv">⚡ Push kandidaten — aanbiedingen</div>
       <div class="push-grid" id="dash-push-grid"></div>
       <div class="sdiv">Per gebruiker</div>
@@ -1049,9 +1050,19 @@ const DB = {
       source: cv.source, recruit_status: cv.recruitStatus || 'vrij',
       updated_at: new Date().toISOString()
     };
-    await sbFetch('candidates?on_conflict=id', {
-      method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify(row)
-    });
+    try {
+      await sbFetch('candidates?on_conflict=id', {
+        method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify(row)
+      });
+    } catch(e) {
+      // Fallback: retry without archived_reason if column doesn't exist yet
+      if(String(e.message).includes('archived_reason')) {
+        const {archived_reason, ...rowFallback} = row;
+        await sbFetch('candidates?on_conflict=id', {
+          method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify(rowFallback)
+        });
+      } else { throw e; }
+    }
   },
   async deleteCandidate(id) {
     await sbFetch('candidates?id=eq.' + id, { method: 'DELETE' });
