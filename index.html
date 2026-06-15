@@ -1065,7 +1065,11 @@ const DB = {
     }
   },
   async deleteCandidate(id) {
-    await sbFetch('candidates?id=eq.' + id, { method: 'DELETE' });
+    const deleted = await sbFetch('candidates?id=eq.' + id, { method: 'DELETE', prefer: 'return=representation' });
+    if (!Array.isArray(deleted) || deleted.length === 0) {
+      console.warn('deleteCandidate: Supabase returned no deleted rows for id', id, '— mogelijk RLS policy ontbreekt');
+    }
+    return deleted;
   },
 
   // COMPANIES
@@ -2054,8 +2058,18 @@ async function permanentDelete(id){
   if(!confirm('Permanent verwijderen? Dit kan niet ongedaan worden.'))return;
   cvLib=cvLib.filter(c=>c.id!==id);
   delete cvHtmlStore[id];
-  try{ await DB.deleteCandidate(id); }catch(e){ console.error('permanentDelete failed:',e); }
-  renderArchive();updateBadges();showToast('Kandidaat verwijderd');
+  try{
+    const result = await DB.deleteCandidate(id);
+    if(!result || result.length===0){
+      showToast('⚠ Verwijderd uit weergave, maar database delete mislukt — check Supabase RLS');
+    } else {
+      showToast('Kandidaat verwijderd');
+    }
+  }catch(e){
+    console.error('permanentDelete failed:',e);
+    showToast('⚠ Verwijderen mislukt: '+e.message);
+  }
+  renderArchive();updateBadges();
 }
 
 // ── ADD PANEL TOGGLE
