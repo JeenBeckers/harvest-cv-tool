@@ -575,7 +575,7 @@ b,strong{font-weight:500}
         <div class="frow q">
           <div class="fg"><label class="fl">Sales eigenaar</label>
         <input class="fi" id="ac-sales" list="sales-options" placeholder="Naam of kies…" autocomplete="off">
-        <datalist id="sales-options"><option value="Julieta"><option value="Frank"><option value="Marlie"></datalist>
+        <datalist id="sales-options"><option value="Julieta"><option value="Frank"><option value="Marlie"><option value="Jeen"></datalist>
       </div>
           <div class="fg"><label class="fl">Recruitment eigenaar</label><select class="fi" id="ac-recruit"><option value="">— Kies —</option><option>Bastijn</option><option>Wessal</option></select></div>
           <div class="fg"><label class="fl">Bureau</label><select class="fi" id="ac-bureau"><option value="">— Kies —</option><option>PT</option><option>Ngage</option><option>StarApple</option><option>Sebastiaan</option><option>Eigen Werving</option></select></div>
@@ -592,6 +592,7 @@ b,strong{font-weight:500}
             <div class="fchip" onclick="setFilter('sales','Julieta',this)">Julieta</div>
             <div class="fchip" onclick="setFilter('sales','Frank',this)">Frank</div>
             <div class="fchip" onclick="setFilter('sales','Marlie',this)">Marlie</div>
+            <div class="fchip" onclick="setFilter('sales','Jeen',this)">Jeen</div>
             <div class="fchip" onclick="setFilter('sales','',this)">Niet ingevuld</div>
           </div>
         </div>
@@ -675,7 +676,7 @@ b,strong{font-weight:500}
         <div class="frow t">
           <div class="fg"><label class="fl">E-mailadres klant</label><input class="fi" id="f-email" placeholder="contact@bedrijf.nl" type="email" oninput="updatePreview()"></div>
           <div class="fg"><label class="fl">Rol / Vacature</label><input class="fi" id="f-ro" placeholder="Senior Backend Engineer" type="text" oninput="updatePreview()"></div>
-          <div class="fg"><label class="fl">Aangeboden door</label><select class="fi" id="f-us" onchange="updatePreview()"><option>Marlie</option><option>Julieta</option><option>Frank</option></select></div>
+          <div class="fg"><label class="fl">Aangeboden door</label><select class="fi" id="f-us" onchange="updatePreview()"><option>Marlie</option><option>Julieta</option><option>Frank</option><option>Jeen</option></select></div>
         </div>
         <div class="frow s"><div class="fg"><label class="fl">Notitie</label><textarea class="fi" id="f-no" rows="2" placeholder="warm lead, tweede ronde…" oninput="updatePreview()"></textarea></div></div>
       </div>
@@ -722,7 +723,7 @@ b,strong{font-weight:500}
             <div class="fg" style="margin-bottom:6px"><label class="fl">Eigenaar (Sales)</label>
               <select class="fi" id="vac-owner" style="font-size:12px">
                 <option value="">— Kies eigenaar —</option>
-                <option>Marlie</option><option>Julieta</option><option>Frank</option>
+                <option>Marlie</option><option>Julieta</option><option>Frank</option><option>Jeen</option>
               </select>
             </div>
             <div class="fg" style="margin-bottom:6px"><label class="fl">Notities</label><textarea class="fi" id="vac-notes" rows="2" placeholder="Details, eisen…" style="font-size:12px"></textarea></div>
@@ -751,7 +752,7 @@ b,strong{font-weight:500}
               <div class="fg"><label class="fl">Eigenaar (Sales)</label>
                 <select class="fi" id="camp-owner" style="font-size:12px">
                   <option value="">— Kies eigenaar —</option>
-                  <option>Marlie</option><option>Julieta</option><option>Frank</option>
+                  <option>Marlie</option><option>Julieta</option><option>Frank</option><option>Jeen</option>
                 </select>
               </div>
               <div class="fg"><label class="fl">Doel plaatsingen</label>
@@ -762,6 +763,22 @@ b,strong{font-weight:500}
             <div class="actbar">
               <button class="bmain g" onclick="addCampagne()" style="font-size:11px;padding:6px 12px;background:var(--hg)"><i class="ti ti-check"></i> Aanmaken</button>
               <button class="bmain o" onclick="document.getElementById('add-campagne-inline').style.display='none';document.getElementById('add-vac-inline').style.display='none'" style="font-size:11px;padding:6px 10px">Annuleren</button>
+            </div>
+          </div>
+          <!-- Vacature/campagne filterbar -->
+          <div id="vac-filter-bar" style="padding:8px 10px;border-bottom:.5px solid #eee;background:#fafaf8;display:flex;flex-direction:column;gap:5px">
+            <input id="vac-search" type="text" placeholder="Zoek op klant of naam…" oninput="renderVacSidebar()" style="font-size:11px;padding:4px 7px;border:1px solid var(--border);border-radius:3px;font-family:var(--font);width:100%;box-sizing:border-box">
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+              <button class="owner-chip active" id="vf-all" onclick="setVacTypeFilter('all',this)" style="font-size:10px;padding:2px 7px">Alle</button>
+              <button class="owner-chip" id="vf-vac" onclick="setVacTypeFilter('vacature',this)" style="font-size:10px;padding:2px 7px"><i class="ti ti-briefcase" style="font-size:9px"></i> Vacature</button>
+              <button class="owner-chip" id="vf-camp" onclick="setVacTypeFilter('campagne',this)" style="font-size:10px;padding:2px 7px"><i class="ti ti-speakerphone" style="font-size:9px"></i> Campagne</button>
+            </div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+              <button class="owner-chip active" id="vf-ow-all" onclick="setVacSidebarOwner('all',this)" style="font-size:10px;padding:2px 7px">Iedereen</button>
+              <button class="owner-chip" onclick="setVacSidebarOwner('Marlie',this)" style="font-size:10px;padding:2px 7px">Marlie</button>
+              <button class="owner-chip" onclick="setVacSidebarOwner('Julieta',this)" style="font-size:10px;padding:2px 7px">Julieta</button>
+              <button class="owner-chip" onclick="setVacSidebarOwner('Frank',this)" style="font-size:10px;padding:2px 7px">Frank</button>
+              <button class="owner-chip" onclick="setVacSidebarOwner('Jeen',this)" style="font-size:10px;padding:2px 7px">Jeen</button>
             </div>
           </div>
           <div id="vac-sidebar-list"></div>
@@ -794,6 +811,7 @@ b,strong{font-weight:500}
             <button class="owner-chip" onclick="setVacOwnerFilter('Marlie',this)">Marlie</button>
             <button class="owner-chip" onclick="setVacOwnerFilter('Julieta',this)">Julieta</button>
             <button class="owner-chip" onclick="setVacOwnerFilter('Frank',this)">Frank</button>
+            <button class="owner-chip" onclick="setVacOwnerFilter('Jeen',this)">Jeen</button>
           </div>
         </div>
         <div class="vkpi-grid" id="vkpi-grid">
@@ -1205,6 +1223,7 @@ function dHTMLe(s){return s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/
 function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):'';}
 
 let CU='Marlie',sel=new Set(),offerMode='register',logFilter='all';
+let vacTypeFilter='all', vacSidebarOwner='all';
 let activeFilters={sales:'all',recruit:'all',bureau:'all',cv:'all',push:'all',tc:'all',role:'all',avail:'all'};
 let cvLib=[],offerLog=[],companies=[...DEFAULT_COMPANIES],vacatures=[];
 let userEmails={...DEFAULT_EMAILS},signature=DEFAULT_SIG,selectedCompany='';
@@ -1556,12 +1575,36 @@ function showAddVacPanel(){
   p.style.display=p.style.display==='none'?'block':'none';
 }
 
+function setVacTypeFilter(val, el){
+  vacTypeFilter=val;
+  document.querySelectorAll('#vac-filter-bar .owner-chip').forEach(c=>{ if(['vf-all','vf-vac','vf-camp'].includes(c.id)) c.classList.remove('active'); });
+  el.classList.add('active');
+  renderVacSidebar();
+}
+function setVacSidebarOwner(val, el){
+  vacSidebarOwner=val;
+  document.querySelectorAll('#vac-filter-bar .owner-chip').forEach(c=>{ if(!['vf-all','vf-vac','vf-camp'].includes(c.id)) c.classList.remove('active'); });
+  el.classList.add('active');
+  renderVacSidebar();
+}
 function renderVacSidebar(){
   const list=document.getElementById('vac-sidebar-list');
+  const search=(document.getElementById('vac-search')?.value||'').toLowerCase().trim();
+  // Apply filters
+  let filtered=vacatures;
+  if(vacTypeFilter!=='all') filtered=filtered.filter(v=>(v.type||'vacature')===vacTypeFilter);
+  if(vacSidebarOwner!=='all') filtered=filtered.filter(v=>v.owner===vacSidebarOwner);
+  if(search) filtered=filtered.filter(v=>(v.company+' '+v.role).toLowerCase().includes(search));
+
   if(!vacatures.length){
     list.innerHTML='<div class="empty" style="padding:20px 14px">Nog geen vacatures.<br>Klik op Vacature of Campagne om te beginnen.</div>';
     document.getElementById('nb-vac').textContent=0;
     document.getElementById('vac-sidebar-totals').innerHTML='';
+    return;
+  }
+  if(!filtered.length){
+    list.innerHTML='<div class="empty" style="padding:20px 14px;font-size:11px;color:var(--muted)">Geen resultaten voor deze filter.</div>';
+    document.getElementById('nb-vac').textContent=vacatures.filter(v=>v.status==='open').length;
     return;
   }
   // Totals bar
@@ -1578,7 +1621,7 @@ function renderVacSidebar(){
     ${allAang.length>0?`<span><i class="ti ti-check" style="font-size:9px"></i> ${allAang.length} aangenomen</span>`:''}`;
 
   document.getElementById('nb-vac').textContent=vacatures.filter(v=>v.status==='open').length;
-  list.innerHTML=vacatures.map(v=>{
+  list.innerHTML=filtered.map(v=>{
     const kd=v.kanbanData||{};
     const isActive=window._activeVacId===v.id;
     const voorgesteld=(kd.voorgesteld||[]).length, gesprek=((kd.gesprek||[]).length+(kd.gesprek2||[]).length), aangenomen=(kd.aangenomen||[]).length;
@@ -1586,7 +1629,8 @@ function renderVacSidebar(){
     if(v.type==='campagne'){
       const target=v.target||8;
       const pct=Math.min(100,Math.round((aangenomen/target)*100));
-      return`<div class="camp-item ${v.status==='closed'?'closed':''} ${isActive?'active':''}" onclick="selectVacature('${v.id}')">
+      return`<div class="camp-item ${v.status==='closed'?'closed':''} ${isActive?'active':''}" onclick="selectVacature('${v.id}')" style="position:relative">
+        <button onclick="event.stopPropagation();deleteVacature('${v.id}')" style="position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;color:var(--muted);padding:2px;line-height:1" title="Verwijderen"><i class="ti ti-trash" style="font-size:10px"></i></button>
         <div class="camp-badge"><i class="ti ti-speakerphone" style="font-size:8px"></i> Campagne · ${esc(v.periode||'')}</div>
         <div class="camp-naam">${esc(v.role)}</div>
         <div class="camp-meta">${v.vertical&&v.vertical!=='All'?v.vertical+' · ':''}${v.owner?`<span style="color:var(--hg)">${esc(v.owner)}</span> · `:''}${voorgesteld+gesprek} in proces</div>
