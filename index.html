@@ -1555,6 +1555,27 @@ async function toggleVacStatus(id){
   renderVacSidebar();
   if(window._activeVacId===id) renderKanbanHeader(v);
 }
+async function changeVacOwner(id, newOwner){
+  const v=vacatures.find(x=>x.id===id);if(!v)return;
+  v.owner=newOwner;
+  try{ await DB.upsertVacature(v); }catch(e){ console.error('changeVacOwner failed:',e); }
+  renderVacSidebar();
+  if(window._activeVacId===id) renderKanbanHeader(v);
+  showToast('Eigenaar gewijzigd naar '+(newOwner||'—'));
+}
+function showOwnerEdit(id){
+  const el=document.getElementById('owner-edit-wrap-'+id);
+  if(!el)return;
+  const v=vacatures.find(x=>x.id===id);if(!v)return;
+  el.innerHTML=`<select onchange="changeVacOwner('${id}',this.value);this.parentElement.innerHTML=''" onblur="renderKanbanHeader(vacatures.find(x=>x.id==='${id}'))" style="font-size:11px;padding:2px 5px;border:1px solid var(--border);border-radius:3px;font-family:var(--font)">
+    <option value="">— Geen eigenaar —</option>
+    <option${v.owner==='Marlie'?' selected':''}>Marlie</option>
+    <option${v.owner==='Julieta'?' selected':''}>Julieta</option>
+    <option${v.owner==='Frank'?' selected':''}>Frank</option>
+    <option${v.owner==='Jeen'?' selected':''}>Jeen</option>
+  </select>`;
+  el.querySelector('select').focus();
+}
 
 // ── VACATURE SIDEBAR
 window._activeVacId = null;
@@ -1694,10 +1715,13 @@ function renderKanbanHeader(v){
           ${esc(v.role)}
           <span class="${v.status==='open'?'status-open':'status-closed'}" style="cursor:pointer;font-size:10px" onclick="toggleVacStatus('${v.id}')">${v.status==='open'?'Actief':'Gesloten'}</span>
         </div>
-        <div class="camp-header-meta">
+        <div class="camp-header-meta" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           ${v.periode?`📅 ${esc(v.periode)}`:''}
           ${v.vertical&&v.vertical!=='All'?' · '+v.vertical:''}
-          ${v.owner?` · <span class="camp-owner-pill"><i class="ti ti-user" style="font-size:9px"></i>${esc(v.owner)}</span>`:''}
+          <span id="owner-edit-wrap-${v.id}" style="display:inline-flex;align-items:center;gap:3px">
+            ${v.owner?`<span class="camp-owner-pill"><i class="ti ti-user" style="font-size:9px"></i>${esc(v.owner)}</span>`:'<span style="font-size:10px;color:var(--muted)">Geen eigenaar</span>'}
+            <button onclick="showOwnerEdit('${v.id}')" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:1px 3px" title="Eigenaar wijzigen"><i class="ti ti-pencil" style="font-size:9px"></i></button>
+          </span>
         </div>
         <div class="camp-header-progress">
           <div class="camp-kpi"><div class="camp-kpi-val">${voorgesteld}</div><div class="camp-kpi-label">Voorgesteld</div></div>
@@ -1705,9 +1729,12 @@ function renderKanbanHeader(v){
           <div class="camp-kpi"><div class="camp-kpi-val">${aangenomen}</div><div class="camp-kpi-label">Aangenomen</div></div>
           <div class="camp-kpi"><div class="camp-kpi-val">${target}</div><div class="camp-kpi-label">Doel</div></div>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);margin-bottom:3px">
           <span>${aangenomen} van ${target} plaatsingen (${pct}%)</span>
-          <button class="bsm" onclick="deleteVacature('${v.id}')" style="font-size:10px;color:var(--muted);border:none;background:transparent;cursor:pointer"><i class="ti ti-trash" style="font-size:10px"></i></button>
+          <div style="display:flex;gap:4px">
+            <span class="${v.status==='open'?'status-open':'status-closed'}" style="cursor:pointer;font-size:10px" onclick="toggleVacStatus('${v.id}')" title="Status wisselen">${v.status==='open'?'Actief':'Gesloten'}</span>
+            <button class="bsm" onclick="deleteVacature('${v.id}')" style="font-size:10px;color:var(--muted);border:none;background:transparent;cursor:pointer" title="Verwijderen"><i class="ti ti-trash" style="font-size:10px"></i></button>
+          </div>
         </div>
         <div class="camp-big-bar"><div class="camp-big-fill ${pct>=100?'done':''}" style="width:${pct}%"></div></div>
       </div>
@@ -1717,9 +1744,12 @@ function renderKanbanHeader(v){
 
   hdr.innerHTML=`
     <div>
-      <div class="kanban-vac-title" style="display:flex;align-items:center;gap:8px">
+      <div class="kanban-vac-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         ${esc(v.company)} — ${esc(v.role)}
-        ${v.owner?`<span class="vac-owner-pill"><i class="ti ti-user" style="font-size:9px"></i>${esc(v.owner)}</span>`:''}
+        <span id="owner-edit-wrap-${v.id}" style="display:inline-flex;align-items:center;gap:3px">
+          ${v.owner?`<span class="vac-owner-pill"><i class="ti ti-user" style="font-size:9px"></i>${esc(v.owner)}</span>`:'<span style="font-size:10px;color:var(--muted)">Geen eigenaar</span>'}
+          <button onclick="showOwnerEdit('${v.id}')" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:1px 3px" title="Eigenaar wijzigen"><i class="ti ti-pencil" style="font-size:9px"></i></button>
+        </span>
       </div>
       <div class="kanban-vac-sub">
         ${total} in proces
