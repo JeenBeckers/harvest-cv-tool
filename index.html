@@ -720,6 +720,7 @@ b,strong{font-weight:500}
             <div style="font-size:11px;font-weight:400;color:var(--hg);margin-bottom:8px;display:flex;align-items:center;gap:5px"><i class="ti ti-briefcase" style="font-size:11px"></i> Nieuwe vacature</div>
             <div class="fg" style="margin-bottom:6px"><label class="fl">Bedrijf *</label><input class="fi" id="vac-co" placeholder="bijv. ABN AMRO" type="text" style="font-size:12px"></div>
             <div class="fg" style="margin-bottom:6px"><label class="fl">Rol *</label><input class="fi" id="vac-role" placeholder="bijv. Senior Backend Engineer" type="text" style="font-size:12px"></div>
+            <div class="fg" style="margin-bottom:6px"><label class="fl">Standplaats</label><input class="fi" id="vac-location" placeholder="bijv. Amsterdam" type="text" style="font-size:12px"></div>
             <div class="fg" style="margin-bottom:6px"><label class="fl">Eigenaar (Sales)</label>
               <select class="fi" id="vac-owner" style="font-size:12px">
                 <option value="">— Kies eigenaar —</option>
@@ -1115,7 +1116,7 @@ const DB = {
       kanbanData: r.kanban_data || {}, createdDate: r.created_date,
       owner: r.owner || '', type: r.type || 'vacature',
       periode: r.periode || '', vertical: r.vertical || 'All',
-      target: r.target || null
+      target: r.target || null, location: r.location || ''
     }));
   },
   async upsertVacature(v) {
@@ -1125,7 +1126,7 @@ const DB = {
       kanban_data: v.kanbanData || {}, created_date: v.createdDate,
       owner: v.owner || '', type: v.type || 'vacature',
       periode: v.periode || '', vertical: v.vertical || 'All',
-      target: v.target || null,
+      target: v.target || null, location: v.location || '',
       updated_at: new Date().toISOString()
     };
     await sbFetch('vacatures?on_conflict=id', {
@@ -1668,7 +1669,7 @@ function renderVacSidebar(){
     const ownerTags = Object.entries(ownerCounts).map(([o,n])=>`<span style="font-size:8px;background:var(--hgl);color:var(--hg);padding:1px 4px;border-radius:2px">${esc(o)} ${n}</span>`).join('');
     return`<div class="vac-list-item ${v.status==='closed'?'closed':''} ${isActive?'active':''}" onclick="selectVacature('${v.id}')">
       <div class="vac-company">${esc(v.company)}</div>
-      <div class="vac-role-label">${esc(v.role)}</div>
+      <div class="vac-role-label">${esc(v.role)}${v.location?` · <span style="color:var(--muted)">${esc(v.location)}</span>`:''}</div>
       <div class="vac-meta">
         <span class="${v.status==='open'?'status-open':'status-closed'}" style="font-size:9px">${v.status==='open'?'Open':'Gesloten'}</span>
         ${v.owner?`<span style="font-size:9px;color:var(--hg)">${esc(v.owner)}</span>`:''}
@@ -1752,7 +1753,7 @@ function renderKanbanHeader(v){
         </span>
       </div>
       <div class="kanban-vac-sub">
-        ${total} in proces
+        ${v.location?`<i class="ti ti-map-pin" style="font-size:9px"></i> ${esc(v.location)} · `:''}${total} in proces
         ${voorgesteld>0?` · <span style="color:var(--push)">${voorgesteld} voorgesteld</span>`:''}
         ${gesprek>0?` · ${gesprek} op gesprek`:''}
         ${aangenomen>0?` · <strong>${aangenomen} aangenomen</strong>`:''}
@@ -2039,10 +2040,11 @@ async function addVacature(){
   const role=document.getElementById('vac-role').value.trim();
   if(!co||!role){showToast('Bedrijf en rol zijn verplicht');return;}
   const owner=document.getElementById('vac-owner').value;
-  const newVac={id:'v'+Date.now(),company:co,role,status:'open',owner,notes:document.getElementById('vac-notes').value.trim(),candidateIds:[],kanbanData:{},createdDate:today(),type:'vacature'};
+  const location=document.getElementById('vac-location').value.trim();
+  const newVac={id:'v'+Date.now(),company:co,role,status:'open',owner,location,notes:document.getElementById('vac-notes').value.trim(),candidateIds:[],kanbanData:{},createdDate:today(),type:'vacature'};
   KANBAN_STAGES.forEach(s=>{newVac.kanbanData[s.key]=[];});
   vacatures.push(newVac);
-  ['vac-co','vac-role','vac-notes'].forEach(x=>document.getElementById(x).value='');
+  ['vac-co','vac-role','vac-notes','vac-location'].forEach(x=>document.getElementById(x).value='');
   document.getElementById('vac-owner').value='';
   document.getElementById('add-vac-inline').style.display='none';
   await DB.upsertVacature(newVac);renderVacSidebar();updateBadges();
