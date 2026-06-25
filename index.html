@@ -644,7 +644,7 @@ b,strong{font-weight:500}
       <div class="twrap">
         <table class="tbl">
           <colgroup><col style="width:75px"><col style="width:120px"><col style="width:105px"><col style="width:100px"><col style="width:58px"><col style="width:68px"><col></colgroup>
-          <thead><tr><th>Datum</th><th>Kandidaat</th><th>Partij</th><th>Rol</th><th>Door</th><th>Methode</th><th>Notitie</th></tr></thead>
+          <thead><tr><th>Datum</th><th>Kandidaat</th><th>Partij</th><th>Rol</th><th>Door</th><th>Methode</th><th>Notitie</th><th></th></tr></thead>
           <tbody id="push-log-tbody"></tbody>
         </table>
       </div>
@@ -852,7 +852,7 @@ b,strong{font-weight:500}
       <div class="twrap">
         <table class="tbl">
           <colgroup><col style="width:75px"><col style="width:120px"><col style="width:105px"><col style="width:100px"><col style="width:58px"><col style="width:68px"><col></colgroup>
-          <thead><tr><th>Datum</th><th>Kandidaat</th><th>Partij</th><th>Rol</th><th>Door</th><th>Methode</th><th>Notitie</th></tr></thead>
+          <thead><tr><th>Datum</th><th>Kandidaat</th><th>Partij</th><th>Rol</th><th>Door</th><th>Methode</th><th>Notitie</th><th></th></tr></thead>
           <tbody id="logtbody"></tbody>
         </table>
       </div>
@@ -2103,7 +2103,7 @@ function renderPushTab(){
   else{pg.innerHTML=pushCVs.map(cv=>{const col=colFor(cv.name),cnt=offerLog.filter(l=>l.candidateId===cv.id).length;return`<div class="push-card" onclick="openModal('${cv.id}')"><div class="ava" style="background:${col.bg};color:${col.tx}">${ini(cv.name)}</div><div class="pname">⚡ ${esc(cv.name)}</div><div class="prole">${esc(cv.role)}</div><div style="display:flex;gap:4px;flex-wrap:wrap"><span class="tag tag-av">${esc(cv.availability)}</span>${cnt>0?`<span class="tag tag-cnt">${cnt}× aangeboden</span>`:''}</div></div>`;}).join('');}
   const pushLog=offerLog.filter(l=>{const cv=cvLib.find(c=>c.id===l.candidateId);return cv?.push;});
   const tb=document.getElementById('push-log-tbody');
-  if(!pushLog.length){tb.innerHTML='<tr><td colspan="7" class="empty">Nog geen aanbiedingen voor push kandidaten</td></tr>';return;}
+  if(!pushLog.length){tb.innerHTML='<tr><td colspan="8" class="empty">Nog geen aanbiedingen voor push kandidaten</td></tr>';return;}
   tb.innerHTML=pushLog.map(l=>logRow(l,'push-log')).join('');
   document.getElementById('nb-push').textContent=pushCVs.length;
 }
@@ -2754,7 +2754,7 @@ async function saveLogEdit(id){
 function renderLogTable(){
   const log=logFilter==='push'?offerLog.filter(l=>l.isPush):logFilter==='mine'?offerLog.filter(l=>l.user===CU):offerLog;
   const tb=document.getElementById('logtbody');
-  if(!log.length){tb.innerHTML='<tr><td colspan="7" class="empty">Nog geen aanbiedingen</td></tr>';return;}
+  if(!log.length){tb.innerHTML='<tr><td colspan="8" class="empty">Nog geen aanbiedingen</td></tr>';return;}
   tb.innerHTML=log.map(l=>logRow(l,l.isPush?'push-log':'')).join('');
 }
 function renderTopCVs(){const cnts={};offerLog.forEach(l=>{cnts[l.candidateId]=(cnts[l.candidateId]||0)+1;});const sorted=[...cvLib].filter(cv=>!cv.archived).sort((a,b)=>(cnts[b.id]||0)-(cnts[a.id]||0)).slice(0,6);document.getElementById('topcvs').innerHTML=sorted.map(cv=>{const col=colFor(cv.name),cnt=cnts[cv.id]||0;return`<div class="cvc" onclick="openModal('${cv.id}')"><div class="ava" style="background:${col.bg};color:${col.tx}">${ini(cv.name)}</div><div class="cvn">${cv.push?'⚡ ':''}${esc(cv.name)}</div><div class="cvr">${esc(cv.role)}</div><div style="display:flex;gap:3px;flex-wrap:wrap"><span class="tag" style="background:${cnt>2?'var(--hgl)':'#f0f0f0'};color:${cnt>2?'var(--hg)':'#aaa'};font-weight:600">${cnt}×</span></div></div>`;}).join('');}
