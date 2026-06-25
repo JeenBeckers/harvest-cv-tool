@@ -680,7 +680,12 @@ b,strong{font-weight:500}
         </div>
         <div class="frow s"><div class="fg"><label class="fl">Notitie</label><textarea class="fi" id="f-no" rows="2" placeholder="warm lead, tweede ronde…" oninput="updatePreview()"></textarea></div></div>
       </div>
-      <div class="panel"><div class="ptitle"><i class="ti ti-users"></i> Kandidaten</div><div id="offerlist"></div><div style="margin-top:7px"><button class="bsm" onclick="window._returnToOffer=true;showTab('lib')"><i class="ti ti-plus"></i> Vanuit kandidatenlijst</button></div></div>
+      <div class="panel">
+        <div class="ptitle"><i class="ti ti-users"></i> Kandidaten</div>
+        <div id="offer-push-quick" style="margin-bottom:8px"></div>
+        <div id="offerlist"></div>
+        <div style="margin-top:7px"><button class="bsm" onclick="window._returnToOffer=true;showTab('lib')"><i class="ti ti-plus"></i> Vanuit kandidatenlijst</button></div>
+      </div>
       <div id="email-section" class="panel">
         <div class="ptitle"><i class="ti ti-mail"></i> E-mailpreview &amp; bijlage</div>
         <div id="email-warn"></div>
@@ -2465,7 +2470,24 @@ async function logAndReset(p,mode,draftId){
 }
 function resetOfferForm(){['f-cp','f-ro','f-no','f-email'].forEach(x=>document.getElementById(x).value='');selectedCompany='';document.getElementById('co-sel-text').textContent='Kies bedrijf…';document.getElementById('co-sel-text').style.color='#bbb';sel.clear();attachments=[];renderAttachments();document.getElementById('register-result').style.display='none';renderCVList();updateSelBar();}
 function setBtnLoading(l){['btn-draft','btn-send'].forEach(id=>{const b=document.getElementById(id);b.disabled=l;b.innerHTML=l?`<span class="spinner"></span> Bezig…`:id==='btn-draft'?`<i class="ti ti-inbox"></i> Concept`:`<i class="ti ti-send"></i> Direct versturen`;});}
-function renderOfferPanel(){const d=document.getElementById('offerlist');if(!sel.size){d.innerHTML='<div class="empty" style="padding:10px 0">Geen kandidaten. <span style="text-decoration:underline;cursor:pointer" onclick="showTab(\'lib\')">Ga naar kandidatenlijst</span>.</div>';return;}d.innerHTML=[...sel].map(id=>{const cv=cvLib.find(c=>c.id===id);if(!cv)return'';const col=colFor(cv.name);return`<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:.5px solid #eee"><div class="ava" style="width:27px;height:27px;font-size:10px;background:${col.bg};color:${col.tx}">${ini(cv.name)}</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500">${cv.push?'⚡ ':''}${esc(cv.name)}</div><div style="font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(cv.role)}</div></div><button class="bsm" onclick="sel.delete('${id}');renderOfferPanel();updatePreview()"><i class="ti ti-x" style="font-size:9px"></i></button></div>`;}).join('');}
+function renderOfferPushQuick(){
+  const el=document.getElementById('offer-push-quick');if(!el)return;
+  const pushCVs=cvLib.filter(cv=>cv.push&&!cv.archived);
+  if(!pushCVs.length){el.innerHTML='';return;}
+  el.innerHTML=`<div style="font-size:10px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em">⚡ Push kandidaten</div>`+
+    `<div style="display:flex;flex-wrap:wrap;gap:5px">`+
+    pushCVs.map(cv=>{
+      const isSel=sel.has(cv.id);
+      const col=colFor(cv.name);
+      return`<button onclick="if(sel.has('${cv.id}')){sel.delete('${cv.id}')}else{sel.add('${cv.id}')};renderOfferPanel();updatePreview();"
+        style="display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:4px;border:1.5px solid ${isSel?'var(--hg)':'var(--border)'};background:${isSel?'var(--hgl)':'#fff'};cursor:pointer;font-family:var(--font);font-size:11px;color:${isSel?'var(--hg)':'#444'}">
+        <div class="ava" style="width:18px;height:18px;font-size:8px;background:${col.bg};color:${col.tx};flex-shrink:0">${ini(cv.name)}</div>
+        ${esc(cv.name)}
+        ${isSel?'<i class="ti ti-check" style="font-size:9px;color:var(--hg)"></i>':''}
+      </button>`;
+    }).join('')+`</div>`;
+}
+function renderOfferPanel(){const d=document.getElementById('offerlist');renderOfferPushQuick();if(!sel.size){d.innerHTML='<div class="empty" style="padding:10px 0">Geen kandidaten. <span style="text-decoration:underline;cursor:pointer" onclick="showTab(\'lib\')">Ga naar kandidatenlijst</span>.</div>';return;}d.innerHTML=[...sel].map(id=>{const cv=cvLib.find(c=>c.id===id);if(!cv)return'';const col=colFor(cv.name);return`<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:.5px solid #eee"><div class="ava" style="width:27px;height:27px;font-size:10px;background:${col.bg};color:${col.tx}">${ini(cv.name)}</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500">${cv.push?'⚡ ':''}${esc(cv.name)}</div><div style="font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(cv.role)}</div></div><button class="bsm" onclick="sel.delete('${id}');renderOfferPanel();updatePreview()"><i class="ti ti-x" style="font-size:9px"></i></button></div>`;}).join('');}
 
 // ── DROPDOWN
 function toggleDrop(){const drop=document.getElementById('co-drop'),s=document.getElementById('co-sel');if(drop.classList.contains('open')){closeDrop();}else{drop.classList.add('open');s.classList.add('open');renderDropList('');setTimeout(()=>{document.getElementById('co-search').value='';document.getElementById('co-search').focus();},50);}}
