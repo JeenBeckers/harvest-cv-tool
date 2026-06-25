@@ -1158,6 +1158,18 @@ const DB = {
     };
     await sbFetch('offer_log', { method: 'POST', body: JSON.stringify(row) });
   },
+  async updateOfferLog(entry) {
+    const row = {
+      company: entry.company, contact: entry.contact || '',
+      role: entry.role || '', note: entry.note || '', date: entry.date
+    };
+    await sbFetch('offer_log?id=eq.' + entry.id, {
+      method: 'PATCH', prefer: 'return=representation', body: JSON.stringify(row)
+    });
+  },
+  async deleteOfferLog(id) {
+    await sbFetch('offer_log?id=eq.' + id, { method: 'DELETE' });
+  },
 
   // USERS
   async getUsers() {
@@ -2672,7 +2684,49 @@ async function renderDashboard(){
   renderLogTable();renderTopCVs();
 }
 function setLogFilter(f,el){logFilter=f;document.querySelectorAll('#view-dash .fchip').forEach(c=>c.classList.remove('active'));el.classList.add('active');renderLogTable();}
-function logRow(l,extraClass=''){const m=!l.emailed||l.emailMode==='none'?`<span style="font-size:10px;color:var(--muted)">Handmatig</span>`:l.emailMode==='send'?`<span style="font-size:10px;color:var(--hg);display:flex;align-items:center;gap:2px"><i class="ti ti-send" style="font-size:9px"></i>Concept</span>`:`<span style="font-size:10px;color:#1a73e8;display:flex;align-items:center;gap:2px"><i class="ti ti-inbox" style="font-size:9px"></i>Draft</span>`;return`<tr class="${extraClass}"><td style="color:var(--muted);font-size:10px;white-space:nowrap">${l.date}</td><td style="font-weight:500;font-size:11px">${l.isPush?'⚡ ':''}${esc(l.candidateName)}</td><td style="font-size:11px">${esc(l.company)}${l.contact?`<br><span style="color:#ccc;font-size:10px">${esc(l.contact)}</span>`:''}</td><td style="font-size:10px;color:var(--muted)">${esc(l.role||'—')}</td><td><span class="upill ${UCLS[l.user]||'up-m'}" style="font-size:9px">${esc(l.user)}</span></td><td>${m}${l.hasAttachments?'<i class="ti ti-paperclip" style="font-size:9px;color:#ccc;margin-left:2px"></i>':''}</td><td style="font-size:10px;color:var(--muted)">${esc(l.note||'—')}</td></tr>`;}
+function logRow(l,extraClass=''){const m=!l.emailed||l.emailMode==='none'?`<span style="font-size:10px;color:var(--muted)">Handmatig</span>`:l.emailMode==='send'?`<span style="font-size:10px;color:var(--hg);display:flex;align-items:center;gap:2px"><i class="ti ti-send" style="font-size:9px"></i>Concept</span>`:`<span style="font-size:10px;color:#1a73e8;display:flex;align-items:center;gap:2px"><i class="ti ti-inbox" style="font-size:9px"></i>Draft</span>`;return`<tr class="${extraClass}"><td style="color:var(--muted);font-size:10px;white-space:nowrap">${l.date}</td><td style="font-weight:500;font-size:11px">${l.isPush?'⚡ ':''}${esc(l.candidateName)}</td><td style="font-size:11px">${esc(l.company)}${l.contact?`<br><span style="color:#ccc;font-size:10px">${esc(l.contact)}</span>`:''}</td><td style="font-size:10px;color:var(--muted)">${esc(l.role||'—')}</td><td><span class="upill ${UCLS[l.user]||'up-m'}" style="font-size:9px">${esc(l.user)}</span></td><td>${m}${l.hasAttachments?'<i class="ti ti-paperclip" style="font-size:9px;color:#ccc;margin-left:2px"></i>':''}</td><td style="font-size:10px;color:var(--muted)">${esc(l.note||'—')}</td><td style="white-space:nowrap"><button class="bsm" onclick="showEditLogModal('${l.id}')" style="font-size:9px;padding:2px 5px" title="Wijzigen"><i class="ti ti-pencil" style="font-size:9px"></i></button> <button class="bsm" onclick="deleteLogEntry('${l.id}')" style="font-size:9px;padding:2px 5px;color:var(--muted)" title="Verwijderen"><i class="ti ti-trash" style="font-size:9px"></i></button></td></tr>`;}
+async function deleteLogEntry(id){
+  if(!confirm('Registratie verwijderen?'))return;
+  offerLog=offerLog.filter(l=>l.id!==id);
+  try{ await DB.deleteOfferLog(id); }catch(e){ console.error('deleteOfferLog failed:',e); }
+  renderLogTable();renderPushTab();renderDashboard();updateBadges();showToast('Registratie verwijderd');
+}
+function showEditLogModal(id){
+  const l=offerLog.find(x=>x.id===id);if(!l)return;
+  document.getElementById('edit-log-modal')?.remove();
+  const m=document.createElement('div');
+  m.id='edit-log-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+  m.innerHTML=`<div style="background:#fff;border-radius:8px;padding:20px;width:360px;font-family:var(--font)">
+    <div style="font-size:13px;font-weight:500;color:var(--hg);margin-bottom:14px">Registratie wijzigen</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${esc(l.candidateName)}</div>
+    <div class="fg" style="margin-bottom:8px"><label class="fl">Organisatie</label><input class="fi" id="el-company" value="${esc(l.company)}" style="font-size:12px"></div>
+    <div class="fg" style="margin-bottom:8px"><label class="fl">Contactpersoon</label><input class="fi" id="el-contact" value="${esc(l.contact||'')}" style="font-size:12px"></div>
+    <div class="fg" style="margin-bottom:8px"><label class="fl">Rol</label><input class="fi" id="el-role" value="${esc(l.role||'')}" style="font-size:12px"></div>
+    <div class="fg" style="margin-bottom:8px"><label class="fl">Datum</label><input class="fi" id="el-date" value="${esc(l.date||'')}" style="font-size:12px"></div>
+    <div class="fg" style="margin-bottom:14px"><label class="fl">Notitie</label><input class="fi" id="el-note" value="${esc(l.note||'')}" style="font-size:12px"></div>
+    <div style="display:flex;gap:6px;justify-content:flex-end">
+      <button class="bmain o" onclick="document.getElementById('edit-log-modal').remove()" style="font-size:11px;padding:6px 12px">Annuleren</button>
+      <button class="bmain g" onclick="saveLogEdit('${id}')" style="font-size:11px;padding:6px 14px">Opslaan</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{ if(e.target===m) m.remove(); });
+  document.getElementById('el-company').focus();
+}
+async function saveLogEdit(id){
+  const l=offerLog.find(x=>x.id===id);if(!l)return;
+  l.company=document.getElementById('el-company').value.trim()||l.company;
+  l.contact=document.getElementById('el-contact').value.trim();
+  l.role=document.getElementById('el-role').value.trim();
+  l.date=document.getElementById('el-date').value.trim()||l.date;
+  l.note=document.getElementById('el-note').value.trim();
+  document.getElementById('edit-log-modal')?.remove();
+  try{ await DB.updateOfferLog(l); }catch(e){ console.error('updateOfferLog failed:',e); }
+  renderLogTable();renderPushTab();renderDashboard();
+  if(window._editId) openModal(window._editId);
+  showToast('Registratie bijgewerkt');
+}
 function renderLogTable(){
   const log=logFilter==='push'?offerLog.filter(l=>l.isPush):logFilter==='mine'?offerLog.filter(l=>l.user===CU):offerLog;
   const tb=document.getElementById('logtbody');
