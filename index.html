@@ -2358,8 +2358,12 @@ function renderCVList(){
 }
 function toggleSel(id,checked){
   if(checked) sel.add(id); else sel.delete(id);
+  if(checked && window._returnToOffer){
+    window._returnToOffer=false;
+    showTab('offer');
+    return;
+  }
   renderCVList();
-  if(checked && window._returnToOffer){ window._returnToOffer=false; showTab('offer'); }
 }
 function toggleAll(checked){applyFilters([...cvLib]).forEach(cv=>{if(checked)sel.add(cv.id);else sel.delete(cv.id);});renderCVList();}
 function quickOffer(id){sel.clear();sel.add(id);showTab('offer');}
