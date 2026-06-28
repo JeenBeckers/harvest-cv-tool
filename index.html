@@ -376,8 +376,9 @@ b,strong{font-weight:500}
 .kanban-card-name{font-size:12px;font-weight:400;color:var(--hg);margin-bottom:2px}
 .kanban-card-role{font-size:10px;color:var(--muted);margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:300}
 .kanban-card-tags{display:flex;gap:3px;flex-wrap:wrap}
-.kanban-card-del{position:absolute;top:5px;right:5px;opacity:1;cursor:pointer;font-size:12px;color:#bbb;background:#f5f5f5;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;line-height:1}
-.kanban-card-del:hover{background:var(--pushl);color:var(--push)}
+.kanban-card-del{position:absolute;top:5px;right:5px;opacity:0;cursor:pointer;font-size:12px;color:var(--push);background:var(--pushl);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;line-height:1;transition:opacity .15s}
+.kanban-card:hover .kanban-card-del{opacity:1}
+.kanban-card-del:hover{background:#fcd5cc}
 .kanban-empty{padding:10px 7px;font-size:11px;color:var(--muted);text-align:center;font-style:italic;font-weight:300}
 .kanban-add-btn{padding:7px 10px;border-top:1px solid var(--hgl);flex-shrink:0}
 .kanban-add-btn button{width:100%;padding:5px;border-radius:3px;border:1px dashed var(--border);background:transparent;color:var(--muted);font-size:11px;cursor:pointer;transition:all .12s;font-family:var(--font);font-weight:300}
