@@ -786,6 +786,9 @@ b,strong{font-weight:500}
               <button class="owner-chip" onclick="setVacSidebarOwner('Frank',this)" style="font-size:10px;padding:2px 7px">Frank</button>
               <button class="owner-chip" onclick="setVacSidebarOwner('Jeen',this)" style="font-size:10px;padding:2px 7px">Jeen</button>
             </div>
+            <div style="display:flex;align-items:center;gap:5px">
+              <button id="btn-toon-gesloten" onclick="showClosedVac=!showClosedVac;this.classList.toggle('active',showClosedVac);renderVacSidebar()" class="owner-chip" style="font-size:10px;padding:2px 7px"><i class="ti ti-archive" style="font-size:9px"></i> Toon gesloten</button>
+            </div>
           </div>
           <div id="vac-sidebar-list"></div>
         </div>
@@ -1241,7 +1244,7 @@ function dHTMLe(s){return s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/
 function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):'';}
 
 let CU='Marlie',sel=new Set(),offerMode='register',logFilter='all';
-let vacTypeFilter='all', vacSidebarOwner='all';
+let vacTypeFilter='all', vacSidebarOwner='all', showClosedVac=false;
 let activeFilters={sales:'all',recruit:'all',bureau:'all',cv:'all',push:'all',tc:'all',role:'all',avail:'all'};
 let cvLib=[],offerLog=[],companies=[...DEFAULT_COMPANIES],vacatures=[];
 let userEmails={...DEFAULT_EMAILS},signature=DEFAULT_SIG,selectedCompany='';
@@ -1573,6 +1576,86 @@ async function toggleVacStatus(id){
   renderVacSidebar();
   if(window._activeVacId===id) renderKanbanHeader(v);
 }
+async function setVacStatus(id, status){
+  const v=vacatures.find(x=>x.id===id);if(!v)return;
+  v.status=status;
+  try{ await DB.upsertVacature(v); }catch(e){ console.error('setVacStatus failed:',e); }
+  renderVacSidebar();
+  if(window._activeVacId===id) renderKanbanHeader(v);
+  showToast(status==='open'?'Vacature actief gezet':'Vacature gesloten');
+}
+function toggleVacMenu(id){
+  const menu=document.getElementById('vac-menu-'+id);
+  if(!menu)return;
+  const isOpen=menu.style.display!=='none';
+  document.querySelectorAll('[id^="vac-menu-"]').forEach(m=>m.style.display='none');
+  if(!isOpen){ menu.style.display='block'; setTimeout(()=>document.addEventListener('click',()=>closeVacMenu(id),{once:true}),0); }
+}
+function closeVacMenu(id){
+  const menu=document.getElementById('vac-menu-'+id);
+  if(menu) menu.style.display='none';
+}
+function showVacEditModal(id){
+  const v=vacatures.find(x=>x.id===id);if(!v)return;
+  document.getElementById('vac-edit-modal')?.remove();
+  const isCamp=v.type==='campagne';
+  const m=document.createElement('div');
+  m.id='vac-edit-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+  m.innerHTML=`<div style="background:#fff;border-radius:8px;padding:22px;width:420px;font-family:var(--font);max-height:90vh;overflow-y:auto">
+    <div style="font-size:13px;font-weight:500;color:var(--hg);margin-bottom:16px">${isCamp?'Campagne':'Vacature'} bewerken</div>
+    ${!isCamp?`<div class="fg" style="margin-bottom:8px"><label class="fl">Bedrijf</label><input class="fi" id="ve-company" value="${esc(v.company||'')}" style="font-size:12px"></div>`:''}
+    <div class="fg" style="margin-bottom:8px"><label class="fl">${isCamp?'Naam campagne':'Rol'}</label><input class="fi" id="ve-role" value="${esc(v.role||'')}" style="font-size:12px"></div>
+    ${!isCamp?`<div class="fg" style="margin-bottom:8px"><label class="fl">Standplaats</label><input class="fi" id="ve-location" value="${esc(v.location||'')}" style="font-size:12px"></div>`:''}
+    <div class="fg" style="margin-bottom:8px"><label class="fl">Eigenaar (Sales)</label>
+      <select class="fi" id="ve-owner" style="font-size:12px">
+        <option value="">— Geen eigenaar —</option>
+        ${['Marlie','Julieta','Frank','Jeen'].map(o=>`<option${v.owner===o?' selected':''}>${o}</option>`).join('')}
+      </select>
+    </div>
+    ${isCamp?`
+    <div class="frow" style="gap:6px;margin-bottom:8px">
+      <div class="fg"><label class="fl">Periode</label>
+        <select class="fi" id="ve-periode" style="font-size:12px">
+          ${['September 2025','Februari 2026','September 2026','Februari 2027'].map(p=>`<option${v.periode===p?' selected':''}>${p}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Vertical</label>
+        <select class="fi" id="ve-vertical" style="font-size:12px">
+          ${['All','Energy','Finance','Government','Other'].map(vt=>`<option value="${vt}"${v.vertical===vt?' selected':''}>${vt==='All'?'Alle verticals':vt}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="fg" style="margin-bottom:8px"><label class="fl">Doel plaatsingen</label><input class="fi" id="ve-target" type="number" min="1" value="${v.target||8}" style="font-size:12px"></div>`:''}
+    <div class="fg" style="margin-bottom:16px"><label class="fl">Notities</label><textarea class="fi" id="ve-notes" rows="3" style="font-size:12px">${esc(v.notes||'')}</textarea></div>
+    <div style="display:flex;gap:6px;justify-content:flex-end">
+      <button class="bmain o" onclick="document.getElementById('vac-edit-modal').remove()" style="font-size:11px;padding:6px 12px">Annuleren</button>
+      <button class="bmain g" onclick="saveVacEdit('${id}')" style="font-size:11px;padding:6px 14px">Opslaan</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{ if(e.target===m) m.remove(); });
+  document.getElementById('ve-role').focus();
+}
+async function saveVacEdit(id){
+  const v=vacatures.find(x=>x.id===id);if(!v)return;
+  const isCamp=v.type==='campagne';
+  if(!isCamp) v.company=document.getElementById('ve-company').value.trim()||v.company;
+  v.role=document.getElementById('ve-role').value.trim()||v.role;
+  if(!isCamp) v.location=document.getElementById('ve-location').value.trim();
+  v.owner=document.getElementById('ve-owner').value;
+  v.notes=document.getElementById('ve-notes').value.trim();
+  if(isCamp){
+    v.periode=document.getElementById('ve-periode').value;
+    v.vertical=document.getElementById('ve-vertical').value;
+    v.target=parseInt(document.getElementById('ve-target').value)||8;
+  }
+  document.getElementById('vac-edit-modal').remove();
+  try{ await DB.upsertVacature(v); }catch(e){ console.error('saveVacEdit failed:',e); }
+  renderVacSidebar();
+  if(window._activeVacId===id){ renderKanbanHeader(v); }
+  showToast('Wijzigingen opgeslagen');
+}
 async function changeVacOwner(id, newOwner){
   const v=vacatures.find(x=>x.id===id);if(!v)return;
   v.owner=newOwner;
@@ -1631,6 +1714,7 @@ function renderVacSidebar(){
   const search=(document.getElementById('vac-search')?.value||'').toLowerCase().trim();
   // Apply filters
   let filtered=vacatures;
+  if(!showClosedVac) filtered=filtered.filter(v=>v.status==='open');
   if(vacTypeFilter!=='all') filtered=filtered.filter(v=>(v.type||'vacature')===vacTypeFilter);
   if(vacSidebarOwner!=='all') filtered=filtered.filter(v=>v.owner===vacSidebarOwner);
   if(search) filtered=filtered.filter(v=>(v.company+' '+v.role).toLowerCase().includes(search));
@@ -1728,10 +1812,20 @@ function renderKanbanHeader(v){
     const pct=Math.min(100,Math.round((aangenomen/target)*100));
     hdr.innerHTML=`<div style="width:100%">
       <div class="camp-header-card" style="border:none;padding:0 0 12px 0">
-        <div class="camp-header-title">
+        <div class="camp-header-title" style="display:flex;align-items:center;gap:8px">
           <i class="ti ti-speakerphone" style="font-size:13px;color:#6b21a8"></i>
-          ${esc(v.role)}
-          <span class="${v.status==='open'?'status-open':'status-closed'}" style="cursor:pointer;font-size:10px" onclick="toggleVacStatus('${v.id}')">${v.status==='open'?'Actief':'Gesloten'}</span>
+          <span style="flex:1">${esc(v.role)}</span>
+          <span class="${v.status==='open'?'status-open':'status-closed'}" style="font-size:10px">${v.status==='open'?'Actief':'Gesloten'}</span>
+          <div style="position:relative;display:inline-block">
+            <button onclick="toggleVacMenu('${v.id}')" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:3px 7px;font-size:12px;color:var(--muted)" title="Opties">···</button>
+            <div id="vac-menu-${v.id}" style="display:none;position:absolute;right:0;top:100%;margin-top:3px;background:#fff;border:1px solid var(--border);border-radius:5px;box-shadow:0 4px 12px rgba(0,0,0,.12);z-index:200;min-width:140px;font-family:var(--font)">
+              <div onclick="setVacStatus('${v.id}','open');closeVacMenu('${v.id}')" style="padding:8px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:7px" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background=''"><i class="ti ti-circle-check" style="font-size:11px;color:#2e7d32"></i> Actief</div>
+              <div onclick="setVacStatus('${v.id}','closed');closeVacMenu('${v.id}')" style="padding:8px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:7px" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background=''"><i class="ti ti-archive" style="font-size:11px;color:var(--muted)"></i> Sluiten</div>
+              <div onclick="showVacEditModal('${v.id}');closeVacMenu('${v.id}')" style="padding:8px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:7px" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background=''"><i class="ti ti-pencil" style="font-size:11px;color:var(--hg)"></i> Bewerken</div>
+              <div style="border-top:1px solid #eee;margin:3px 0"></div>
+              <div onclick="deleteVacature('${v.id}');closeVacMenu('${v.id}')" style="padding:8px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:7px;color:var(--push)" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background=''"><i class="ti ti-trash" style="font-size:11px"></i> Verwijderen</div>
+            </div>
+          </div>
         </div>
         <div class="camp-header-meta" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           ${v.periode?`📅 ${esc(v.periode)}`:''}
@@ -1749,10 +1843,6 @@ function renderKanbanHeader(v){
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);margin-bottom:3px">
           <span>${aangenomen} van ${target} plaatsingen (${pct}%)</span>
-          <div style="display:flex;gap:4px">
-            <span class="${v.status==='open'?'status-open':'status-closed'}" style="cursor:pointer;font-size:10px" onclick="toggleVacStatus('${v.id}')" title="Status wisselen">${v.status==='open'?'Actief':'Gesloten'}</span>
-            <button class="bsm" onclick="deleteVacature('${v.id}')" style="font-size:10px;color:var(--muted);border:none;background:transparent;cursor:pointer" title="Verwijderen"><i class="ti ti-trash" style="font-size:10px"></i></button>
-          </div>
         </div>
         <div class="camp-big-bar"><div class="camp-big-fill ${pct>=100?'done':''}" style="width:${pct}%"></div></div>
       </div>
@@ -1778,8 +1868,17 @@ function renderKanbanHeader(v){
       </div>
     </div>
     <div style="display:flex;gap:6px;align-items:center">
-      <span class="${v.status==='open'?'status-open':'status-closed'}" style="cursor:pointer" onclick="toggleVacStatus('${v.id}')" title="Klik om status te wisselen">${v.status==='open'?'Open':'Gesloten'}</span>
-      <button class="bsm" onclick="deleteVacature('${v.id}')" style="font-size:10px;color:var(--muted)"><i class="ti ti-trash" style="font-size:10px"></i></button>
+      <span class="${v.status==='open'?'status-open':'status-closed'}" style="font-size:10px">${v.status==='open'?'Open':'Gesloten'}</span>
+      <div style="position:relative;display:inline-block">
+        <button onclick="toggleVacMenu('${v.id}')" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:3px 7px;font-size:12px;color:var(--muted)" title="Opties">···</button>
+        <div id="vac-menu-${v.id}" style="display:none;position:absolute;right:0;top:100%;margin-top:3px;background:#fff;border:1px solid var(--border);border-radius:5px;box-shadow:0 4px 12px rgba(0,0,0,.12);z-index:200;min-width:140px;font-family:var(--font)">
+          <div onclick="setVacStatus('${v.id}','open');closeVacMenu('${v.id}')" style="padding:8px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:7px" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background=''"><i class="ti ti-circle-check" style="font-size:11px;color:#2e7d32"></i> Actief</div>
+          <div onclick="setVacStatus('${v.id}','closed');closeVacMenu('${v.id}')" style="padding:8px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:7px" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background=''"><i class="ti ti-archive" style="font-size:11px;color:var(--muted)"></i> Sluiten</div>
+          <div onclick="showVacEditModal('${v.id}');closeVacMenu('${v.id}')" style="padding:8px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:7px" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background=''"><i class="ti ti-pencil" style="font-size:11px;color:var(--hg)"></i> Bewerken</div>
+          <div style="border-top:1px solid #eee;margin:3px 0"></div>
+          <div onclick="deleteVacature('${v.id}');closeVacMenu('${v.id}')" style="padding:8px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:7px;color:var(--push)" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background=''"><i class="ti ti-trash" style="font-size:11px"></i> Verwijderen</div>
+        </div>
+      </div>
     </div>`;
 }
 
@@ -2023,6 +2122,7 @@ async function addToKanban(stageKey,vacId){
 }
 
 async function removeFromKanban(vacId,stageKey,candId){
+  if(!confirm('Kandidaat verwijderen uit deze fase?'))return;
   const v=vacatures.find(x=>x.id===vacId);if(!v)return;
   if(v.kanbanData&&v.kanbanData[stageKey]){
     v.kanbanData[stageKey]=v.kanbanData[stageKey].filter(id=>id!==candId);
