@@ -1744,7 +1744,8 @@ function renderVacSidebar(){
     ${allAang.length>0?`<span><i class="ti ti-check" style="font-size:9px"></i> ${allAang.length} aangenomen</span>`:''}`;
 
   document.getElementById('nb-vac').textContent=vacatures.filter(v=>v.status==='open').length;
-  list.innerHTML=filtered.map(v=>{
+  const sortedFiltered=[...filtered.filter(v=>v.type==='campagne'),...filtered.filter(v=>v.type!=='campagne')];
+  list.innerHTML=sortedFiltered.map(v=>{
     const kd=v.kanbanData||{};
     const isActive=window._activeVacId===v.id;
     const voorgesteld=(kd.voorgesteld||[]).length, gesprek=((kd.gesprek||[]).length+(kd.gesprek2||[]).length), aangenomen=(kd.aangenomen||[]).length;
