@@ -554,6 +554,7 @@ b,strong{font-weight:500}
     <div class="navtab" onclick="showTab('archive')" id="tab-archive"><i class="ti ti-archive"></i> Archief <span class="nbadge" id="nb-archive">0</span></div>
     <div class="navtab" onclick="showTab('companies')" id="tab-companies"><i class="ti ti-building"></i> Bedrijven <span class="nbadge" id="nb-co">0</span></div>
     <div class="navtab" onclick="showTab('match')" id="tab-match"><i class="ti ti-sparkles"></i> AI Match</div>
+    <div class="navtab" onclick="showTab('meetings')" id="tab-meetings"><i class="ti ti-calendar"></i> Afspraken</div>
     <div class="navtab" onclick="showTab('settings')" id="tab-settings"><i class="ti ti-settings"></i> Instellingen</div>
   </div>
   <div class="content">
@@ -890,6 +891,10 @@ b,strong{font-weight:500}
       <div class="comp-grid" id="comp-grid"></div>
     </div>
 
+    <div id="view-meetings" style="display:none">
+      <!-- inhoud via renderMeetings() -->
+    </div>
+
     <!-- AI MATCH -->
     <div id="view-match" style="display:none">
       <div class="stitle"><i class="ti ti-sparkles" style="font-size:13px"></i> AI Match</div>
@@ -1216,7 +1221,29 @@ const DB = {
   },
   async setWeekStats(stats) {
     try { await this.setSetting('week_stats', JSON.stringify(stats)); } catch(e) { console.error('setWeekStats:', e); }
-  }
+  },
+  async getMeetings() {
+    const rows = await sbFetch('meetings?order=created_at.desc&limit=1000');
+    return rows.map(r => ({
+      id: r.id, user: r.user_name, company: r.company,
+      contact: r.contact || '', description: r.description || '',
+      weekKey: r.week_key, meetingDate: r.meeting_date || '',
+      createdAt: r.created_at
+    }));
+  },
+  async upsertMeeting(m) {
+    const row = {
+      id: m.id, user_name: m.user, company: m.company,
+      contact: m.contact || '', description: m.description || '',
+      week_key: m.weekKey, meeting_date: m.meetingDate || ''
+    };
+    await sbFetch('meetings?on_conflict=id', {
+      method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify(row)
+    });
+  },
+  async deleteMeeting(id) {
+    await sbFetch('meetings?id=eq.' + id, { method: 'DELETE' });
+  },
 };
 // ══════════════════════════════════════════════
 const COLS=[{bg:'#e8f2ff',tx:'#1a56a8'},{bg:'#fef3e2',tx:'#a05a00'},{bg:'#f3e8ff',tx:'#6b21a8'},{bg:'#e8f5e9',tx:'#2e7d32'},{bg:'#fde8e8',tx:'#9b1c1c'},{bg:'#e8f5f0',tx:'#065f46'},{bg:'#fef9e7',tx:'#78350f'}];
@@ -1245,6 +1272,7 @@ function dHTMLe(s){return s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/
 function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):'';}
 
 let CU='Marlie',sel=new Set(),offerMode='register',logFilter='all';
+let meetings = [], meetingsFilter = 'all';
 let vacTypeFilter='all', vacSidebarOwner='all', showClosedVac=false;
 let activeFilters={sales:'all',recruit:'all',bureau:'all',cv:'all',push:'all',tc:'all',role:'all',avail:'all'};
 let cvLib=[],offerLog=[],companies=[...DEFAULT_COMPANIES],vacatures=[];
@@ -1431,6 +1459,7 @@ async function loadFromStorage(){
     if(!cands.length){ for(const cv of CSV_SEED_CVS) await DB.upsertCandidate(cv).catch(()=>{}); }
     if(!comps.length){ for(const c of DEFAULT_COMPANIES) await DB.addCompany(c).catch(()=>{}); }
     if(!users.length){ for(const u of DEFAULT_USERS) await DB.upsertUser(u).catch(()=>{}); }
+    meetings = await DB.getMeetings().catch(()=>[]);
     console.log('DB loaded ok');
   }catch(e){
     console.error('DB load failed:',e);
@@ -3457,7 +3486,7 @@ function closeVacModal(){document.getElementById('vac-modal').style.display='non
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('modal').style.display='none';document.getElementById('vac-modal').style.display='none';document.getElementById('merge-modal').style.display='none';document.getElementById('bulk-modal').style.display='none';}});
 
 // ── GENERAL
-function refreshAll(){renderCVList();renderPushTab();renderDashboard();renderCompanies();renderVacatures();renderArchive();updateBadges();}
+function refreshAll(){renderCVList();renderPushTab();renderDashboard();renderCompanies();renderVacatures();renderArchive();updateBadges();renderMeetings();}
 function updateBadges(){
   const active=cvLib.filter(cv=>!cv.archived).length;
   const pushCount=cvLib.filter(cv=>cv.push&&!cv.archived).length;
@@ -3478,7 +3507,7 @@ function setUser(u){
   renderDashboard();updatePreview();
 }
 function showTab(t){
-  ['lib','push','offer','vac','dash','archive','companies','match','settings'].forEach(x=>{
+  ['lib','push','offer','vac','dash','archive','companies','match','meetings','settings'].forEach(x=>{
     const v=document.getElementById('view-'+x); if(v) v.style.display=x===t?'':'none';
     const tb=document.getElementById('tab-'+x); if(tb) tb.classList.toggle('active',x===t);
   });
@@ -3491,6 +3520,7 @@ function showTab(t){
   if(t==='companies')renderCompanies();
   if(t==='settings')renderSettings();
   if(t==='match')initMatchTab();
+  if(t==='meetings') renderMeetings();
   if(t==='vac'){ document.querySelector('.content').style.padding = '0'; } else { document.querySelector('.content').style.padding = '16px'; }
 }
 // ── AI MATCH
@@ -3763,5 +3793,222 @@ function downloadCVasPDF(id){
     document.getElementById("login-user")?.focus();
   }
 })();
+
+// ── MEETINGS TAB
+const MTG_USERS = ['Marlie','Frank','Julieta'];
+const MTG_TARGET = 7;
+
+function currentWeekKey() { return isoWeekKey(new Date()); }
+
+function weekLabel(wk) {
+  const [yr, wn] = wk.split('-W');
+  return `W${wn} · ${yr}`;
+}
+
+function renderMeetings() {
+  const el = document.getElementById('view-meetings');
+  if(!el || el.style.display === 'none') return;
+
+  const weeks = [];
+  const now = new Date();
+  for(let i=7; i>=0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i*7);
+    weeks.push(isoWeekKey(d));
+  }
+
+  const filterUser = meetingsFilter === 'all' ? null : meetingsFilter;
+  const visibleMeetings = filterUser
+    ? meetings.filter(m => m.user === filterUser)
+    : meetings;
+
+  const cwk = currentWeekKey();
+  const kpiCards = MTG_USERS.map(u => {
+    const cnt = meetings.filter(m => m.user === u && m.weekKey === cwk).length;
+    const pct = Math.min(100, Math.round(cnt / MTG_TARGET * 100));
+    const ok = cnt >= MTG_TARGET;
+    return `<div class="scard" style="min-width:140px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span class="upill up-${u==='Marlie'?'m':u==='Frank'?'f':'j'}">${u}</span>
+        <span style="font-size:18px;font-weight:600;color:${ok?'#2e7d32':'var(--hg)'}">${cnt}</span>
+      </div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${ok?'#4caf50':'var(--hg)'}"></div></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">${cnt} / ${MTG_TARGET} deze week</div>
+    </div>`;
+  }).join('');
+
+  const COLORS = {Marlie:'#092B13',Frank:'#782410',Julieta:'#4a1d96'};
+  const chartW=560, chartH=140, padL=30, padB=24, padT=10, padR=10;
+  const innerW=chartW-padL-padR, innerH=chartH-padB-padT;
+  const maxVal = Math.max(MTG_TARGET, ...MTG_USERS.flatMap(u => weeks.map(wk => meetings.filter(m=>m.user===u&&m.weekKey===wk).length)));
+  const xStep = innerW / Math.max(weeks.length-1, 1);
+  const yScale = innerH / maxVal;
+
+  const gridLines = [0,MTG_TARGET,maxVal].filter((v,i,a)=>a.indexOf(v)===i).map(v=>{
+    const y = padT + innerH - v*yScale;
+    return `<line x1="${padL}" y1="${y}" x2="${chartW-padR}" y2="${y}" stroke="${v===MTG_TARGET?'#4caf50':'#e8e8e8'}" stroke-width="${v===MTG_TARGET?1.5:0.5}" stroke-dasharray="${v===MTG_TARGET?'4,3':''}"/>
+    <text x="${padL-4}" y="${y+3}" text-anchor="end" font-size="9" fill="#aaa">${v}</text>`;
+  }).join('');
+
+  const lines = MTG_USERS.map(u => {
+    const pts = weeks.map((wk,i)=>{
+      const cnt = meetings.filter(m=>m.user===u&&m.weekKey===wk).length;
+      return [padL + i*xStep, padT + innerH - cnt*yScale];
+    });
+    const d = pts.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+    const dots = pts.map((p,i)=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="${COLORS[u]}"/>`).join('');
+    return `<path d="${d}" fill="none" stroke="${COLORS[u]}" stroke-width="1.5" opacity="0.85"/>${dots}`;
+  }).join('');
+
+  const xLabels = weeks.map((wk,i)=>{
+    const [,wn]=wk.split('-W');
+    const x = padL + i*xStep;
+    return `<text x="${x}" y="${chartH-6}" text-anchor="middle" font-size="9" fill="#aaa">W${wn}</text>`;
+  }).join('');
+
+  const legend = MTG_USERS.map(u=>`<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:${COLORS[u]}"><span style="width:12px;height:2px;background:${COLORS[u]};display:inline-block;border-radius:2px"></span>${u}</span>`).join('');
+
+  const sorted = [...visibleMeetings].sort((a,b)=>b.weekKey.localeCompare(a.weekKey)||b.createdAt?.localeCompare(a.createdAt||'')||0);
+
+  el.innerHTML = `
+    <div class="stitle"><i class="ti ti-calendar" style="font-size:15px;vertical-align:middle"></i> Afspraken</div>
+    <div class="ssub">Commerciële afspraken · doel: ${MTG_TARGET} per week per persoon</div>
+
+    <div class="panel">
+      <div class="ptitle"><i class="ti ti-target"></i> KPI deze week · ${weekLabel(cwk)}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">${kpiCards}</div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle" style="margin-bottom:6px"><i class="ti ti-chart-line"></i> Ontwikkeling (8 weken)</div>
+      <div style="margin-bottom:6px;display:flex;gap:10px">${legend}</div>
+      <svg viewBox="0 0 ${chartW} ${chartH}" style="width:100%;max-width:${chartW}px;display:block">
+        ${gridLines}${lines}${xLabels}
+      </svg>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle"><i class="ti ti-plus"></i> Afspraak registreren</div>
+      <div class="frow" style="gap:8px;flex-wrap:wrap">
+        <div class="fg" style="min-width:140px"><label class="fl">Bedrijf *</label><input class="fi" id="mtg-company" placeholder="ABN AMRO" style="font-size:12px"></div>
+        <div class="fg" style="min-width:120px"><label class="fl">Contactpersoon</label><input class="fi" id="mtg-contact" placeholder="Jan de Vries" style="font-size:12px"></div>
+        <div class="fg" style="min-width:80px"><label class="fl">Weeknummer</label><input class="fi" id="mtg-week" placeholder="${cwk}" value="${cwk}" style="font-size:12px"></div>
+        <div class="fg" style="min-width:80px"><label class="fl">Door</label>
+          <select class="fi" id="mtg-user" style="font-size:12px">
+            ${['Marlie','Frank','Julieta','Jeen'].map(u=>`<option${u===CU?' selected':''}>${u}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="fg" style="margin-top:8px"><label class="fl">Omschrijving / doel</label><textarea class="fi" id="mtg-desc" rows="2" placeholder="Kennismaking, pipeline bespreken, offerte…" style="font-size:12px"></textarea></div>
+      <div class="actbar" style="margin-top:10px">
+        <button class="bmain g" onclick="addMeeting()" style="font-size:11px;padding:6px 14px"><i class="ti ti-check"></i> Toevoegen</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle" style="margin-bottom:8px"><i class="ti ti-list"></i> Alle afspraken</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="owner-chip ${meetingsFilter==='all'?'active':''}" onclick="setMeetingsFilter('all',this)">Iedereen</button>
+        ${['Marlie','Frank','Julieta','Jeen'].map(u=>`<button class="owner-chip ${meetingsFilter===u?'active':''}" onclick="setMeetingsFilter('${u}',this)">${u}</button>`).join('')}
+      </div>
+      ${sorted.length===0?'<div class="empty" style="padding:20px 0">Nog geen afspraken geregistreerd.</div>':`
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="border-bottom:1.5px solid var(--border);color:var(--muted)">
+          <th style="text-align:left;padding:5px 8px;font-weight:400">Week</th>
+          <th style="text-align:left;padding:5px 8px;font-weight:400">Door</th>
+          <th style="text-align:left;padding:5px 8px;font-weight:400">Bedrijf</th>
+          <th style="text-align:left;padding:5px 8px;font-weight:400">Contact</th>
+          <th style="text-align:left;padding:5px 8px;font-weight:400">Omschrijving</th>
+          <th style="padding:5px 8px"></th>
+        </tr></thead>
+        <tbody>${sorted.map(m=>`<tr style="border-bottom:.5px solid #f0f0f0">
+          <td style="padding:6px 8px;white-space:nowrap;color:var(--muted)">${weekLabel(m.weekKey)}</td>
+          <td style="padding:6px 8px"><span class="upill up-${m.user==='Marlie'?'m':m.user==='Frank'?'f':m.user==='Julieta'?'j':'b'}" style="font-size:9px">${esc(m.user)}</span></td>
+          <td style="padding:6px 8px;font-weight:400">${esc(m.company)}</td>
+          <td style="padding:6px 8px;color:var(--muted)">${esc(m.contact||'—')}</td>
+          <td style="padding:6px 8px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.description||'—')}</td>
+          <td style="padding:6px 8px;white-space:nowrap">
+            <button class="bsm" onclick="showEditMeetingModal('${m.id}')" style="font-size:9px;padding:2px 5px" title="Bewerken"><i class="ti ti-pencil" style="font-size:9px"></i></button>
+            <button class="bsm" onclick="deleteMeeting('${m.id}')" style="font-size:9px;padding:2px 5px;color:var(--muted)" title="Verwijderen"><i class="ti ti-trash" style="font-size:9px"></i></button>
+          </td>
+        </tr>`).join('')}</tbody>
+      </table>`}
+    </div>`;
+}
+
+function setMeetingsFilter(f, el) {
+  meetingsFilter = f;
+  document.querySelectorAll('#view-meetings .owner-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  renderMeetings();
+}
+
+async function addMeeting() {
+  const company = document.getElementById('mtg-company')?.value.trim();
+  if(!company){ showToast('Vul een bedrijf in'); return; }
+  const m = {
+    id: 'mtg_' + Date.now() + '_' + Math.random().toString(36).slice(2),
+    user: document.getElementById('mtg-user').value,
+    company,
+    contact: document.getElementById('mtg-contact').value.trim(),
+    description: document.getElementById('mtg-desc').value.trim(),
+    weekKey: document.getElementById('mtg-week').value.trim() || currentWeekKey(),
+    meetingDate: '',
+    createdAt: new Date().toISOString()
+  };
+  meetings.unshift(m);
+  try { await DB.upsertMeeting(m); } catch(e) { console.error('addMeeting failed:', e); showToast('⚠ Opslaan mislukt'); }
+  ['mtg-company','mtg-contact','mtg-desc'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  renderMeetings();
+  showToast('✓ Afspraak toegevoegd');
+}
+
+async function deleteMeeting(id) {
+  if(!confirm('Afspraak verwijderen?')) return;
+  meetings = meetings.filter(m=>m.id!==id);
+  try { await DB.deleteMeeting(id); } catch(e) { console.error('deleteMeeting failed:', e); }
+  renderMeetings();
+  showToast('Afspraak verwijderd');
+}
+
+function showEditMeetingModal(id) {
+  const m = meetings.find(x=>x.id===id); if(!m) return;
+  document.getElementById('mtg-edit-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'mtg-edit-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;border-radius:8px;padding:22px;width:400px;font-family:var(--font)">
+    <div style="font-size:13px;font-weight:500;color:var(--hg);margin-bottom:14px">Afspraak bewerken</div>
+    <div class="fg" style="margin-bottom:8px"><label class="fl">Bedrijf *</label><input class="fi" id="me-company" value="${esc(m.company)}" style="font-size:12px"></div>
+    <div class="fg" style="margin-bottom:8px"><label class="fl">Contactpersoon</label><input class="fi" id="me-contact" value="${esc(m.contact)}" style="font-size:12px"></div>
+    <div class="fg" style="margin-bottom:8px"><label class="fl">Weeknummer (bijv. 2026-W26)</label><input class="fi" id="me-week" value="${esc(m.weekKey)}" style="font-size:12px"></div>
+    <div class="fg" style="margin-bottom:8px"><label class="fl">Door</label>
+      <select class="fi" id="me-user" style="font-size:12px">
+        ${['Marlie','Frank','Julieta','Jeen'].map(u=>`<option${m.user===u?' selected':''}>${u}</option>`).join('')}
+      </select>
+    </div>
+    <div class="fg" style="margin-bottom:14px"><label class="fl">Omschrijving</label><textarea class="fi" id="me-desc" rows="3" style="font-size:12px">${esc(m.description)}</textarea></div>
+    <div style="display:flex;gap:6px;justify-content:flex-end">
+      <button class="bmain o" onclick="document.getElementById('mtg-edit-modal').remove()" style="font-size:11px;padding:6px 12px">Annuleren</button>
+      <button class="bmain g" onclick="saveEditMeeting('${id}')" style="font-size:11px;padding:6px 14px">Opslaan</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+  document.getElementById('me-company').focus();
+}
+
+async function saveEditMeeting(id) {
+  const m = meetings.find(x=>x.id===id); if(!m) return;
+  m.company = document.getElementById('me-company').value.trim() || m.company;
+  m.contact = document.getElementById('me-contact').value.trim();
+  m.weekKey = document.getElementById('me-week').value.trim() || m.weekKey;
+  m.user = document.getElementById('me-user').value;
+  m.description = document.getElementById('me-desc').value.trim();
+  document.getElementById('mtg-edit-modal')?.remove();
+  try { await DB.upsertMeeting(m); } catch(e) { console.error('saveEditMeeting failed:', e); }
+  renderMeetings();
+  showToast('Afspraak bijgewerkt');
+}
 
 </script>
