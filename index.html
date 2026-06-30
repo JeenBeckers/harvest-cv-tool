@@ -1235,6 +1235,7 @@ const DB = {
     return rows.map(r => ({
       id: r.id, user: r.user_name, company: r.company,
       contact: r.contact || '', description: r.description || '',
+      meetingType: r.meeting_type || '', vertical: r.vertical || '',
       weekKey: r.week_key, meetingDate: r.meeting_date || '',
       createdAt: r.created_at
     }));
@@ -1243,6 +1244,7 @@ const DB = {
     const row = {
       id: m.id, user_name: m.user, company: m.company,
       contact: m.contact || '', description: m.description || '',
+      meeting_type: m.meetingType || '', vertical: m.vertical || '',
       week_key: m.weekKey, meeting_date: m.meetingDate || ''
     };
     await sbFetch('meetings?on_conflict=id', {
@@ -4028,6 +4030,16 @@ function renderMeetings() {
       <div class="frow" style="gap:8px;flex-wrap:wrap">
         <div class="fg" style="min-width:140px"><label class="fl">Bedrijf *</label><input class="fi" id="mtg-company" placeholder="ABN AMRO" style="font-size:12px"></div>
         <div class="fg" style="min-width:120px"><label class="fl">Contactpersoon</label><input class="fi" id="mtg-contact" placeholder="Jan de Vries" style="font-size:12px"></div>
+        <div class="fg" style="min-width:120px"><label class="fl">Type afspraak</label>
+          <select class="fi" id="mtg-type" style="font-size:12px">
+            <option value="">— Kies —</option>
+            <option>Kennismaking</option>
+            <option>Up-sell</option>
+            <option>Cross-sell</option>
+            <option>Field Management</option>
+          </select>
+        </div>
+        <div class="fg" style="min-width:110px"><label class="fl">Vertical</label><input class="fi" id="mtg-vertical" placeholder="Finance, Gov…" style="font-size:12px"></div>
         <div class="fg" style="min-width:80px"><label class="fl">Weeknummer</label><input class="fi" id="mtg-week" placeholder="${cwk}" value="${cwk}" style="font-size:12px"></div>
         <div class="fg" style="min-width:80px"><label class="fl">Door</label>
           <select class="fi" id="mtg-user" style="font-size:12px">
@@ -4035,7 +4047,7 @@ function renderMeetings() {
           </select>
         </div>
       </div>
-      <div class="fg" style="margin-top:8px"><label class="fl">Omschrijving / doel</label><textarea class="fi" id="mtg-desc" rows="2" placeholder="Kennismaking, pipeline bespreken, offerte…" style="font-size:12px"></textarea></div>
+      <div class="fg" style="margin-top:8px"><label class="fl">Omschrijving / doel</label><textarea class="fi" id="mtg-desc" rows="2" placeholder="Doel van de afspraak…" style="font-size:12px"></textarea></div>
       <div class="actbar" style="margin-top:10px">
         <button class="bmain g" onclick="addMeeting()" style="font-size:11px;padding:6px 14px"><i class="ti ti-check"></i> Toevoegen</button>
       </div>
@@ -4054,6 +4066,8 @@ function renderMeetings() {
           <th style="text-align:left;padding:5px 8px;font-weight:400">Door</th>
           <th style="text-align:left;padding:5px 8px;font-weight:400">Bedrijf</th>
           <th style="text-align:left;padding:5px 8px;font-weight:400">Contact</th>
+          <th style="text-align:left;padding:5px 8px;font-weight:400">Type</th>
+          <th style="text-align:left;padding:5px 8px;font-weight:400">Vertical</th>
           <th style="text-align:left;padding:5px 8px;font-weight:400">Omschrijving</th>
           <th style="padding:5px 8px"></th>
         </tr></thead>
@@ -4062,7 +4076,9 @@ function renderMeetings() {
           <td style="padding:6px 8px"><span class="upill up-${m.user==='Marlie'?'m':m.user==='Frank'?'f':m.user==='Julieta'?'j':'b'}" style="font-size:9px">${esc(m.user)}</span></td>
           <td style="padding:6px 8px;font-weight:400">${esc(m.company)}</td>
           <td style="padding:6px 8px;color:var(--muted)">${esc(m.contact||'—')}</td>
-          <td style="padding:6px 8px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.description||'—')}</td>
+          <td style="padding:6px 8px;white-space:nowrap">${m.meetingType?`<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f0f4ff;color:#3b5bdb;font-weight:500">${esc(m.meetingType)}</span>`:'<span style="color:#ccc">—</span>'}</td>
+          <td style="padding:6px 8px;color:var(--muted)">${esc(m.vertical||'—')}</td>
+          <td style="padding:6px 8px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.description||'—')}</td>
           <td style="padding:6px 8px;white-space:nowrap">
             <button class="bsm" onclick="showEditMeetingModal('${m.id}')" style="font-size:9px;padding:2px 5px" title="Bewerken"><i class="ti ti-pencil" style="font-size:9px"></i></button>
             <button class="bsm" onclick="deleteMeeting('${m.id}')" style="font-size:9px;padding:2px 5px;color:var(--muted)" title="Verwijderen"><i class="ti ti-trash" style="font-size:9px"></i></button>
@@ -4088,13 +4104,16 @@ async function addMeeting() {
     company,
     contact: document.getElementById('mtg-contact').value.trim(),
     description: document.getElementById('mtg-desc').value.trim(),
+    meetingType: document.getElementById('mtg-type').value,
+    vertical: document.getElementById('mtg-vertical').value.trim(),
     weekKey: document.getElementById('mtg-week').value.trim() || currentWeekKey(),
     meetingDate: '',
     createdAt: new Date().toISOString()
   };
   meetings.unshift(m);
   try { await DB.upsertMeeting(m); } catch(e) { console.error('addMeeting failed:', e); showToast('⚠ Opslaan mislukt'); }
-  ['mtg-company','mtg-contact','mtg-desc'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['mtg-company','mtg-contact','mtg-desc','mtg-vertical'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const typeEl=document.getElementById('mtg-type'); if(typeEl) typeEl.value='';
   renderMeetings();
   showToast('✓ Afspraak toegevoegd');
 }
@@ -4117,6 +4136,13 @@ function showEditMeetingModal(id) {
     <div style="font-size:13px;font-weight:500;color:var(--hg);margin-bottom:14px">Afspraak bewerken</div>
     <div class="fg" style="margin-bottom:8px"><label class="fl">Bedrijf *</label><input class="fi" id="me-company" value="${esc(m.company)}" style="font-size:12px"></div>
     <div class="fg" style="margin-bottom:8px"><label class="fl">Contactpersoon</label><input class="fi" id="me-contact" value="${esc(m.contact)}" style="font-size:12px"></div>
+    <div class="fg" style="margin-bottom:8px"><label class="fl">Type afspraak</label>
+      <select class="fi" id="me-type" style="font-size:12px">
+        <option value="">— Kies —</option>
+        ${['Kennismaking','Up-sell','Cross-sell','Field Management'].map(t=>`<option${m.meetingType===t?' selected':''}>${t}</option>`).join('')}
+      </select>
+    </div>
+    <div class="fg" style="margin-bottom:8px"><label class="fl">Vertical</label><input class="fi" id="me-vertical" value="${esc(m.vertical||'')}" placeholder="Finance, Gov…" style="font-size:12px"></div>
     <div class="fg" style="margin-bottom:8px"><label class="fl">Weeknummer (bijv. 2026-W26)</label><input class="fi" id="me-week" value="${esc(m.weekKey)}" style="font-size:12px"></div>
     <div class="fg" style="margin-bottom:8px"><label class="fl">Door</label>
       <select class="fi" id="me-user" style="font-size:12px">
@@ -4138,6 +4164,8 @@ async function saveEditMeeting(id) {
   const m = meetings.find(x=>x.id===id); if(!m) return;
   m.company = document.getElementById('me-company').value.trim() || m.company;
   m.contact = document.getElementById('me-contact').value.trim();
+  m.meetingType = document.getElementById('me-type').value;
+  m.vertical = document.getElementById('me-vertical').value.trim();
   m.weekKey = document.getElementById('me-week').value.trim() || m.weekKey;
   m.user = document.getElementById('me-user').value;
   m.description = document.getElementById('me-desc').value.trim();
