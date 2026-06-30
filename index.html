@@ -2387,6 +2387,58 @@ function clearTaggedSkills() {
   renderSkillTags();
 }
 
+// ── SKILL TAGS FOR EDIT MODAL
+let _editTaggedSkills = [];
+
+function initEditSkillTags(cv) {
+  _editTaggedSkills = [...(cv.skills || [])];
+  renderEditSkillTags();
+}
+
+function renderEditSkillTags() {
+  const box = document.getElementById('ed-skills-tag-box');
+  const input = document.getElementById('ed-skills-input');
+  if (!box || !input) return;
+  [...box.querySelectorAll('.skill-pill')].forEach(p => p.remove());
+  _editTaggedSkills.forEach(s => {
+    const pill = document.createElement('span');
+    pill.className = 'skill-pill';
+    pill.style.cssText = 'display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:12px;background:var(--hgl);color:var(--hg);font-weight:500;white-space:nowrap';
+    pill.innerHTML = `${esc(s)}<span onclick="removeEditSkillTag('${s.replace(/'/g,"\\'")}')" style="cursor:pointer;font-size:10px;line-height:1;opacity:.7;margin-left:1px">×</span>`;
+    box.insertBefore(pill, input);
+  });
+  const sugg = document.getElementById('ed-skill-suggestions');
+  if (sugg) sugg.innerHTML = SKILL_SUGGESTIONS.filter(s => !_editTaggedSkills.includes(s)).map(s =>
+    `<span onclick="addEditSkillTag('${s}')" style="cursor:pointer;font-size:10px;padding:2px 8px;border-radius:12px;background:#f0f0f0;color:#555;border:1px solid #ddd;white-space:nowrap;transition:background .15s" onmouseover="this.style.background='#e2ede6'" onmouseout="this.style.background='#f0f0f0'">${s}</span>`
+  ).join('');
+}
+
+function addEditSkillTag(s) {
+  s = s.trim();
+  if (!s || _editTaggedSkills.includes(s) || _editTaggedSkills.length >= 12) return;
+  _editTaggedSkills.push(s);
+  renderEditSkillTags();
+}
+
+function removeEditSkillTag(s) {
+  _editTaggedSkills = _editTaggedSkills.filter(x => x !== s);
+  renderEditSkillTags();
+}
+
+function handleEditSkillInput(e) {
+  const inp = e.target;
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = inp.value.replace(/,$/, '').trim();
+    if (val) addEditSkillTag(val);
+    inp.value = '';
+  } else if (e.key === 'Backspace' && !inp.value && _editTaggedSkills.length) {
+    removeEditSkillTag(_editTaggedSkills[_editTaggedSkills.length - 1]);
+  }
+}
+
+function getEditTaggedSkills() { return [..._editTaggedSkills].slice(0, 12); }
+
 // ── ADD CANDIDATE MANUALLY
 async function addCandidateManual(){
   const fn=document.getElementById('ac-fn').value.trim(),ln=document.getElementById('ac-ln').value.trim(),role=document.getElementById('ac-role').value.trim();
@@ -3462,8 +3514,12 @@ function openModal(id){
           <option value="in_proces" ${cv.recruitStatus==='in_proces'?'selected':''}>In proces</option>
         </select></div>
     </div>
-    <div class="rf" style="margin-bottom:8px"><label class="rl">Skills (komma-gescheiden)</label>
-      <input class="ri" id="ed-skills" value="${esc((cv.skills||[]).join(', '))}" oninput="markChanged(this)"></div>
+    <div class="rf" style="margin-bottom:8px"><label class="rl">Skills</label>
+      <div id="ed-skills-tag-box" style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;padding:5px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;min-height:36px;cursor:text" onclick="document.getElementById('ed-skills-input').focus()">
+        <input id="ed-skills-input" type="text" placeholder="Typ skill + Enter" style="border:none;outline:none;font-size:12px;font-family:inherit;min-width:120px;flex:1;background:transparent;padding:2px 0" onkeydown="handleEditSkillInput(event)" oninput="markChanged(this)">
+      </div>
+      <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px" id="ed-skill-suggestions"></div>
+    </div>
     <div class="rf" style="margin-bottom:4px"><label class="rl">Bijzonderheden (CSV import info)</label>
       <textarea class="ri" id="ed-notes" rows="2" oninput="markChanged(this)" style="font-size:11px;color:var(--muted)">${esc(cv.notes||'')}</textarea></div>
 
@@ -3483,9 +3539,10 @@ function openModal(id){
 
   document.getElementById('modal').style.display='flex';
 
-  // Render CV in iframe after DOM update
-  if(hasFile){
-    requestAnimationFrame(()=>{
+  // Init skill tags + render CV in iframe after DOM update
+  requestAnimationFrame(()=>{
+    initEditSkillTags(cv);
+    if(hasFile){
       const wrap=document.getElementById(`cv-preview-wrap-${id}`);
       if(!wrap) return;
       const iframe=document.createElement('iframe');
@@ -3493,8 +3550,8 @@ function openModal(id){
       wrap.appendChild(iframe);
       const doc=iframe.contentDocument||iframe.contentWindow.document;
       doc.open(); doc.write(cvHtmlStore[id]); doc.close();
-    });
-  }
+    }
+  });
 }
 
 function markChanged(el){
@@ -3521,8 +3578,7 @@ async function saveEdit(id){
   cv.talentClass=document.getElementById('ed-tc')?.value||'';
   cv.notes=document.getElementById('ed-notes')?.value.trim()||'';
   cv.recruitStatus=document.getElementById('ed-recruit-status')?.value||'vrij';
-  const skillsRaw=document.getElementById('ed-skills')?.value||'';
-  cv.skills=skillsRaw.split(',').map(s=>s.trim()).filter(Boolean).slice(0,10);
+  cv.skills=getEditTaggedSkills();
   try{ await DB.upsertCandidate(cv); } catch(e){ console.error(e); }
   refreshAll();
   // Reset save button
