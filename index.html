@@ -583,7 +583,15 @@ b,strong{font-weight:500}
           <div class="fg"><label class="fl">Bureau</label><select class="fi" id="ac-bureau"><option value="">— Kies —</option><option>PT</option><option>Ngage</option><option>StarApple</option><option>Sebastiaan</option><option>Eigen Werving</option></select></div>
           <div class="fg"><label class="fl">Taal CV</label><select class="fi" id="ac-lang"><option value="nl">Nederlands</option><option value="en">English</option></select></div>
         </div>
-        <div class="frow s"><div class="fg"><label class="fl">Skills (komma-gescheiden)</label><input class="fi" id="ac-skills" placeholder="Python, Docker, AWS" type="text"></div></div>
+        <div class="frow s"><div class="fg">
+          <label class="fl">Skills</label>
+          <div id="skills-tag-box" style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;padding:5px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;min-height:36px;cursor:text" onclick="document.getElementById('ac-skills-input').focus()">
+            <input id="ac-skills-input" type="text" placeholder="Typ skill + Enter" style="border:none;outline:none;font-size:12px;font-family:inherit;min-width:120px;flex:1;background:transparent;padding:2px 0" onkeydown="handleSkillInput(event)">
+          </div>
+          <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px" id="skill-suggestions">
+            <!-- gevuld door renderSkillSuggestions() -->
+          </div>
+        </div></div>
         <div class="actbar"><button class="bmain g" onclick="addCandidateManual()"><i class="ti ti-check"></i> Toevoegen</button><button class="bmain o" onclick="toggleAddPanel('add-cand-panel','btn-add-cand')">Annuleren</button></div>
       </div>
       <div class="filterbar">
@@ -2305,7 +2313,78 @@ async function permanentDelete(id){
 // ── ADD PANEL TOGGLE
 function toggleAddPanel(panelId){
   const p=document.getElementById(panelId);p.classList.toggle('open');
-  if(p.classList.contains('open')){const f=p.querySelector('input.fi,select.fi');if(f)setTimeout(()=>f.focus(),50);}
+  if(p.classList.contains('open')){
+    const f=p.querySelector('input.fi,select.fi');if(f)setTimeout(()=>f.focus(),50);
+    if(panelId==='add-cand-panel') setTimeout(renderSkillSuggestions,50);
+  }
+}
+
+// ── SKILL TAG INPUT
+const SKILL_SUGGESTIONS = [
+  'Python','Java','JavaScript','TypeScript','C#','C++','Go','Rust','Kotlin','Swift',
+  'React','Vue','Angular','Node.js','Spring Boot','Django','FastAPI','.NET',
+  'SQL','PostgreSQL','MongoDB','MySQL','Redis','Elasticsearch',
+  'Docker','Kubernetes','AWS','Azure','GCP','Terraform','CI/CD','GitHub Actions','Git',
+  'Machine Learning','Deep Learning','PyTorch','TensorFlow','scikit-learn','MLOps',
+  'dbt','Spark','Kafka','Airflow','Power BI','Tableau',
+  'Agile','Scrum','REST API','GraphQL','Microservices','Linux'
+];
+
+let _taggedSkills = [];
+
+function renderSkillSuggestions() {
+  const box = document.getElementById('skill-suggestions');
+  if (!box) return;
+  box.innerHTML = SKILL_SUGGESTIONS.filter(s => !_taggedSkills.includes(s)).map(s =>
+    `<span onclick="addSkillTag('${s}')" style="cursor:pointer;font-size:10px;padding:2px 8px;border-radius:12px;background:#f0f0f0;color:#555;border:1px solid #ddd;white-space:nowrap;transition:background .15s" onmouseover="this.style.background='#e2ede6'" onmouseout="this.style.background='#f0f0f0'">${s}</span>`
+  ).join('');
+}
+
+function renderSkillTags() {
+  const box = document.getElementById('skills-tag-box');
+  const input = document.getElementById('ac-skills-input');
+  if (!box || !input) return;
+  [...box.querySelectorAll('.skill-pill')].forEach(p => p.remove());
+  _taggedSkills.forEach(s => {
+    const pill = document.createElement('span');
+    pill.className = 'skill-pill';
+    pill.style.cssText = 'display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:12px;background:var(--hgl);color:var(--hg);font-weight:500;white-space:nowrap';
+    pill.innerHTML = `${esc(s)}<span onclick="removeSkillTag('${s}')" style="cursor:pointer;font-size:10px;line-height:1;opacity:.7;margin-left:1px">×</span>`;
+    box.insertBefore(pill, input);
+  });
+  renderSkillSuggestions();
+}
+
+function addSkillTag(s) {
+  s = s.trim();
+  if (!s || _taggedSkills.includes(s) || _taggedSkills.length >= 12) return;
+  _taggedSkills.push(s);
+  renderSkillTags();
+  document.getElementById('ac-skills-input').focus();
+}
+
+function removeSkillTag(s) {
+  _taggedSkills = _taggedSkills.filter(x => x !== s);
+  renderSkillTags();
+}
+
+function handleSkillInput(e) {
+  const inp = e.target;
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = inp.value.replace(/,$/, '').trim();
+    if (val) addSkillTag(val);
+    inp.value = '';
+  } else if (e.key === 'Backspace' && !inp.value && _taggedSkills.length) {
+    removeSkillTag(_taggedSkills[_taggedSkills.length - 1]);
+  }
+}
+
+function getTaggedSkills() { return [..._taggedSkills].slice(0, 12); }
+
+function clearTaggedSkills() {
+  _taggedSkills = [];
+  renderSkillTags();
 }
 
 // ── ADD CANDIDATE MANUALLY
@@ -2314,10 +2393,11 @@ async function addCandidateManual(){
   if(!fn||!ln||!role){showToast('Voornaam, achternaam en rol zijn verplicht');return;}
   const name=fn+' '+ln;
   const id='m_'+name.replace(/\s+/g,'_').toLowerCase()+'_'+Date.now();
-  const skills=document.getElementById('ac-skills').value.split(',').map(s=>s.trim()).filter(Boolean).slice(0,8);
+  const skills=getTaggedSkills();
   cvLib.push({id,name,role,city:document.getElementById('ac-city').value.trim(),availability:document.getElementById('ac-avail').value.trim()||'—',salesOwner:document.getElementById('ac-sales').value,recruitOwner:document.getElementById('ac-recruit').value,bureau:document.getElementById('ac-bureau').value,language:document.getElementById('ac-lang').value,skills,source:'manual',push:false,archived:false});
   await saveLib();renderCVList();updateBadges();
-  ['ac-fn','ac-ln','ac-role','ac-city','ac-avail','ac-skills'].forEach(x=>document.getElementById(x).value='');
+  ['ac-fn','ac-ln','ac-role','ac-city','ac-avail'].forEach(x=>document.getElementById(x).value='');
+  clearTaggedSkills();
   ['ac-sales','ac-recruit','ac-bureau'].forEach(x=>document.getElementById(x).value='');
   document.getElementById('ac-lang').value='nl';
   toggleAddPanel('add-cand-panel');showToast('✓ '+name+' toegevoegd');
