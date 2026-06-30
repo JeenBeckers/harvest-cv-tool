@@ -1241,15 +1241,29 @@ const DB = {
     }));
   },
   async upsertMeeting(m) {
-    const row = {
+    const fullRow = {
       id: m.id, user_name: m.user, company: m.company,
       contact: m.contact || '', description: m.description || '',
       meeting_type: m.meetingType || '', vertical: m.vertical || '',
       week_key: m.weekKey, meeting_date: m.meetingDate || ''
     };
-    await sbFetch('meetings?on_conflict=id', {
-      method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify(row)
-    });
+    let row = { ...fullRow };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        await sbFetch('meetings?on_conflict=id', {
+          method: 'POST', prefer: 'resolution=merge-duplicates,return=minimal', body: JSON.stringify(row)
+        });
+        return;
+      } catch(e) {
+        const msg = e.message || '';
+        const colMatch = msg.match(/column ["']?(\w+)["']? of relation/);
+        if (colMatch && attempt === 0) {
+          delete row[colMatch[1]];
+        } else {
+          throw e;
+        }
+      }
+    }
   },
   async deleteMeeting(id) {
     await sbFetch('meetings?id=eq.' + id, { method: 'DELETE' });
@@ -4111,7 +4125,7 @@ async function addMeeting() {
     createdAt: new Date().toISOString()
   };
   meetings.unshift(m);
-  try { await DB.upsertMeeting(m); } catch(e) { console.error('addMeeting failed:', e); showToast('⚠ Opslaan mislukt'); }
+  try { await DB.upsertMeeting(m); } catch(e) { console.error('addMeeting failed:', e); showToast('⚠ Opslaan mislukt: ' + (e.message||e).toString().slice(0,80)); return; }
   ['mtg-company','mtg-contact','mtg-desc','mtg-vertical'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   const typeEl=document.getElementById('mtg-type'); if(typeEl) typeEl.value='';
   renderMeetings();
