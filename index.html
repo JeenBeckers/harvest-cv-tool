@@ -2088,6 +2088,14 @@ function renderKanbanCard(candId, stageKey, vacId){
   const cv=cvLib.find(c=>c.id===candId);
   if(!cv) return '';
   const col=colFor(cv.name);
+  const v=vacatures.find(x=>x.id===vacId);
+  const placedDate = stageKey==='aangenomen' ? (v?.kanbanData?.aangenomenDates?.[candId]||'') : '';
+  const dateLabel = placedDate ? placedDate.slice(0,7) : '';
+  const dateBtn = stageKey==='aangenomen'
+    ? `<div onclick="event.stopPropagation();setPlacementDate('${vacId}','${candId}')" style="margin-top:4px;font-size:9px;color:${dateLabel?'var(--hg)':'#bbb'};cursor:pointer;display:flex;align-items:center;gap:3px">
+        <i class="ti ti-calendar" style="font-size:9px"></i> ${dateLabel||'Datum instellen'}
+       </div>`
+    : '';
   return`<div class="kanban-card ${cv.push?'is-push':''}" id="kcard-${candId}-${stageKey}"
     draggable="true"
     ondragstart="dragStart(event,'${candId}','${stageKey}')"
@@ -2104,7 +2112,21 @@ function renderKanbanCard(candId, stageKey, vacId){
       <span class="tag tag-av" style="font-size:9px">${esc(cv.availability||'—')}</span>
     </div>
     ${cv.salesOwner?`<div class="kanban-card-owner"><i class="ti ti-user" style="font-size:8px"></i> ${esc(cv.salesOwner)}</div>`:''}
+    ${dateBtn}
   </div>`;
+}
+
+function setPlacementDate(vacId, candId) {
+  const v = vacatures.find(x=>x.id===vacId); if(!v) return;
+  const current = v.kanbanData?.aangenomenDates?.[candId] || '';
+  const val = prompt('Plaatsingsdatum (YYYY-MM-DD):', current || new Date().toISOString().slice(0,10));
+  if(!val) return;
+  if(!v.kanbanData) v.kanbanData={};
+  if(!v.kanbanData.aangenomenDates) v.kanbanData.aangenomenDates={};
+  v.kanbanData.aangenomenDates[candId] = val.trim();
+  DB.upsertVacature(v).catch(e=>console.error(e));
+  renderKanban(v);
+  showToast('✓ Plaatsingsdatum opgeslagen');
 }
 
 // ── DRAG & DROP
