@@ -2857,17 +2857,33 @@ async function snapshotCurrentWeek() {
 }
 
 // Returns NEW aangenomen IDs for a given week key compared to the previous snapshot
+function getAangNewIds(sortedKeys, index) {
+  const key = sortedKeys[index];
+  const ws = _weekStatsCache[key] || {};
+  const thisIds = new Set(ws.aangenomenIds || []);
+  if (!thisIds.size) return new Set();
+  const prevKey = sortedKeys[index - 1];
+  const prevIds = new Set((prevKey && _weekStatsCache[prevKey]?.aangenomenIds) || []);
+  const newIds = new Set();
+  thisIds.forEach(id => { if (!prevIds.has(id)) newIds.add(id); });
+  return newIds;
+}
+
 function getAangNewCount(sortedKeys, index) {
   const key = sortedKeys[index];
   const ws = _weekStatsCache[key] || {};
   const thisIds = new Set(ws.aangenomenIds || []);
-  if (!thisIds.size) return ws.aangenomen || 0; // fallback for old snapshots without IDs
-  // Find previous week's IDs
-  const prevKey = sortedKeys[index - 1];
-  const prevIds = new Set((prevKey && _weekStatsCache[prevKey]?.aangenomenIds) || []);
-  let count = 0;
-  thisIds.forEach(id => { if (!prevIds.has(id)) count++; });
-  return count;
+  if (!thisIds.size) return ws.aangenomen || 0;
+  const newIds = getAangNewIds(sortedKeys, index);
+  return newIds.size;
+}
+
+let _expandedMonths = new Set();
+
+function toggleMonthExpand(key) {
+  if (_expandedMonths.has(key)) _expandedMonths.delete(key);
+  else _expandedMonths.add(key);
+  renderVacPerformance();
 }
 
 let _histPeriod = 'week'; // 'week' | 'month'
@@ -3021,12 +3037,13 @@ function renderVacPerformance() {
     }, currentMonthKey);
     thead.innerHTML = '<tr><th>Maand</th><th>Vacatures</th><th>Voorgesteld</th><th>Op gesprek</th><th>Nieuw geplaatst</th><th>Totaal geplaatst</th></tr>';
     const maxVoor = Math.max(...monthKeys.map(k => buckets[k]?.voorgesteld||0), 1);
-    // Compute new placements per month from week deltas
     const sortedAscAll = Object.keys(_weekStatsCache).sort();
-    const newPerMonth = {};
+    const newPerMonth = {}, newIdsPerMonth = {};
     sortedAscAll.forEach((wk, idx) => {
       const mk = weekKeyToMonthKey(wk);
       newPerMonth[mk] = (newPerMonth[mk] || 0) + getAangNewCount(sortedAscAll, idx);
+      if (!newIdsPerMonth[mk]) newIdsPerMonth[mk] = new Set();
+      getAangNewIds(sortedAscAll, idx).forEach(id => newIdsPerMonth[mk].add(id));
     });
     tb.innerHTML = monthKeys.map(key => {
       const b = buckets[key] || {};
@@ -3035,14 +3052,35 @@ function renderVacPerformance() {
       const barW = Math.max(2, Math.round(((b.voorgesteld||0)/maxVoor)*60));
       const isCur = key === currentMonthKey;
       const newAang = newPerMonth[key] || 0;
-      return `<tr class="${isCur?'current-week':''}">
-        <td><span class="wk-num">${label}${isCur?' · nu':''}</span></td>
+      const expanded = _expandedMonths.has(key);
+      const placedIds = [...(newIdsPerMonth[key] || [])];
+      const placedCands = placedIds.map(id => cvLib.find(c=>c.id===id)).filter(Boolean);
+      const allArchived = cvLib.filter(cv => cv.archived && cv.archivedReason === 'aangenomen');
+      // also check archived candidates
+      const extraArchived = allArchived.filter(cv => !placedIds.includes(cv.id) && weekKeyToMonthKey(isoWeekKey(new Date(cv.archivedAt||cv.createdAt||''))) === key);
+      const allPlaced = [...placedCands, ...extraArchived];
+
+      const detailRow = expanded && allPlaced.length > 0 ? `<tr>
+        <td colspan="6" style="padding:0 8px 10px 28px;background:#fafaf8">
+          <div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:6px">
+            ${allPlaced.map(cv => {
+              const col = colFor(cv.name);
+              return `<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;background:#fff;border:1px solid #e8e8e8;font-size:11px;cursor:pointer" onclick="openModal('${cv.id}')">
+                <div class="ava" style="width:22px;height:22px;font-size:9px;flex-shrink:0;background:${col.bg};color:${col.tx}">${ini(cv.name)}</div>
+                <div><div style="font-weight:500">${esc(cv.name)}</div><div style="color:var(--muted);font-size:10px">${esc(cv.role||'')}</div></div>
+              </div>`;
+            }).join('')}
+          </div>
+        </td>
+      </tr>` : (expanded ? `<tr><td colspan="6" style="padding:6px 8px 10px 28px;background:#fafaf8;font-size:11px;color:#ccc">Geen plaatsingsdata beschikbaar voor deze periode.</td></tr>` : '');
+
+      return `<tr class="${isCur?'current-week':''}" style="cursor:${newAang>0?'pointer':'default'}" onclick="toggleMonthExpand('${key}')">
+        <td><span style="margin-right:5px;font-size:10px;color:var(--muted)">${newAang>0?(expanded?'▾':'▸'):''}</span><span class="wk-num">${label}${isCur?' · nu':''}</span></td>
         <td>${b.vacatures||0}</td>
         <td>${b.voorgesteld||0}<span class="wk-bar" style="width:${barW}px"></span></td>
         <td>${b.gesprek||0}</td>
         <td>${newAang > 0 ? `<strong style="color:var(--hg)">${newAang}</strong>` : '<span style="color:#ccc">—</span>'}</td>
-        <td style="color:var(--muted)">${b.aangenomen||0}</td></tr>`;
-    }).join('');
+        <td style="color:var(--muted)">${b.aangenomen||0}</td></tr>${detailRow}`;
   }
 }
 
