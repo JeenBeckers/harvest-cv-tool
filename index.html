@@ -872,8 +872,12 @@ b,strong{font-weight:500}
     <!-- ARCHIEF -->
     <div id="view-archive" style="display:none">
       <div class="stitle">Archief</div>
-      <div class="ssub">Gearchiveerde kandidaten · herstel om weer actief te maken</div>
-      <div id="archive-summary" style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:300"></div>
+      <div class="ssub">Gearchiveerde kandidaten en gesloten vacatures</div>
+
+      <div class="sdiv" style="margin-bottom:8px">Gesloten vacatures</div>
+      <div id="archive-vac-list" style="margin-bottom:20px"></div>
+
+      <div class="sdiv" style="margin-bottom:8px">Gearchiveerde kandidaten <span id="archive-summary-inline" style="font-weight:300;font-size:11px;color:var(--muted)"></span></div>
       <input type="text" class="search-input" id="archive-search" placeholder="Zoek op naam, rol, stad…" oninput="renderArchive()">
       <div class="cv-table-wrap">
         <table class="cv-tbl">
@@ -2281,21 +2285,54 @@ function renderPushTab(){
 }
 
 // ── ARCHIVE VIEW
+function openClosedVacature(id){
+  showClosedVac=true;
+  const btn=document.getElementById('btn-toon-gesloten');
+  if(btn) btn.classList.add('active');
+  showTab('vac');
+  selectVacature(id);
+}
 function renderArchive(){
+  // Render closed vacatures
+  const closedVacs=vacatures.filter(v=>v.status==='closed');
+  const vacEl=document.getElementById('archive-vac-list');
+  if(vacEl){
+    if(!closedVacs.length){
+      vacEl.innerHTML='<div class="empty" style="padding:10px 0;font-size:12px">Geen gesloten vacatures</div>';
+    } else {
+      vacEl.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'
+        +closedVacs.map(v=>{
+          const kd=v.kanbanData||{};
+          const plaatsCount=(kd.aangenomen||[]).length;
+          const totalCands=Object.values(kd).filter(x=>Array.isArray(x)).reduce((s,a)=>s+a.length,0);
+          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#fff;border:1px solid var(--border);border-radius:5px">'
+            +'<div>'
+            +'<div style="font-size:12px;font-weight:400;color:var(--hg)">' + esc(v.title) + '</div>'
+            +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'
+            + (v.company?esc(v.company)+' · ':'')
+            + plaatsCount + ' geplaatst · '
+            + totalCands + ' kandidaten totaal'
+            +'</div>'
+            +'</div>'
+            +'<button class="bsm p" onclick="openClosedVacature(\''+v.id+'\')">'
+            +'<i class="ti ti-layout-kanban" style="font-size:10px"></i> Bekijk kanban'
+            +'</button>'
+            +'</div>';
+        }).join('')
+        +'</div>';
+    }
+  }
+  document.getElementById('nb-archive').textContent=cvLib.filter(cv=>cv.archived).length;
   const q=(document.getElementById('archive-search')?.value||'').toLowerCase();
   const allArchived=cvLib.filter(cv=>cv.archived);
   const archived=allArchived.filter(cv=>!q||(cv.name+cv.role+cv.city).toLowerCase().includes(q));
-  document.getElementById('nb-archive').textContent=allArchived.length;
   const aangenomen=allArchived.filter(cv=>cv.archivedReason==='aangenomen').length;
   const anders=allArchived.filter(cv=>cv.archivedReason==='anders').length;
   const unknown=allArchived.filter(cv=>!cv.archivedReason).length;
-  // Archive summary bar
-  const summaryEl=document.getElementById('archive-summary');
-  if(summaryEl) summaryEl.innerHTML=allArchived.length?`
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--hg);display:inline-block"></span>${aangenomen} aangenomen</span>
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--muted);display:inline-block"></span>${anders} andere reden</span>
-    ${unknown?`<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--border);display:inline-block"></span>${unknown} onbekend</span>`:''}
-  `:'';
+  const inlineEl=document.getElementById('archive-summary-inline');
+  if(inlineEl) inlineEl.textContent=allArchived.length
+    ? '— '+aangenomen+' aangenomen · '+anders+' andere reden'+(unknown?' · '+unknown+' onbekend':'')
+    : '';
   const tb=document.getElementById('archive-tbody');
   if(!archived.length){tb.innerHTML='<tr><td colspan="7" class="empty">Geen gearchiveerde kandidaten</td></tr>';return;}
   tb.innerHTML=archived.map(cv=>{
