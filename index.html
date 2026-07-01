@@ -3045,27 +3045,36 @@ function renderVacPerformance() {
       const gesp = row.gesprek || 0;
       const totalAang = ws.aangenomen || 0;
       const placedIds = [...(placementsByWeek[key] || [])];
-      const newAang = placedIds.length;
+      const hasDates = placedIds.length > 0;
+      // Fallback to snapshot delta when no date data
+      const sortedAscKeys = allKeys.slice().sort();
+      const snapshotDelta = getAangNewCount(sortedAscKeys, sortedAscKeys.indexOf(key));
+      const newAang = hasDates ? placedIds.length : snapshotDelta;
+      const canExpand = hasDates && newAang > 0;
       const barW = Math.max(2, Math.round((voor/maxVoor)*60));
       const isCur = key === currentWeekKey;
       const expanded = _expandedWeeks.has(key);
       const allPlaced = placedIds.map(id => cvLib.find(c=>c.id===id)).filter(Boolean);
-      const detailRow = expanded
+      const detailRow = canExpand && expanded
         ? '<tr><td colspan="6" style="padding:0 8px 10px 28px;background:#fafaf8"><div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:6px">'
-          + (allPlaced.length ? allPlaced.map(cv => {
+          + allPlaced.map(cv => {
               const col = colFor(cv.name);
               return '<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;background:#fff;border:1px solid #e8e8e8;font-size:11px;cursor:pointer" onclick="openModal(\'' + cv.id + '\')">'
                 + '<div class="ava" style="width:22px;height:22px;font-size:9px;flex-shrink:0;background:' + col.bg + ';color:' + col.tx + '">' + ini(cv.name) + '</div>'
                 + '<div><div style="font-weight:500">' + esc(cv.name) + '</div><div style="color:var(--muted);font-size:10px">' + esc(cv.role||'') + '</div></div></div>';
-            }).join('') : '<span style="font-size:11px;color:#ccc">Geen plaatsingsdata voor deze week.</span>')
+            }).join('')
           + '</div></td></tr>'
         : '';
-      return '<tr class="' + (isCur?'current-week':'') + '" style="cursor:' + (newAang>0?'pointer':'default') + '" onclick="' + (newAang>0?'toggleWeekExpand(\''+key+'\')':'') + '">'
-        + '<td><span style="margin-right:5px;font-size:10px;color:var(--muted)">' + (newAang>0?(expanded?'▾':'▸'):'') + '</span><span class="wk-num">' + key + (isCur?' · nu':'') + '</span></td>'
+      const arrow = canExpand ? (expanded ? '▾' : '▸') : '';
+      const countCell = newAang > 0
+        ? '<strong style="color:var(--hg)">' + newAang + '</strong>' + (!hasDates ? '<span style="font-size:9px;color:#bbb;margin-left:3px" title="Geen kandidaatdetails beschikbaar voor oude data">*</span>' : '')
+        : '<span style="color:#ccc">—</span>';
+      return '<tr class="' + (isCur?'current-week':'') + '" style="cursor:' + (canExpand?'pointer':'default') + '" onclick="' + (canExpand?'toggleWeekExpand(\''+key+'\')':'') + '">'
+        + '<td><span style="margin-right:5px;font-size:10px;color:var(--muted)">' + arrow + '</span><span class="wk-num">' + key + (isCur?' · nu':'') + '</span></td>'
         + '<td>' + vac + '</td>'
         + '<td>' + voor + '<span class="wk-bar" style="width:' + barW + 'px"></span></td>'
         + '<td>' + gesp + '</td>'
-        + '<td>' + (newAang > 0 ? '<strong style="color:var(--hg)">'+newAang+'</strong>' : '<span style="color:#ccc">—</span>') + '</td>'
+        + '<td>' + countCell + '</td>'
         + '<td style="color:var(--muted)">' + totalAang + '</td></tr>' + detailRow;
     }).join('');
   } else {
