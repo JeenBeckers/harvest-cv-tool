@@ -2818,6 +2818,7 @@ function computeVacStats(ownerFilter) {
     const owner = (cv.salesOwner || cv.recruitOwner || '').toLowerCase();
     return owner.includes(ownerFilter.toLowerCase());
   };
+  // Include ALL vacatures (also closed) so aangenomen data is preserved
   for (const v of vacatures) {
     const kd = v.kanbanData || {};
     (kd.voorgesteld || []).filter(filterCand).forEach(id => allVoorgesteld.add(id));
@@ -2825,11 +2826,14 @@ function computeVacStats(ownerFilter) {
     (kd.gesprek2 || []).filter(filterCand).forEach(id => allGesprek.add(id));
     (kd.aangenomen || []).filter(filterCand).forEach(id => allAangenomen.add(id));
   }
+  // Also count candidates archived as 'aangenomen'
+  cvLib.filter(cv => cv.archived && cv.archivedReason === 'aangenomen').filter(cv => filterCand(cv.id)).forEach(cv => allAangenomen.add(cv.id));
   return {
-    vacatures: ownerFilter === 'all' ? openVacs.length : openVacs.length,
+    vacatures: openVacs.length,
     voorgesteld: allVoorgesteld.size,
     gesprek: allGesprek.size,
     aangenomen: allAangenomen.size,
+    aangenomenIds: [...allAangenomen],
   };
 }
 
@@ -2842,6 +2846,20 @@ async function snapshotCurrentWeek() {
   for (const o of owners) stats.per_owner[o] = computeVacStats(o);
   _weekStatsCache[key] = stats;
   await DB.setWeekStats(_weekStatsCache);
+}
+
+// Returns NEW aangenomen IDs for a given week key compared to the previous snapshot
+function getAangNewCount(sortedKeys, index) {
+  const key = sortedKeys[index];
+  const ws = _weekStatsCache[key] || {};
+  const thisIds = new Set(ws.aangenomenIds || []);
+  if (!thisIds.size) return ws.aangenomen || 0; // fallback for old snapshots without IDs
+  // Find previous week's IDs
+  const prevKey = sortedKeys[index - 1];
+  const prevIds = new Set((prevKey && _weekStatsCache[prevKey]?.aangenomenIds) || []);
+  let count = 0;
+  thisIds.forEach(id => { if (!prevIds.has(id)) count++; });
+  return count;
 }
 
 let _histPeriod = 'week'; // 'week' | 'month'
@@ -2935,20 +2953,26 @@ function renderVacPerformance() {
       const ws = _weekStatsCache[k] || {};
       return _vacOwnerFilter === 'all' ? ws : (ws.per_owner?.[_vacOwnerFilter] || {});
     }, k => 'W' + k.split('-W')[1], currentWeekKey);
-    thead.innerHTML = '<tr><th>Week</th><th>Vacatures</th><th>Voorgesteld</th><th>Op gesprek</th><th>Aangenomen</th></tr>';
+    thead.innerHTML = '<tr><th>Week</th><th>Vacatures</th><th>Voorgesteld</th><th>Op gesprek</th><th>Nieuw geplaatst</th><th>Totaal geplaatst</th></tr>';
+    const sortedAsc = [...allKeys].sort();
     const maxVoor = Math.max(...allKeys.map(k => (_weekStatsCache[k]?.voorgesteld||0)), 1);
     tb.innerHTML = allKeys.map(key => {
       const ws = _weekStatsCache[key] || {};
       const row = _vacOwnerFilter === 'all' ? ws : (ws.per_owner?.[_vacOwnerFilter] || {});
       const vac = ws.vacatures || 0, voor = row.voorgesteld || 0;
-      const gesp = row.gesprek || 0, aang = row.aangenomen || 0;
+      const gesp = row.gesprek || 0;
+      const totalAang = ws.aangenomen || 0;
+      const idx = sortedAsc.indexOf(key);
+      const newAang = getAangNewCount(sortedAsc, idx);
       const barW = Math.max(2, Math.round((voor/maxVoor)*60));
       const isCur = key === currentWeekKey;
       return `<tr class="${isCur?'current-week':''}">
         <td><span class="wk-num">${key}${isCur?' · nu':''}</span></td>
         <td>${vac}</td>
         <td>${voor}<span class="wk-bar" style="width:${barW}px"></span></td>
-        <td>${gesp}</td><td>${aang}</td></tr>`;
+        <td>${gesp}</td>
+        <td>${newAang > 0 ? `<strong style="color:var(--hg)">${newAang}</strong>` : '<span style="color:#ccc">—</span>'}</td>
+        <td style="color:var(--muted)">${totalAang}</td></tr>`;
     }).join('');
   } else {
     // Monthly view
@@ -2959,19 +2983,29 @@ function renderVacPerformance() {
       const [y, m] = k.split('-');
       return MONTH_NL[parseInt(m)-1] + ' ' + y.slice(2);
     }, currentMonthKey);
-    thead.innerHTML = '<tr><th>Maand</th><th>Vacatures</th><th>Voorgesteld</th><th>Op gesprek</th><th>Aangenomen</th></tr>';
+    thead.innerHTML = '<tr><th>Maand</th><th>Vacatures</th><th>Voorgesteld</th><th>Op gesprek</th><th>Nieuw geplaatst</th><th>Totaal geplaatst</th></tr>';
     const maxVoor = Math.max(...monthKeys.map(k => buckets[k]?.voorgesteld||0), 1);
+    // Compute new placements per month from week deltas
+    const sortedAscAll = Object.keys(_weekStatsCache).sort();
+    const newPerMonth = {};
+    sortedAscAll.forEach((wk, idx) => {
+      const mk = weekKeyToMonthKey(wk);
+      newPerMonth[mk] = (newPerMonth[mk] || 0) + getAangNewCount(sortedAscAll, idx);
+    });
     tb.innerHTML = monthKeys.map(key => {
       const b = buckets[key] || {};
       const [y, m] = key.split('-');
       const label = MONTH_NL[parseInt(m)-1] + ' ' + y;
       const barW = Math.max(2, Math.round(((b.voorgesteld||0)/maxVoor)*60));
       const isCur = key === currentMonthKey;
+      const newAang = newPerMonth[key] || 0;
       return `<tr class="${isCur?'current-week':''}">
         <td><span class="wk-num">${label}${isCur?' · nu':''}</span></td>
         <td>${b.vacatures||0}</td>
         <td>${b.voorgesteld||0}<span class="wk-bar" style="width:${barW}px"></span></td>
-        <td>${b.gesprek||0}</td><td>${b.aangenomen||0}</td></tr>`;
+        <td>${b.gesprek||0}</td>
+        <td>${newAang > 0 ? `<strong style="color:var(--hg)">${newAang}</strong>` : '<span style="color:#ccc">—</span>'}</td>
+        <td style="color:var(--muted)">${b.aangenomen||0}</td></tr>`;
     }).join('');
   }
 }
