@@ -825,12 +825,20 @@ b,strong{font-weight:500}
       <div class="vac-perf-section">
         <div class="vac-perf-header">
           <span class="vac-perf-title">Filter op eigenaar</span>
-          <div class="owner-chips" id="owner-chips">
-            <button class="owner-chip active" onclick="setVacOwnerFilter('all',this)">Iedereen</button>
-            <button class="owner-chip" onclick="setVacOwnerFilter('Marlie',this)">Marlie</button>
-            <button class="owner-chip" onclick="setVacOwnerFilter('Julieta',this)">Julieta</button>
-            <button class="owner-chip" onclick="setVacOwnerFilter('Frank',this)">Frank</button>
-            <button class="owner-chip" onclick="setVacOwnerFilter('Jeen',this)">Jeen</button>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div class="owner-chips" id="owner-chips">
+              <button class="owner-chip active" onclick="setVacOwnerFilter('all',this)">Iedereen</button>
+              <button class="owner-chip" onclick="setVacOwnerFilter('Marlie',this)">Marlie</button>
+              <button class="owner-chip" onclick="setVacOwnerFilter('Julieta',this)">Julieta</button>
+              <button class="owner-chip" onclick="setVacOwnerFilter('Frank',this)">Frank</button>
+              <button class="owner-chip" onclick="setVacOwnerFilter('Jeen',this)">Jeen</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:5px">
+              <span style="font-size:10px;color:var(--muted);white-space:nowrap">Periode:</span>
+              <select id="dash-period-select" class="fi" style="font-size:11px;padding:3px 6px;height:28px;min-width:130px" onchange="setDashPeriodFilter(this.value)">
+                <option value="">Huidig (live)</option>
+              </select>
+            </div>
           </div>
         </div>
         <div class="vkpi-grid" id="vkpi-grid">
@@ -2932,12 +2940,40 @@ function renderTrendChart(periods, dataFn, labelFn, currentKey) {
 }
 
 function renderVacPerformance() {
-  // KPIs (always live)
-  const s = computeVacStats(_vacOwnerFilter);
-  document.getElementById('kpi-vac').textContent = s.vacatures;
-  document.getElementById('kpi-voor').textContent = s.voorgesteld;
-  document.getElementById('kpi-gesp').textContent = s.gesprek;
-  document.getElementById('kpi-aang').textContent = s.aangenomen;
+  populatePeriodSelect();
+  // KPIs: live or from snapshot
+  let kpiVac, kpiVoor, kpiGesp, kpiAang, kpiSub = 'geplaatst';
+  if (!_dashPeriodFilter) {
+    const s = computeVacStats(_vacOwnerFilter);
+    kpiVac = s.vacatures; kpiVoor = s.voorgesteld; kpiGesp = s.gesprek; kpiAang = s.aangenomen;
+  } else if (_dashPeriodFilter.includes('-W')) {
+    // Week snapshot
+    const ws = _weekStatsCache[_dashPeriodFilter] || {};
+    const row = _vacOwnerFilter === 'all' ? ws : (ws.per_owner?.[_vacOwnerFilter] || {});
+    kpiVac = ws.vacatures || 0; kpiVoor = row.voorgesteld || 0; kpiGesp = row.gesprek || 0;
+    const sortedAsc = Object.keys(_weekStatsCache).sort();
+    const idx = sortedAsc.indexOf(_dashPeriodFilter);
+    kpiAang = getAangNewCount(sortedAsc, idx);
+    kpiSub = 'nieuw geplaatst deze week';
+  } else {
+    // Month bucket
+    const buckets = buildMonthBuckets();
+    const b = buckets[_dashPeriodFilter] || {};
+    kpiVac = b.vacatures || 0; kpiVoor = b.voorgesteld || 0; kpiGesp = b.gesprek || 0;
+    const sortedAscAll = Object.keys(_weekStatsCache).sort();
+    const newPerMonth = {};
+    sortedAscAll.forEach((wk, idx) => {
+      const mk = weekKeyToMonthKey(wk);
+      newPerMonth[mk] = (newPerMonth[mk] || 0) + getAangNewCount(sortedAscAll, idx);
+    });
+    kpiAang = newPerMonth[_dashPeriodFilter] || 0;
+    kpiSub = 'nieuw geplaatst deze maand';
+  }
+  document.getElementById('kpi-vac').textContent = kpiVac;
+  document.getElementById('kpi-voor').textContent = kpiVoor;
+  document.getElementById('kpi-gesp').textContent = kpiGesp;
+  document.getElementById('kpi-aang').textContent = kpiAang;
+  document.getElementById('kpi-aang').closest('.vkpi').querySelector('.vkpi-sub').textContent = kpiSub;
 
   const tb = document.getElementById('week-tbody');
   const thead = document.getElementById('hist-thead');
@@ -3024,6 +3060,33 @@ function setVacOwnerFilter(owner, el) {
   document.querySelectorAll('#owner-chips .owner-chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
   renderVacPerformance();
+}
+
+let _dashPeriodFilter = ''; // '' = live, 'YYYY-WNN' = week, 'YYYY-MM' = month
+
+function setDashPeriodFilter(val) {
+  _dashPeriodFilter = val;
+  renderVacPerformance();
+}
+
+function populatePeriodSelect() {
+  const sel = document.getElementById('dash-period-select');
+  if (!sel) return;
+  const cur = sel.value;
+  const weeks = Object.keys(_weekStatsCache).sort().reverse();
+  // Build month options from week keys
+  const months = [...new Set(weeks.map(weekKeyToMonthKey))];
+  sel.innerHTML = '<option value="">Huidig (live)</option>'
+    + '<optgroup label="Per week">'
+    + weeks.map(wk => `<option value="${wk}">${wk.replace('-W',' · W')}</option>`).join('')
+    + '</optgroup>'
+    + '<optgroup label="Per maand">'
+    + months.map(mk => {
+        const [y, m] = mk.split('-');
+        return `<option value="${mk}">${MONTH_NL[parseInt(m)-1]} ${y}</option>`;
+      }).join('')
+    + '</optgroup>';
+  sel.value = cur; // restore selection if still valid
 }
 
 // ── DASHBOARD
