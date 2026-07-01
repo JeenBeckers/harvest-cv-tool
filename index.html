@@ -970,7 +970,7 @@ b,strong{font-weight:500}
         <div id="user-mgmt-rows"></div>
         <div style="margin-top:14px;padding-top:12px;border-top:.5px solid #eee">
           <div class="ptitle" style="font-size:12px;margin-bottom:10px"><i class="ti ti-user-plus"></i> Nieuwe gebruiker</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;align-items:end">
             <div class="fg"><label class="fl">Naam *</label><input class="fi" id="new-user-name" placeholder="bijv. Emma" style="font-size:12px"></div>
             <div class="fg"><label class="fl">Rol *</label>
               <select class="fi" id="new-user-role" style="font-size:12px">
@@ -980,6 +980,7 @@ b,strong{font-weight:500}
                 <option value="Recruitment">Recruitment</option>
               </select>
             </div>
+            <div class="fg"><label class="fl">E-mailadres</label><input class="fi" id="new-user-email" type="email" placeholder="emma@harvest.nl" style="font-size:12px"></div>
             <div class="fg"><label class="fl">Wachtwoord *</label><input class="fi" id="new-user-pass" type="password" placeholder="••••••" style="font-size:12px"></div>
             <button class="bmain g" onclick="addUser()" style="font-size:11px;padding:7px 12px"><i class="ti ti-plus"></i> Toevoegen</button>
           </div>
@@ -1399,11 +1400,12 @@ async function addUser(){
   const name = document.getElementById('new-user-name').value.trim();
   const role = document.getElementById('new-user-role').value;
   const pass = document.getElementById('new-user-pass').value;
-  if(!name||!role||!pass){ showToast('Vul alle velden in'); return; }
+  const email = document.getElementById('new-user-email').value.trim();
+  if(!name||!role||!pass){ showToast('Vul naam, rol en wachtwoord in'); return; }
   if(appUsers.find(u=>u.name.toLowerCase()===name.toLowerCase())){ showToast('Gebruiker bestaat al'); return; }
-  appUsers.push({name, role, pass, email:''});
-  try{ await DB.upsertUser({name,role,pass,email:''}); }catch(e){ console.error(e); }
-  ['new-user-name','new-user-pass'].forEach(id=>document.getElementById(id).value='');
+  appUsers.push({name, role, pass, email});
+  try{ await DB.upsertUser({name,role,pass,email}); }catch(e){ console.error(e); }
+  ['new-user-name','new-user-pass','new-user-email'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('new-user-role').value='';
   renderUserMgmt();
   showToast('✓ '+name+' toegevoegd');
