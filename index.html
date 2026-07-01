@@ -2137,7 +2137,7 @@ async function dropCard(e,toStage,vacId){
   // Add to target
   if(!v.kanbanData[toStage]) v.kanbanData[toStage]=[];
   if(!v.kanbanData[toStage].includes(_dragCandId)) v.kanbanData[toStage].push(_dragCandId);
-  if(toStage==='aangenomen'){ if(!v.kanbanData.aangenomenDates) v.kanbanData.aangenomenDates={}; v.kanbanData.aangenomenDates[_dragCandId]=new Date().toISOString().slice(0,7); }
+  if(toStage==='aangenomen'){ if(!v.kanbanData.aangenomenDates) v.kanbanData.aangenomenDates={}; v.kanbanData.aangenomenDates[_dragCandId]=new Date().toISOString().slice(0,10); }
   _dragCandId=null;_dragFromStage=null;
   try{ await DB.upsertVacature(v); }catch(e){ console.error('dropCard save failed:',e); }
   renderKanban(v);
@@ -2178,7 +2178,7 @@ async function addToKanban(stageKey,vacId){
   // Remove from other stages first
   KANBAN_STAGES.forEach(s=>{ if(s.key!==stageKey&&v.kanbanData[s.key]) v.kanbanData[s.key]=v.kanbanData[s.key].filter(id=>id!==candId); });
   if(!v.kanbanData[stageKey].includes(candId)) v.kanbanData[stageKey].push(candId);
-  if(stageKey==='aangenomen'){ if(!v.kanbanData.aangenomenDates) v.kanbanData.aangenomenDates={}; v.kanbanData.aangenomenDates[candId]=new Date().toISOString().slice(0,7); }
+  if(stageKey==='aangenomen'){ if(!v.kanbanData.aangenomenDates) v.kanbanData.aangenomenDates={}; v.kanbanData.aangenomenDates[candId]=new Date().toISOString().slice(0,10); }
   // Also link to vacature candidateIds
   if(!v.candidateIds) v.candidateIds=[];
   if(!v.candidateIds.includes(candId)) v.candidateIds.push(candId);
@@ -2880,23 +2880,40 @@ function getAangNewCount(sortedKeys, index) {
   return newIds.size;
 }
 
-// Returns { monthKey: [candidateId, ...] } based on stored aangenomenDates
+// Returns { 'YYYY-MM': Set(candidateId) } based on stored aangenomenDates (YYYY-MM-DD)
 function getPlacementsByMonth() {
   const byMonth = {};
   for (const v of vacatures) {
     const dates = v.kanbanData?.aangenomenDates || {};
-    const aangenomen = v.kanbanData?.aangenomen || [];
-    for (const candId of aangenomen) {
-      const monthKey = dates[candId] || null;
-      if (!monthKey) continue;
-      if (!byMonth[monthKey]) byMonth[monthKey] = new Set();
-      byMonth[monthKey].add(candId);
+    for (const candId of (v.kanbanData?.aangenomen || [])) {
+      const d = dates[candId];
+      if (!d) continue;
+      const mk = d.slice(0, 7);
+      if (!byMonth[mk]) byMonth[mk] = new Set();
+      byMonth[mk].add(candId);
     }
   }
   return byMonth;
 }
 
+// Returns { 'YYYY-WNN': Set(candidateId) } based on stored aangenomenDates
+function getPlacementsByWeek() {
+  const byWeek = {};
+  for (const v of vacatures) {
+    const dates = v.kanbanData?.aangenomenDates || {};
+    for (const candId of (v.kanbanData?.aangenomen || [])) {
+      const d = dates[candId];
+      if (!d) continue;
+      const wk = isoWeekKey(new Date(d));
+      if (!byWeek[wk]) byWeek[wk] = new Set();
+      byWeek[wk].add(candId);
+    }
+  }
+  return byWeek;
+}
+
 let _expandedMonths = new Set();
+let _expandedWeeks = new Set();
 
 function toggleMonthExpand(key) {
   if (_expandedMonths.has(key)) _expandedMonths.delete(key);
@@ -2985,8 +3002,8 @@ function renderVacPerformance() {
     kpiVac = ws.vacatures || 0; kpiVoor = row.voorgesteld || 0; kpiGesp = row.gesprek || 0;
     const sortedAsc = Object.keys(_weekStatsCache).sort();
     const idx = sortedAsc.indexOf(_dashPeriodFilter);
-    kpiAang = getAangNewCount(sortedAsc, idx);
-    kpiSub = 'nieuw geplaatst deze week';
+    kpiAang = (getPlacementsByWeek()[_dashPeriodFilter] || new Set()).size;
+    kpiSub = 'geplaatst deze week';
   } else {
     // Month bucket
     const buckets = buildMonthBuckets();
@@ -3019,25 +3036,37 @@ function renderVacPerformance() {
       return _vacOwnerFilter === 'all' ? ws : (ws.per_owner?.[_vacOwnerFilter] || {});
     }, k => 'W' + k.split('-W')[1], currentWeekKey);
     thead.innerHTML = '<tr><th>Week</th><th>Vacatures</th><th>Voorgesteld</th><th>Op gesprek</th><th>Nieuw geplaatst</th><th>Totaal geplaatst</th></tr>';
-    const sortedAsc = [...allKeys].sort();
     const maxVoor = Math.max(...allKeys.map(k => (_weekStatsCache[k]?.voorgesteld||0)), 1);
+    const placementsByWeek = getPlacementsByWeek();
     tb.innerHTML = allKeys.map(key => {
       const ws = _weekStatsCache[key] || {};
       const row = _vacOwnerFilter === 'all' ? ws : (ws.per_owner?.[_vacOwnerFilter] || {});
       const vac = ws.vacatures || 0, voor = row.voorgesteld || 0;
       const gesp = row.gesprek || 0;
       const totalAang = ws.aangenomen || 0;
-      const idx = sortedAsc.indexOf(key);
-      const newAang = getAangNewCount(sortedAsc, idx);
+      const placedIds = [...(placementsByWeek[key] || [])];
+      const newAang = placedIds.length;
       const barW = Math.max(2, Math.round((voor/maxVoor)*60));
       const isCur = key === currentWeekKey;
-      return `<tr class="${isCur?'current-week':''}">
-        <td><span class="wk-num">${key}${isCur?' · nu':''}</span></td>
-        <td>${vac}</td>
-        <td>${voor}<span class="wk-bar" style="width:${barW}px"></span></td>
-        <td>${gesp}</td>
-        <td>${newAang > 0 ? `<strong style="color:var(--hg)">${newAang}</strong>` : '<span style="color:#ccc">—</span>'}</td>
-        <td style="color:var(--muted)">${totalAang}</td></tr>`;
+      const expanded = _expandedWeeks.has(key);
+      const allPlaced = placedIds.map(id => cvLib.find(c=>c.id===id)).filter(Boolean);
+      const detailRow = expanded
+        ? '<tr><td colspan="6" style="padding:0 8px 10px 28px;background:#fafaf8"><div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:6px">'
+          + (allPlaced.length ? allPlaced.map(cv => {
+              const col = colFor(cv.name);
+              return '<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;background:#fff;border:1px solid #e8e8e8;font-size:11px;cursor:pointer" onclick="openModal(\'' + cv.id + '\')">'
+                + '<div class="ava" style="width:22px;height:22px;font-size:9px;flex-shrink:0;background:' + col.bg + ';color:' + col.tx + '">' + ini(cv.name) + '</div>'
+                + '<div><div style="font-weight:500">' + esc(cv.name) + '</div><div style="color:var(--muted);font-size:10px">' + esc(cv.role||'') + '</div></div></div>';
+            }).join('') : '<span style="font-size:11px;color:#ccc">Geen plaatsingsdata voor deze week.</span>')
+          + '</div></td></tr>'
+        : '';
+      return '<tr class="' + (isCur?'current-week':'') + '" style="cursor:' + (newAang>0?'pointer':'default') + '" onclick="' + (newAang>0?'toggleWeekExpand(\''+key+'\')':'') + '">'
+        + '<td><span style="margin-right:5px;font-size:10px;color:var(--muted)">' + (newAang>0?(expanded?'▾':'▸'):'') + '</span><span class="wk-num">' + key + (isCur?' · nu':'') + '</span></td>'
+        + '<td>' + vac + '</td>'
+        + '<td>' + voor + '<span class="wk-bar" style="width:' + barW + 'px"></span></td>'
+        + '<td>' + gesp + '</td>'
+        + '<td>' + (newAang > 0 ? '<strong style="color:var(--hg)">'+newAang+'</strong>' : '<span style="color:#ccc">—</span>') + '</td>'
+        + '<td style="color:var(--muted)">' + totalAang + '</td></tr>' + detailRow;
     }).join('');
   } else {
     // Monthly view
@@ -3099,7 +3128,15 @@ function setVacOwnerFilter(owner, el) {
   renderVacPerformance();
 }
 
-let _dashPeriodFilter = ''; // '' = live, 'YYYY-WNN' = week, 'YYYY-MM' = month
+function toggleWeekExpand(key) {
+  if (_expandedWeeks.has(key)) _expandedWeeks.delete(key);
+  else _expandedWeeks.add(key);
+  renderVacPerformance();
+}
+
+// Default to current month
+const _currentMonthDefault = new Date().toISOString().slice(0,7);
+let _dashPeriodFilter = _currentMonthDefault; // '' = live, 'YYYY-WNN' = week, 'YYYY-MM' = month
 
 function setDashPeriodFilter(val) {
   _dashPeriodFilter = val;
