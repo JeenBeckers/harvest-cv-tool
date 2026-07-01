@@ -2137,6 +2137,7 @@ async function dropCard(e,toStage,vacId){
   // Add to target
   if(!v.kanbanData[toStage]) v.kanbanData[toStage]=[];
   if(!v.kanbanData[toStage].includes(_dragCandId)) v.kanbanData[toStage].push(_dragCandId);
+  if(toStage==='aangenomen'){ if(!v.kanbanData.aangenomenDates) v.kanbanData.aangenomenDates={}; v.kanbanData.aangenomenDates[_dragCandId]=new Date().toISOString().slice(0,7); }
   _dragCandId=null;_dragFromStage=null;
   try{ await DB.upsertVacature(v); }catch(e){ console.error('dropCard save failed:',e); }
   renderKanban(v);
@@ -2177,6 +2178,7 @@ async function addToKanban(stageKey,vacId){
   // Remove from other stages first
   KANBAN_STAGES.forEach(s=>{ if(s.key!==stageKey&&v.kanbanData[s.key]) v.kanbanData[s.key]=v.kanbanData[s.key].filter(id=>id!==candId); });
   if(!v.kanbanData[stageKey].includes(candId)) v.kanbanData[stageKey].push(candId);
+  if(stageKey==='aangenomen'){ if(!v.kanbanData.aangenomenDates) v.kanbanData.aangenomenDates={}; v.kanbanData.aangenomenDates[candId]=new Date().toISOString().slice(0,7); }
   // Also link to vacature candidateIds
   if(!v.candidateIds) v.candidateIds=[];
   if(!v.candidateIds.includes(candId)) v.candidateIds.push(candId);
@@ -2878,6 +2880,22 @@ function getAangNewCount(sortedKeys, index) {
   return newIds.size;
 }
 
+// Returns { monthKey: [candidateId, ...] } based on stored aangenomenDates
+function getPlacementsByMonth() {
+  const byMonth = {};
+  for (const v of vacatures) {
+    const dates = v.kanbanData?.aangenomenDates || {};
+    const aangenomen = v.kanbanData?.aangenomen || [];
+    for (const candId of aangenomen) {
+      const monthKey = dates[candId] || null;
+      if (!monthKey) continue;
+      if (!byMonth[monthKey]) byMonth[monthKey] = new Set();
+      byMonth[monthKey].add(candId);
+    }
+  }
+  return byMonth;
+}
+
 let _expandedMonths = new Set();
 
 function toggleMonthExpand(key) {
@@ -2974,14 +2992,9 @@ function renderVacPerformance() {
     const buckets = buildMonthBuckets();
     const b = buckets[_dashPeriodFilter] || {};
     kpiVac = b.vacatures || 0; kpiVoor = b.voorgesteld || 0; kpiGesp = b.gesprek || 0;
-    const sortedAscAll = Object.keys(_weekStatsCache).sort();
-    const newPerMonth = {};
-    sortedAscAll.forEach((wk, idx) => {
-      const mk = weekKeyToMonthKey(wk);
-      newPerMonth[mk] = (newPerMonth[mk] || 0) + getAangNewCount(sortedAscAll, idx);
-    });
-    kpiAang = newPerMonth[_dashPeriodFilter] || 0;
-    kpiSub = 'nieuw geplaatst deze maand';
+    const placementsByMonth = getPlacementsByMonth();
+    kpiAang = (placementsByMonth[_dashPeriodFilter] || new Set()).size;
+    kpiSub = 'geplaatst deze maand';
   }
   document.getElementById('kpi-vac').textContent = kpiVac;
   document.getElementById('kpi-voor').textContent = kpiVoor;
@@ -3037,28 +3050,17 @@ function renderVacPerformance() {
     }, currentMonthKey);
     thead.innerHTML = '<tr><th>Maand</th><th>Vacatures</th><th>Voorgesteld</th><th>Op gesprek</th><th>Nieuw geplaatst</th><th>Totaal geplaatst</th></tr>';
     const maxVoor = Math.max(...monthKeys.map(k => buckets[k]?.voorgesteld||0), 1);
-    const sortedAscAll = Object.keys(_weekStatsCache).sort();
-    const newPerMonth = {}, newIdsPerMonth = {};
-    sortedAscAll.forEach((wk, idx) => {
-      const mk = weekKeyToMonthKey(wk);
-      newPerMonth[mk] = (newPerMonth[mk] || 0) + getAangNewCount(sortedAscAll, idx);
-      if (!newIdsPerMonth[mk]) newIdsPerMonth[mk] = new Set();
-      getAangNewIds(sortedAscAll, idx).forEach(id => newIdsPerMonth[mk].add(id));
-    });
+    const placementsByMonth = getPlacementsByMonth();
     tb.innerHTML = monthKeys.map(key => {
       const b = buckets[key] || {};
       const [y, m] = key.split('-');
       const label = MONTH_NL[parseInt(m)-1] + ' ' + y;
       const barW = Math.max(2, Math.round(((b.voorgesteld||0)/maxVoor)*60));
       const isCur = key === currentMonthKey;
-      const newAang = newPerMonth[key] || 0;
+      const placedIds = [...(placementsByMonth[key] || [])];
+      const newAang = placedIds.length;
       const expanded = _expandedMonths.has(key);
-      const placedIds = [...(newIdsPerMonth[key] || [])];
-      const placedCands = placedIds.map(id => cvLib.find(c=>c.id===id)).filter(Boolean);
-      const allArchived = cvLib.filter(cv => cv.archived && cv.archivedReason === 'aangenomen');
-      // also check archived candidates
-      const extraArchived = allArchived.filter(cv => !placedIds.includes(cv.id) && weekKeyToMonthKey(isoWeekKey(new Date(cv.archivedAt||cv.createdAt||''))) === key);
-      const allPlaced = [...placedCands, ...extraArchived];
+      const allPlaced = placedIds.map(id => cvLib.find(c=>c.id===id)).filter(Boolean);
 
       const detailRow = expanded && allPlaced.length > 0
         ? '<tr><td colspan="6" style="padding:0 8px 10px 28px;background:#fafaf8"><div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:6px">'
