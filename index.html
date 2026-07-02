@@ -462,6 +462,10 @@ b,strong{font-weight:500}
 .vkpi-sub{font-size:10px;color:var(--muted);margin-top:3px;font-weight:300}
 .vkpi.accent{border-left:3px solid var(--hg)}
 .vkpi.push-accent{border-left:3px solid var(--push)}
+[data-tip]{position:relative;cursor:help}
+[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%);background:rgba(9,43,19,.92);color:#fff;font-size:11px;font-weight:300;white-space:pre-line;padding:6px 10px;border-radius:5px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:9999;min-width:160px;max-width:260px;line-height:1.5;text-align:left;box-shadow:0 3px 10px rgba(0,0,0,.2)}
+[data-tip]::before{content:'';position:absolute;bottom:calc(100% + 1px);left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:rgba(9,43,19,.92);pointer-events:none;opacity:0;transition:opacity .15s;z-index:9999}
+[data-tip]:hover::after,[data-tip]:hover::before{opacity:1}
 .week-table-wrap{background:#fff;border:1px solid var(--border);border-radius:var(--rad);overflow:hidden;margin-bottom:4px}
 .week-tbl{width:100%;border-collapse:collapse;font-size:12px}
 .week-tbl th{background:var(--hgl);padding:7px 10px;text-align:left;font-weight:400;color:var(--muted);font-size:10px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
@@ -828,10 +832,10 @@ b,strong{font-weight:500}
           </div>
         </div>
         <div class="vkpi-grid" id="vkpi-grid">
-          <div class="vkpi accent"><div class="vkpi-label">Vacatures open</div><div class="vkpi-val" id="kpi-vac">0</div><div class="vkpi-sub">actieve vacatures</div></div>
-          <div class="vkpi"><div class="vkpi-label">Voorgesteld</div><div class="vkpi-val" id="kpi-voor">0</div><div class="vkpi-sub">unieke kandidaten</div></div>
-          <div class="vkpi"><div class="vkpi-label">Op gesprek</div><div class="vkpi-val" id="kpi-gesp">0</div><div class="vkpi-sub">1e + 2e gesprek</div></div>
-          <div class="vkpi push-accent"><div class="vkpi-label">Aangenomen</div><div class="vkpi-val" id="kpi-aang">0</div><div class="vkpi-sub">geplaatst</div></div>
+          <div class="vkpi accent"><div class="vkpi-label">Vacatures open</div><div class="vkpi-val" id="kpi-vac" data-tip="Aantal vacatures met status 'open' — dit zijn de actieve wervingstrajecten waar kandidaten aan gekoppeld kunnen worden.">0</div><div class="vkpi-sub">actieve vacatures</div></div>
+          <div class="vkpi"><div class="vkpi-label">Voorgesteld</div><div class="vkpi-val" id="kpi-voor" data-tip="Unieke kandidaten die in de 'Voorgesteld' kolom staan van minstens één vacature in de geselecteerde periode. Een kandidaat telt maar één keer mee, ook als die bij meerdere vacatures voorgesteld is.">0</div><div class="vkpi-sub">unieke kandidaten</div></div>
+          <div class="vkpi"><div class="vkpi-label">Op gesprek</div><div class="vkpi-val" id="kpi-gesp" data-tip="Unieke kandidaten in 'Op gesprek' (1e of 2e gesprek). Geeft aan hoeveel actieve gesprekken er lopen in de geselecteerde periode.">0</div><div class="vkpi-sub">1e + 2e gesprek</div></div>
+          <div class="vkpi push-accent"><div class="vkpi-label">Aangenomen</div><div class="vkpi-val" id="kpi-aang" data-tip="Kandidaten die zijn geplaatst (status: Aangenomen) in de geselecteerde week of maand, gebaseerd op de plaatsingsdatum. Bij 'live' is dit het totaal ooit geplaatst.">0</div><div class="vkpi-sub">geplaatst</div></div>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
           <span class="sdiv" style="margin-bottom:0;border:none;padding:0">Historische ontwikkeling</span>
@@ -3089,10 +3093,10 @@ function renderVacPerformance() {
       const voorDelta = getSnapshotDelta(sortedAscKeys, idx, 'voorgesteldIds', 'voorgesteld');
       const gespDelta = getSnapshotDelta(sortedAscKeys, idx, 'gesprekIds', 'gesprek');
       function deltaBadge(d) {
-        if (idx === 0) return ''; // no previous week to compare
-        if (d.newCount > 0) return '<span style="font-size:10px;color:#2e7d32;font-weight:500;margin-left:4px">+' + d.newCount + '</span>';
-        if (d.numeric < 0) return '<span style="font-size:10px;color:#c0392b;font-weight:400;margin-left:4px">' + d.numeric + '</span>';
-        return '<span style="font-size:10px;color:#bbb;margin-left:4px">=</span>';
+        if (idx === 0) return '';
+        if (d.newCount > 0) return '<span data-tip="+'+ d.newCount +' nieuwe unieke kandidaten dit fase t.o.v. vorige week" style="font-size:10px;color:#2e7d32;font-weight:500;margin-left:4px;cursor:help">+' + d.newCount + '</span>';
+        if (d.numeric < 0) return '<span data-tip="' + d.numeric + ' t.o.v. vorige week — meer kandidaten zijn deze fase uitgestroomd dan ingestroomd" style="font-size:10px;color:#c0392b;font-weight:400;margin-left:4px;cursor:help">' + d.numeric + '</span>';
+        return '<span data-tip="Geen wijziging t.o.v. vorige week — zelfde aantal kandidaten in deze fase" style="font-size:10px;color:#bbb;margin-left:4px;cursor:help">=</span>';
       }
 
       const detailRow = canExpand && expanded
@@ -3150,9 +3154,9 @@ function renderVacPerformance() {
       function mDeltaBadge(cur, prev) {
         if (!prevB) return '';
         const d = (cur||0) - (prev||0);
-        if (d > 0) return '<span style="font-size:10px;color:#2e7d32;font-weight:500;margin-left:4px">+' + d + '</span>';
-        if (d < 0) return '<span style="font-size:10px;color:#c0392b;font-weight:400;margin-left:4px">' + d + '</span>';
-        return '<span style="font-size:10px;color:#bbb;margin-left:4px">=</span>';
+        if (d > 0) return '<span data-tip="+' + d + ' t.o.v. vorige maand — meer kandidaten in deze fase" style="font-size:10px;color:#2e7d32;font-weight:500;margin-left:4px;cursor:help">+' + d + '</span>';
+        if (d < 0) return '<span data-tip="' + d + ' t.o.v. vorige maand — kandidaten zijn uit deze fase gestroomd" style="font-size:10px;color:#c0392b;font-weight:400;margin-left:4px;cursor:help">' + d + '</span>';
+        return '<span data-tip="Geen wijziging t.o.v. vorige maand" style="font-size:10px;color:#bbb;margin-left:4px;cursor:help">=</span>';
       }
 
       const monthOffers = offersByMonthHist[key] || {};
@@ -3288,10 +3292,10 @@ async function renderDashboard(){
   renderVacPerformance();
   const active=cvLib.filter(cv=>!cv.archived).length,pushCount=cvLib.filter(cv=>cv.push&&!cv.archived).length;
   document.getElementById('sgrid').innerHTML=
-    '<div class="scard"><div class="slabel">Actieve kandidaten</div><div class="sval">'+active+'</div><div class="ssub2">'+cvLib.filter(cv=>cv.archived).length+' gearchiveerd</div></div>'
-    +'<div class="scard push"><div class="slabel">⚡ Push kandidaten</div><div class="sval">'+pushCount+'</div><div class="ssub2">actief gepushed</div></div>'
-    +'<div class="scard"><div class="slabel">Totaal aanbiedingen</div><div class="sval">'+offerLog.length+'</div><div class="ssub2">alle periodes</div></div>'
-    +'<div class="scard"><div class="slabel">Mijn aanbiedingen</div><div class="sval">'+offerLog.filter(l=>l.user===CU).length+'</div><div class="ssub2">door '+CU+'</div></div>';
+    '<div class="scard"><div class="slabel">Actieve kandidaten</div><div class="sval" data-tip="Kandidaten die momenteel actief in de pipeline zitten en niet gearchiveerd zijn.">'+active+'</div><div class="ssub2">'+cvLib.filter(cv=>cv.archived).length+' gearchiveerd</div></div>'
+    +'<div class="scard push"><div class="slabel">⚡ Push kandidaten</div><div class="sval" data-tip="Kandidaten die als Push-kandidaat zijn gemarkeerd — kort beschikbaar of sterk profiel. Actief gepushed bij klanten.">'+pushCount+'</div><div class="ssub2">actief gepushed</div></div>'
+    +'<div class="scard"><div class="slabel">Totaal aanbiedingen</div><div class="sval" data-tip="Totaal aantal geregistreerde aanbiedingen ooit — alle periodes, alle gebruikers. Zie hieronder de uitsplitsing per persoon.">'+offerLog.length+'</div><div class="ssub2">alle periodes</div></div>'
+    +'<div class="scard"><div class="slabel">Mijn aanbiedingen</div><div class="sval" data-tip="Aanbiedingen geregistreerd door '+CU+'. Het verschil met het totaal zijn aanbiedingen door andere teamleden.">'+offerLog.filter(l=>l.user===CU).length+'</div><div class="ssub2">door '+CU+'</div></div>';
   renderOfferStats();
   const pushCVs=cvLib.filter(cv=>cv.push&&!cv.archived);
   const dpg=document.getElementById('dash-push-grid');
