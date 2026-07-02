@@ -106,6 +106,7 @@ b,strong{font-weight:500}
 .up-m{background:var(--timberwolf);color:var(--hg)}
 .up-b{background:var(--timberwolf);color:var(--hg)}
 .up-w{background:var(--pushl);color:var(--push)}
+.up-je{background:#dbeafe;color:#1e40af}
 
 /* ── PUSH TOGGLE ── */
 .push-toggle{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:3px;font-size:10px;font-weight:400;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--muted);transition:all .15s;font-family:var(--font)}
@@ -849,7 +850,8 @@ b,strong{font-weight:500}
         </div>
       </div>
 
-      <div class="sgrid5" id="sgrid" style="margin-bottom:14px"></div>
+      <div class="sgrid" id="sgrid" style="margin-bottom:8px"></div>
+      <div id="offer-stats-section" style="margin-bottom:14px"></div>
       <div class="sdiv">⚡ Push kandidaten — aanbiedingen</div>
       <div class="push-grid" id="dash-push-grid"></div>
 <div class="sdiv">Aanbiedingshistorie</div>
@@ -1271,7 +1273,7 @@ const DEFAULT_USERS = [
 let appUsers = [...DEFAULT_USERS];
 let currentUserObj = null;
 const USERS=['Julieta','Frank','Marlie','Bastijn','Wessal'];
-const UCLS={Julieta:'up-j',Frank:'up-f',Marlie:'up-m',Bastijn:'up-b',Wessal:'up-w'};
+const UCLS={Julieta:'up-j',Frank:'up-f',Marlie:'up-m',Bastijn:'up-b',Wessal:'up-w',Jeen:'up-je'};
 const DEFAULT_COMPANIES=['ABN AMRO','ASN Bank','ASR','BNG','CGI','DELA','Essent','Firan','GVB','KPN','Lumera','RIVM','Tikkie','Triodosbank','UWV'];
 const DEFAULT_SIG=`Met vriendelijke groet,\n\nHarvest Lead Programs B.V.\nwww.harvest.nl`;
 const DEFAULT_EMAILS={Marlie:'jeen.beckers@harvest.nl',Julieta:'',Frank:''};
@@ -2909,6 +2911,35 @@ function getPlacementsByWeek() {
   return byWeek;
 }
 
+function getOffersByWeek() {
+  const byWeek = {};
+  for (const l of offerLog) {
+    if (!l.date) continue;
+    const wk = isoWeekKey(new Date(l.date));
+    if (!byWeek[wk]) byWeek[wk] = {};
+    byWeek[wk][l.user] = (byWeek[wk][l.user] || 0) + 1;
+  }
+  return byWeek;
+}
+function getOffersByMonth() {
+  const byMonth = {};
+  for (const l of offerLog) {
+    if (!l.date) continue;
+    const mk = l.date.slice(0, 7);
+    if (!byMonth[mk]) byMonth[mk] = {};
+    byMonth[mk][l.user] = (byMonth[mk][l.user] || 0) + 1;
+  }
+  return byMonth;
+}
+function offerBreakdownHtml(byUser) {
+  if (!byUser) return '<span style="color:#ccc">—</span>';
+  const total = Object.values(byUser).reduce((s,n) => s+n, 0);
+  if (!total) return '<span style="color:#ccc">—</span>';
+  const allU = appUsers.map(u => u.name).filter(u => byUser[u] > 0);
+  const pills = allU.map(u => '<span class="upill ' + (UCLS[u]||'up-m') + '" style="font-size:9px">' + u[0] + ' ' + byUser[u] + '</span>').join('');
+  return '<strong>' + total + '</strong><span style="display:inline-flex;flex-wrap:wrap;gap:2px;margin-left:5px;vertical-align:middle">' + pills + '</span>';
+}
+
 let _expandedMonths = new Set();
 let _expandedWeeks = new Set();
 
@@ -3032,9 +3063,10 @@ function renderVacPerformance() {
       const ws = _weekStatsCache[k] || {};
       return _vacOwnerFilter === 'all' ? ws : (ws.per_owner?.[_vacOwnerFilter] || {});
     }, k => 'W' + k.split('-W')[1], currentWeekKey);
-    thead.innerHTML = '<tr><th>Week</th><th>Vacatures</th><th>Voorgesteld</th><th>Op gesprek</th><th>Nieuw geplaatst</th><th>Totaal geplaatst</th></tr>';
+    thead.innerHTML = '<tr><th>Week</th><th>Vacatures</th><th>Aanbiedingen</th><th>Voorgesteld</th><th>Op gesprek</th><th>Nieuw geplaatst</th><th>Totaal geplaatst</th></tr>';
     const maxVoor = Math.max(...allKeys.map(k => (_weekStatsCache[k]?.voorgesteld||0)), 1);
     const placementsByWeek = getPlacementsByWeek();
+    const offersByWeekHist = getOffersByWeek();
     const sortedAscKeys = allKeys.slice().sort();
     tb.innerHTML = allKeys.map(key => {
       const ws = _weekStatsCache[key] || {};
@@ -3064,7 +3096,7 @@ function renderVacPerformance() {
       }
 
       const detailRow = canExpand && expanded
-        ? '<tr><td colspan="6" style="padding:0 8px 10px 28px;background:#fafaf8"><div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:6px">'
+        ? '<tr><td colspan="7" style="padding:0 8px 10px 28px;background:#fafaf8"><div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:6px">'
           + allPlaced.map(cv => {
               const col = colFor(cv.name);
               return '<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;background:#fff;border:1px solid #e8e8e8;font-size:11px;cursor:pointer" onclick="openModal(\'' + cv.id + '\')">'
@@ -3077,9 +3109,11 @@ function renderVacPerformance() {
       const countCell = newAang > 0
         ? '<strong style="color:var(--hg)">' + newAang + '</strong>' + (!hasDates ? '<span style="font-size:9px;color:#bbb;margin-left:3px" title="Geen kandidaatdetails beschikbaar voor oude data">*</span>' : '')
         : '<span style="color:#ccc">—</span>';
+      const weekOffers = offersByWeekHist[key] || {};
       return '<tr class="' + (isCur?'current-week':'') + '" style="cursor:' + (canExpand?'pointer':'default') + '" onclick="' + (canExpand?'toggleWeekExpand(\''+key+'\')':'') + '">'
         + '<td><span style="margin-right:5px;font-size:10px;color:var(--muted)">' + arrow + '</span><span class="wk-num">' + key + (isCur?' · nu':'') + '</span></td>'
         + '<td>' + vac + '</td>'
+        + '<td>' + offerBreakdownHtml(Object.keys(weekOffers).length ? weekOffers : null) + '</td>'
         + '<td>' + voor + '<span class="wk-bar" style="width:' + barW + 'px"></span>' + deltaBadge(voorDelta) + '</td>'
         + '<td>' + gesp + deltaBadge(gespDelta) + '</td>'
         + '<td>' + countCell + '</td>'
@@ -3094,9 +3128,10 @@ function renderVacPerformance() {
       const [y, m] = k.split('-');
       return MONTH_NL[parseInt(m)-1] + ' ' + y.slice(2);
     }, currentMonthKey);
-    thead.innerHTML = '<tr><th>Maand</th><th>Vacatures</th><th>Voorgesteld</th><th>Op gesprek</th><th>Nieuw geplaatst</th><th>Totaal geplaatst</th></tr>';
+    thead.innerHTML = '<tr><th>Maand</th><th>Vacatures</th><th>Aanbiedingen</th><th>Voorgesteld</th><th>Op gesprek</th><th>Nieuw geplaatst</th><th>Totaal geplaatst</th></tr>';
     const maxVoor = Math.max(...monthKeys.map(k => buckets[k]?.voorgesteld||0), 1);
     const placementsByMonth = getPlacementsByMonth();
+    const offersByMonthHist = getOffersByMonth();
     const sortedAscMonths = monthKeys.slice().sort();
     tb.innerHTML = monthKeys.map(key => {
       const b = buckets[key] || {};
@@ -3120,8 +3155,9 @@ function renderVacPerformance() {
         return '<span style="font-size:10px;color:#bbb;margin-left:4px">=</span>';
       }
 
+      const monthOffers = offersByMonthHist[key] || {};
       const detailRow = expanded && allPlaced.length > 0
-        ? '<tr><td colspan="6" style="padding:0 8px 10px 28px;background:#fafaf8"><div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:6px">'
+        ? '<tr><td colspan="7" style="padding:0 8px 10px 28px;background:#fafaf8"><div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:6px">'
           + allPlaced.map(cv => {
               const col = colFor(cv.name);
               return '<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;background:#fff;border:1px solid #e8e8e8;font-size:11px;cursor:pointer" onclick="openModal(\'' + cv.id + '\')">'
@@ -3130,11 +3166,12 @@ function renderVacPerformance() {
                 + '</div>';
             }).join('')
           + '</div></td></tr>'
-        : (expanded ? '<tr><td colspan="6" style="padding:6px 8px 10px 28px;background:#fafaf8;font-size:11px;color:#ccc">Geen plaatsingsdata beschikbaar voor deze periode.</td></tr>' : '');
+        : (expanded ? '<tr><td colspan="7" style="padding:6px 8px 10px 28px;background:#fafaf8;font-size:11px;color:#ccc">Geen plaatsingsdata beschikbaar voor deze periode.</td></tr>' : '');
 
       return '<tr class="' + (isCur?'current-week':'') + '" style="cursor:' + (newAang>0?'pointer':'default') + '" onclick="toggleMonthExpand(\'' + key + '\')">'
         + '<td><span style="margin-right:5px;font-size:10px;color:var(--muted)">' + (newAang>0?(expanded?'▾':'▸'):'') + '</span><span class="wk-num">' + label + (isCur?' · nu':'') + '</span></td>'
         + '<td>' + (b.vacatures||0) + '</td>'
+        + '<td>' + offerBreakdownHtml(Object.keys(monthOffers).length ? monthOffers : null) + '</td>'
         + '<td>' + (b.voorgesteld||0) + '<span class="wk-bar" style="width:' + barW + 'px"></span>' + mDeltaBadge(b.voorgesteld, prevB?.voorgesteld) + '</td>'
         + '<td>' + (b.gesprek||0) + mDeltaBadge(b.gesprek, prevB?.gesprek) + '</td>'
         + '<td>' + (newAang > 0 ? '<strong style="color:var(--hg)">'+newAang+'</strong>' : '<span style="color:#ccc">—</span>') + '</td>'
@@ -3170,6 +3207,7 @@ let _dashPeriodFilter = _currentMonthDefault; // '' = live, 'YYYY-WNN' = week, '
 function setDashPeriodFilter(val) {
   _dashPeriodFilter = val;
   renderVacPerformance();
+  renderOfferStats();
 }
 
 function populatePeriodSelect() {
@@ -3193,27 +3231,72 @@ function populatePeriodSelect() {
 }
 
 // ── DASHBOARD
+function renderOfferStats() {
+  const sec = document.getElementById('offer-stats-section');
+  if (!sec) return;
+  // Compute period offers
+  const offersByWeek = getOffersByWeek();
+  const offersByMonth = getOffersByMonth();
+  let periodByUser = {};
+  let periodLabel = 'totaal';
+  if (!_dashPeriodFilter) {
+    for (const l of offerLog) periodByUser[l.user] = (periodByUser[l.user] || 0) + 1;
+    periodLabel = 'all-time';
+  } else if (_dashPeriodFilter.includes('-W')) {
+    periodByUser = offersByWeek[_dashPeriodFilter] || {};
+    periodLabel = _dashPeriodFilter;
+  } else {
+    periodByUser = offersByMonth[_dashPeriodFilter] || {};
+    const [y, m] = _dashPeriodFilter.split('-');
+    periodLabel = (MONTH_NL[parseInt(m)-1] || '') + ' ' + y;
+  }
+  const allU = appUsers.map(u => u.name);
+  const totalP = Object.values(periodByUser).reduce((s,n) => s+n, 0);
+  const maxU = Math.max(...allU.map(u => periodByUser[u] || 0), 1);
+  if (!totalP) {
+    sec.innerHTML = '<div class="sdiv" style="margin-bottom:6px">Aanbiedingen per persoon</div>'
+      + '<div style="font-size:11px;color:var(--muted);padding:6px 0">Geen aanbiedingen in deze periode</div>';
+    return;
+  }
+  const rows = allU
+    .map(u => ({ u, n: periodByUser[u] || 0 }))
+    .sort((a, b) => b.n - a.n)
+    .map(({ u, n }) => {
+      const pct = Math.round(n / maxU * 100);
+      const companies = new Set(offerLog.filter(l => l.user === u).map(l => l.company)).size;
+      return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">'
+        + '<span class="upill ' + (UCLS[u] || 'up-m') + '" style="min-width:58px;justify-content:center;font-size:10px">' + u + '</span>'
+        + '<div style="flex:1;background:#f0f0f0;border-radius:2px;height:6px"><div style="background:var(--hg);border-radius:2px;height:6px;width:' + pct + '%"></div></div>'
+        + '<span style="font-size:13px;font-weight:500;min-width:22px;text-align:right;color:' + (n > 0 ? 'var(--hg)' : '#ccc') + '">' + (n > 0 ? n : '—') + '</span>'
+        + '<span style="font-size:10px;color:var(--muted);min-width:80px">' + (n > 0 ? companies + ' partij' + (companies !== 1 ? 'en' : '') : '') + '</span>'
+        + '</div>';
+    }).join('');
+  sec.innerHTML = '<div class="sdiv" style="margin-bottom:6px">Aanbiedingen per persoon — ' + periodLabel + '</div>'
+    + '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--rad);padding:10px 14px">'
+    + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">'
+    + '<span style="font-size:20px;font-weight:600;color:var(--hg)">' + totalP + '</span>'
+    + '<span style="font-size:11px;color:var(--muted)">aanbiedingen totaal</span></div>'
+    + rows + '</div>';
+}
+
 async function renderDashboard(){
   document.getElementById('dashsub').textContent='Ingelogd als '+CU+' · gedeeld teamoverzicht';
-  // Load + snapshot week stats
   try {
     _weekStatsCache = await DB.getWeekStats();
     await snapshotCurrentWeek();
   } catch(e) { console.error('week stats:', e); }
   renderVacPerformance();
   const active=cvLib.filter(cv=>!cv.archived).length,pushCount=cvLib.filter(cv=>cv.push&&!cv.archived).length;
-  const myC=offerLog.filter(l=>l.user===CU).length;
-  document.getElementById('sgrid').innerHTML=`
-    <div class="scard"><div class="slabel">Actieve kandidaten</div><div class="sval">${active}</div><div class="ssub2">${cvLib.filter(cv=>cv.archived).length} gearchiveerd</div></div>
-    <div class="scard push"><div class="slabel">⚡ Push kandidaten</div><div class="sval">${pushCount}</div><div class="ssub2">actief gepushed</div></div>
-    <div class="scard"><div class="slabel">Mijn aanbiedingen</div><div class="sval">${myC}</div><div class="ssub2">door ${CU}</div></div>
-    <div class="scard"><div class="slabel">Totaal aanbiedingen</div><div class="sval">${offerLog.length}</div><div class="ssub2">geregistreerd</div></div>`;
+  document.getElementById('sgrid').innerHTML=
+    '<div class="scard"><div class="slabel">Actieve kandidaten</div><div class="sval">'+active+'</div><div class="ssub2">'+cvLib.filter(cv=>cv.archived).length+' gearchiveerd</div></div>'
+    +'<div class="scard push"><div class="slabel">⚡ Push kandidaten</div><div class="sval">'+pushCount+'</div><div class="ssub2">actief gepushed</div></div>'
+    +'<div class="scard"><div class="slabel">Totaal aanbiedingen</div><div class="sval">'+offerLog.length+'</div><div class="ssub2">alle periodes</div></div>'
+    +'<div class="scard"><div class="slabel">Mijn aanbiedingen</div><div class="sval">'+offerLog.filter(l=>l.user===CU).length+'</div><div class="ssub2">door '+CU+'</div></div>';
+  renderOfferStats();
   const pushCVs=cvLib.filter(cv=>cv.push&&!cv.archived);
   const dpg=document.getElementById('dash-push-grid');
   if(!pushCVs.length){dpg.innerHTML='<div class="empty" style="grid-column:1/-1;padding:12px 0">Geen push kandidaten actief</div>';}
   else{dpg.innerHTML=pushCVs.map(cv=>{const col=colFor(cv.name),cnt=offerLog.filter(l=>l.candidateId===cv.id).length;return`<div class="push-card" onclick="openModal('${cv.id}')"><div class="ava" style="background:${col.bg};color:${col.tx}">${ini(cv.name)}</div><div class="pname">⚡ ${esc(cv.name)}</div><div class="prole">${esc(cv.role)}</div><div style="display:flex;gap:3px;flex-wrap:wrap"><span class="tag tag-av">${esc(cv.availability)}</span>${cnt>0?`<span class="tag tag-cnt">${cnt}× aangeboden</span>`:''}</div></div>`;}).join('');}
-  const maxU=Math.max(...USERS.map(u=>offerLog.filter(l=>l.user===u).length),1);
-  document.getElementById('userstats').innerHTML=USERS.map(u=>{const uc=offerLog.filter(l=>l.user===u).length,up=new Set(offerLog.filter(l=>l.user===u).map(l=>l.company)).size,pct=Math.round(uc/maxU*100);return`<div class="scard"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span class="upill ${UCLS[u]}">${u}</span><span style="font-size:18px;font-weight:600">${uc}</span></div><div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div><div class="ssub2" style="margin-top:3px">${up} partij${up!==1?'en':''}</div></div>`;}).join('');
   renderLogTable();renderTopCVs();
 }
 function setLogFilter(f,el){logFilter=f;document.querySelectorAll('#view-dash .fchip').forEach(c=>c.classList.remove('active'));el.classList.add('active');renderLogTable();}
