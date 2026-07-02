@@ -2947,6 +2947,25 @@ function offerBreakdownHtml(byUser) {
 let _expandedMonths = new Set();
 let _expandedWeeks = new Set();
 
+function selectHistPeriod(key) {
+  // Month key: if it's the most recent past month, drill into week view
+  if (!key.includes('-W')) {
+    const allMonths = Object.keys(buildMonthBuckets()).sort().reverse();
+    const currentMonthKey = weekKeyToMonthKey(isoWeekKey(new Date()));
+    const pastMonths = allMonths.filter(m => m !== currentMonthKey);
+    if (pastMonths[0] === key) {
+      // Previous month → switch to week view
+      _histPeriod = 'week';
+      document.getElementById('period-btn-week')?.classList.add('active');
+      document.getElementById('period-btn-month')?.classList.remove('active');
+    }
+  }
+  _dashPeriodFilter = key;
+  const sel = document.getElementById('dash-period-select');
+  if (sel) sel.value = key;
+  renderVacPerformance();
+  renderOfferStats();
+}
 function toggleMonthExpand(key) {
   if (_expandedMonths.has(key)) _expandedMonths.delete(key);
   else _expandedMonths.add(key);
@@ -3109,13 +3128,16 @@ function renderVacPerformance() {
             }).join('')
           + '</div></td></tr>'
         : '';
-      const arrow = canExpand ? (expanded ? '▾' : '▸') : '';
+      const arrowSpan = canExpand
+        ? '<span onclick="event.stopPropagation();toggleWeekExpand(\''+key+'\')" style="margin-right:5px;font-size:10px;color:var(--muted);cursor:pointer">' + (expanded?'▾':'▸') + '</span>'
+        : '<span style="margin-right:5px;font-size:10px;color:var(--muted)"> </span>';
       const countCell = newAang > 0
         ? '<strong style="color:var(--hg)">' + newAang + '</strong>' + (!hasDates ? '<span style="font-size:9px;color:#bbb;margin-left:3px" title="Geen kandidaatdetails beschikbaar voor oude data">*</span>' : '')
         : '<span style="color:#ccc">—</span>';
+      const isSelected = _dashPeriodFilter === key;
       const weekOffers = offersByWeekHist[key] || {};
-      return '<tr class="' + (isCur?'current-week':'') + '" style="cursor:' + (canExpand?'pointer':'default') + '" onclick="' + (canExpand?'toggleWeekExpand(\''+key+'\')':'') + '">'
-        + '<td><span style="margin-right:5px;font-size:10px;color:var(--muted)">' + arrow + '</span><span class="wk-num">' + key + (isCur?' · nu':'') + '</span></td>'
+      return '<tr class="' + (isCur?'current-week':'') + '" style="cursor:pointer;' + (isSelected?'background:rgba(9,43,19,.06);':'') + '" onclick="selectHistPeriod(\''+key+'\')">'
+        + '<td>' + arrowSpan + '<span class="wk-num">' + key + (isCur?' · nu':'') + '</span></td>'
         + '<td>' + vac + '</td>'
         + '<td>' + offerBreakdownHtml(Object.keys(weekOffers).length ? weekOffers : null) + '</td>'
         + '<td>' + voor + '<span class="wk-bar" style="width:' + barW + 'px"></span>' + deltaBadge(voorDelta) + '</td>'
@@ -3172,8 +3194,12 @@ function renderVacPerformance() {
           + '</div></td></tr>'
         : (expanded ? '<tr><td colspan="7" style="padding:6px 8px 10px 28px;background:#fafaf8;font-size:11px;color:#ccc">Geen plaatsingsdata beschikbaar voor deze periode.</td></tr>' : '');
 
-      return '<tr class="' + (isCur?'current-week':'') + '" style="cursor:' + (newAang>0?'pointer':'default') + '" onclick="toggleMonthExpand(\'' + key + '\')">'
-        + '<td><span style="margin-right:5px;font-size:10px;color:var(--muted)">' + (newAang>0?(expanded?'▾':'▸'):'') + '</span><span class="wk-num">' + label + (isCur?' · nu':'') + '</span></td>'
+      const isSelectedM = _dashPeriodFilter === key;
+      const expandArrowM = newAang > 0
+        ? '<span onclick="event.stopPropagation();toggleMonthExpand(\''+key+'\')" style="margin-right:5px;font-size:10px;color:var(--muted);cursor:pointer">' + (expanded?'▾':'▸') + '</span>'
+        : '<span style="margin-right:5px;font-size:10px;color:var(--muted)"> </span>';
+      return '<tr class="' + (isCur?'current-week':'') + '" style="cursor:pointer;' + (isSelectedM?'background:rgba(9,43,19,.06);':'') + '" onclick="selectHistPeriod(\''+key+'\')">'
+        + '<td>' + expandArrowM + '<span class="wk-num">' + label + (isCur?' · nu':'') + '</span></td>'
         + '<td>' + (b.vacatures||0) + '</td>'
         + '<td>' + offerBreakdownHtml(Object.keys(monthOffers).length ? monthOffers : null) + '</td>'
         + '<td>' + (b.voorgesteld||0) + '<span class="wk-bar" style="width:' + barW + 'px"></span>' + mDeltaBadge(b.voorgesteld, prevB?.voorgesteld) + '</td>'
@@ -3238,7 +3264,6 @@ function populatePeriodSelect() {
 function renderOfferStats() {
   const sec = document.getElementById('offer-stats-section');
   if (!sec) return;
-  // Compute period offers
   const offersByWeek = getOffersByWeek();
   const offersByMonth = getOffersByMonth();
   let periodByUser = {};
@@ -3254,7 +3279,8 @@ function renderOfferStats() {
     const [y, m] = _dashPeriodFilter.split('-');
     periodLabel = (MONTH_NL[parseInt(m)-1] || '') + ' ' + y;
   }
-  const allU = appUsers.map(u => u.name);
+  // Only show Sales + Admin users
+  const allU = appUsers.filter(u => u.role === 'Sales' || u.role === 'Admin').map(u => u.name);
   const totalP = Object.values(periodByUser).reduce((s,n) => s+n, 0);
   const maxU = Math.max(...allU.map(u => periodByUser[u] || 0), 1);
   if (!totalP) {
