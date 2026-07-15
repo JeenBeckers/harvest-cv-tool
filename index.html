@@ -1519,6 +1519,20 @@ async function loadFromStorage(){
     meetings = await DB.getMeetings().catch(()=>[]);
     funnelData = await DB.getFunnelData();
     companyOwners = await DB.getCompanyOwners();
+    const OWNER_SEED = {
+      'ASR':'Julieta','ABN AMRO':'Marlie','Tikkie':'Marlie','ASN Bank':'Marlie','DNB':'Marlie',
+      'DELA':'Julieta','Lumera':'Julieta','NN':'Marlie','Triodosbank':'Julieta','Triodos':'Julieta',
+      'Alliander':'Julieta','CGI':'Marlie','Essent':'Julieta','EDSN':'Frank','eLaad':'Frank',
+      'Eneco':'Julieta','Enexis':'Frank','KPN':'Marlie','Tennet':'Frank','TenneT':'Frank',
+      'Vattenfall':'Julieta','Douane':'Frank','CAK':'Frank','CIBG':'Frank','Kadaster':'Frank',
+      'SVB':'Marlie','RIVM':'Marlie','UWV':'Marlie','ANWB':'Frank','GVB':'Frank',
+      'Port of Rotterdam':'Frank','BNG':'Marlie','Firan':'Frank'
+    };
+    let ownersDirty = false;
+    for (const [co, owner] of Object.entries(OWNER_SEED)) {
+      if (!companyOwners[co]) { companyOwners[co] = owner; ownersDirty = true; }
+    }
+    if (ownersDirty) await DB.saveCompanyOwners(companyOwners);
     console.log('DB loaded ok');
   }catch(e){
     console.error('DB load failed:',e);
