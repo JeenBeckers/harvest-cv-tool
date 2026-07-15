@@ -4611,6 +4611,24 @@ const MTG_TARGET = 7;
 
 function currentWeekKey() { return isoWeekKey(new Date()); }
 
+function buildWeekOptions(selectedKey) {
+  const opts = [];
+  const now = new Date();
+  for (let i = -16; i <= 4; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + i * 7);
+    const key = isoWeekKey(d);
+    // Monday of that week
+    const mon = new Date(d);
+    mon.setDate(d.getDate() - (d.getDay()+6)%7);
+    const fri = new Date(mon); fri.setDate(mon.getDate() + 4);
+    const fmt = dt => dt.toLocaleDateString('nl-NL',{day:'numeric',month:'short'});
+    const label = key + '  ·  ' + fmt(mon) + ' – ' + fmt(fri);
+    opts.push('<option value="' + key + '"' + (key===selectedKey?' selected':'') + '>' + label + '</option>');
+  }
+  return opts.join('');
+}
+
 function weekLabel(wk) {
   const [yr, wn] = wk.split('-W');
   return `W${wn} · ${yr}`;
@@ -4718,7 +4736,11 @@ function renderMeetings() {
           </select>
         </div>
         <div class="fg" style="min-width:110px"><label class="fl">Vertical</label><input class="fi" id="mtg-vertical" placeholder="Finance, Gov…" style="font-size:12px"></div>
-        <div class="fg" style="min-width:80px"><label class="fl">Weeknummer</label><input class="fi" id="mtg-week" placeholder="${cwk}" value="${cwk}" style="font-size:12px"></div>
+        <div class="fg" style="min-width:160px"><label class="fl">Weeknummer</label>
+          <select class="fi" id="mtg-week" style="font-size:12px">
+            ${buildWeekOptions(cwk)}
+          </select>
+        </div>
         <div class="fg" style="min-width:80px"><label class="fl">Door</label>
           <select class="fi" id="mtg-user" style="font-size:12px" onchange="updateMtgFunnelOptions()">
             ${['Marlie','Frank','Julieta','Jeen'].map(u=>`<option${u===CU?' selected':''}>${u}</option>`).join('')}
