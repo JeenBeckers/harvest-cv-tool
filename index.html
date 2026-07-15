@@ -2266,14 +2266,19 @@ function getFunnelRealization(owner, year, month) {
 
 function getPlacementsAfterCutoff() {
   const cutoff = funnelMeta.cutoffDate || '2026-07-15';
-  let count = 0;
+  const today = new Date().toISOString().slice(0,10);
+  let count = 0, bbtgCount = 0;
   for (const v of vacatures) {
     if (!v.kanbanData?.startDates) continue;
+    const isBBTG = (v.company||'').trim().toUpperCase() === 'BBTG';
     for (const sd of Object.values(v.kanbanData.startDates)) {
-      if (sd && sd >= cutoff && sd <= '2026-12-31') count++;
+      if (sd && sd > cutoff && sd <= today) {
+        if (isBBTG) bbtgCount++;
+        else count++;
+      }
     }
   }
-  return count;
+  return { count, bbtgCount };
 }
 
 async function saveFunnelMeta() {
@@ -2469,7 +2474,9 @@ function renderFunnelTab() {
     + '</svg>';
 
   // ── Jaaroverzicht 2026
-  const realAfter = getPlacementsAfterCutoff();
+  const _placements = getPlacementsAfterCutoff();
+  const realAfter = _placements.count;
+  const bbtgAfter = _placements.bbtgCount;
   const hist = funnelMeta.historicalPlacements || 0;
   const remTarget = funnelMeta.remainingTarget || 0;
   const remaining = Math.max(0, remTarget - realAfter);
@@ -2479,6 +2486,9 @@ function renderFunnelTab() {
   const isAdminUser = (appUsers.find(u=>u.name===CU)?.role === 'Admin');
   const editBtn = isAdminUser ? '<button class="btn-act edit" onclick="saveFunnelMeta()" title="Doelstelling aanpassen" style="margin-left:8px;vertical-align:middle">✏️</button>' : '';
 
+  const bbtgBadge = bbtgAfter > 0
+    ? '<div style="font-size:10px;color:var(--muted);margin-top:8px;padding:4px 8px;background:#f5f5f5;border-radius:4px;display:inline-block">+ ' + bbtgAfter + ' BBTG (apart project, niet meegeteld)</div>'
+    : '';
   const countdownColor = remaining === 0 ? '#2e7d32' : remaining <= 10 ? '#e65100' : 'var(--hg)';
   const jaarPanel = '<div class="panel" style="margin-bottom:14px">'
     + '<div class="ptitle" style="margin-bottom:12px"><i class="ti ti-chart-arrows-vertical"></i> Jaaroverzicht 2026' + editBtn + '</div>'
@@ -2493,6 +2503,7 @@ function renderFunnelTab() {
     + '<div style="text-align:center;min-width:100px">'
     + '<div style="font-size:32px;font-weight:700;color:#2e7d32;line-height:1">' + realAfter + '</div>'
     + '<div style="font-size:11px;color:var(--muted);margin-top:4px">Geplaatst<br>na 15 jul</div>'
+    + bbtgBadge
     + '</div>'
     + '<div style="font-size:24px;color:#ccc;align-self:center">=</div>'
     // Totaal
