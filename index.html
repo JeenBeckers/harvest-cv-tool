@@ -1299,6 +1299,12 @@ const DB = {
   async saveFunnelMeta(data) {
     try { await this.setSetting('funnel_meta',JSON.stringify(data)); } catch(e){console.error(e);}
   },
+  async getMeetingFunnelRefs() {
+    try { const v=await this.getSetting('meeting_funnel_refs'); return v?JSON.parse(v):{}; } catch(e){return{};}
+  },
+  async saveMeetingFunnelRefs(data) {
+    try { await this.setSetting('meeting_funnel_refs',JSON.stringify(data)); } catch(e){console.error('saveMeetingFunnelRefs:',e);}
+  },
   async getFunnelData() {
     try {
       const val = await this.getSetting('funnel_data');
@@ -1337,6 +1343,7 @@ function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):'';}
 
 let CU='Marlie',sel=new Set(),offerMode='register',logFilter='all';
 let meetings = [], meetingsFilter = 'all';
+let meetingFunnelRefs = {};
 let companyOwners = {};
 let funnelData = [];
 let funnelMeta = { historicalPlacements: 26, remainingTarget: 30, cutoffDate: '2026-07-15' };
@@ -1528,6 +1535,8 @@ async function loadFromStorage(){
     if(!comps.length){ for(const c of DEFAULT_COMPANIES) await DB.addCompany(c).catch(()=>{}); }
     if(!users.length){ for(const u of DEFAULT_USERS) await DB.upsertUser(u).catch(()=>{}); }
     meetings = await DB.getMeetings().catch(()=>[]);
+    meetingFunnelRefs = await DB.getMeetingFunnelRefs();
+    meetings.forEach(m => { if(!m.funnelRef && meetingFunnelRefs[m.id]) m.funnelRef = meetingFunnelRefs[m.id]; });
     funnelData = await DB.getFunnelData();
     companyOwners = await DB.getCompanyOwners();
     const savedMeta = await DB.getFunnelMeta();
@@ -5101,6 +5110,7 @@ async function addMeeting() {
     createdAt: new Date().toISOString()
   };
   meetings.unshift(m);
+  if(m.funnelRef) { meetingFunnelRefs[m.id] = m.funnelRef; DB.saveMeetingFunnelRefs(meetingFunnelRefs); }
   try { await DB.upsertMeeting(m); } catch(e) { console.error('addMeeting failed:', e); showToast('⚠ Opslaan mislukt: ' + (e.message||e).toString().slice(0,80)); return; }
   ['mtg-company','mtg-contact','mtg-desc','mtg-vertical'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   const typeEl=document.getElementById('mtg-type'); if(typeEl) typeEl.value='';
@@ -5111,6 +5121,8 @@ async function addMeeting() {
 async function deleteMeeting(id) {
   if(!confirm('Afspraak verwijderen?')) return;
   meetings = meetings.filter(m=>m.id!==id);
+  delete meetingFunnelRefs[id];
+  DB.saveMeetingFunnelRefs(meetingFunnelRefs);
   try { await DB.deleteMeeting(id); } catch(e) { console.error('deleteMeeting failed:', e); }
   renderMeetings();
   showToast('Afspraak verwijderd');
@@ -5165,6 +5177,9 @@ async function saveEditMeeting(id) {
   m.user = document.getElementById('me-user').value;
   m.description = document.getElementById('me-desc').value.trim();
   m.funnelRef = document.getElementById('me-funnel')?.value || '';
+  if(m.funnelRef) { meetingFunnelRefs[m.id] = m.funnelRef; }
+  else { delete meetingFunnelRefs[m.id]; }
+  DB.saveMeetingFunnelRefs(meetingFunnelRefs);
   document.getElementById('mtg-edit-modal')?.remove();
   try { await DB.upsertMeeting(m); } catch(e) { console.error('saveEditMeeting failed:', e); }
   renderMeetings();
