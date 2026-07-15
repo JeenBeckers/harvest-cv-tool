@@ -2272,7 +2272,7 @@ function renderFunnelTab() {
       const addBtn = canEdit
         ? '<div onclick="addFunnelSlot(\'' + owner + '\',2026,' + m + ',false,\'To find\')" style="font-size:10px;cursor:pointer;color:var(--hg);margin-top:3px">+ Kandidaat</div>'
         : '';
-      ownerCells += '<td style="vertical-align:top;padding:6px 8px;min-width:160px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Doel: <strong>' + KandidaatCount + '</strong> · Realisatie: <strong style="color:' + (realized>=slotCount&&slotCount>0?'#2e7d32':'var(--hg)') + '">' + realized + '</strong></div>' + KandidaatsHtml + addBtn + '</td>';
+      ownerCells += '<td style="vertical-align:top;padding:6px 8px;min-width:160px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Doel: <strong>' + slotCount + '</strong> · Realisatie: <strong style="color:' + (realized>=slotCount&&slotCount>0?'#2e7d32':'var(--hg)') + '">' + realized + '</strong></div>' + slotsHtml + addBtn + '</td>';
     }
     const isCurrentMonth = (new Date().getMonth()+1) === m && new Date().getFullYear() === 2026;
     tableRows += '<tr style="' + (isCurrentMonth?'background:rgba(9,43,19,.04)':'') + '">'
@@ -2314,10 +2314,10 @@ function renderFunnelTab() {
     target2027Html += '<div class="scard" style="min-width:200px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
       + '<span class="upill ' + (UCLS[owner]||'up-m') + '">' + owner + '</span>'
-      + '<span style="font-size:18px;font-weight:600">' + KandidaatCount + '</span>'
+      + '<span style="font-size:18px;font-weight:600">' + slotCount + '</span>'
       + '</div>'
       + '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">Realisatie: <strong style="color:' + (realized>0?'var(--hg)':'#bbb') + '">' + realized + '</strong></div>'
-      + KandidaatsHtml
+      + slotsHtml
       + addBtn
       + '</div>';
   }
