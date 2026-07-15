@@ -1268,6 +1268,12 @@ const DB = {
   async deleteMeeting(id) {
     await sbFetch('meetings?id=eq.' + id, { method: 'DELETE' });
   },
+  async getCompanyOwners() {
+    try { const v=await this.getSetting('company_owners'); return v?JSON.parse(v):{}; } catch(e){return{};}
+  },
+  async saveCompanyOwners(data) {
+    try { await this.setSetting('company_owners',JSON.stringify(data)); } catch(e){console.error(e);}
+  },
   async getFunnelData() {
     try {
       const val = await this.getSetting('funnel_data');
@@ -1306,6 +1312,7 @@ function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):'';}
 
 let CU='Marlie',sel=new Set(),offerMode='register',logFilter='all';
 let meetings = [], meetingsFilter = 'all';
+let companyOwners = {};
 let funnelData = [];
 let vacTypeFilter='all', vacSidebarOwner='all', showClosedVac=false;
 let activeFilters={sales:'all',recruit:'all',bureau:'all',cv:'all',push:'all',tc:'all',role:'all',avail:'all'};
@@ -1496,6 +1503,7 @@ async function loadFromStorage(){
     if(!users.length){ for(const u of DEFAULT_USERS) await DB.upsertUser(u).catch(()=>{}); }
     meetings = await DB.getMeetings().catch(()=>[]);
     funnelData = await DB.getFunnelData();
+    companyOwners = await DB.getCompanyOwners();
     console.log('DB loaded ok');
   }catch(e){
     console.error('DB load failed:',e);
@@ -3783,18 +3791,34 @@ function renderTopCVs(){const cnts={};offerLog.forEach(l=>{cnts[l.candidateId]=(
 
 // ── COMPANIES
 async function addCompany(){const inp=document.getElementById('new-co-input');const val=inp.value.trim();if(!val)return;if(companies.find(c=>c.toLowerCase()===val.toLowerCase())){showToast('Staat al in de lijst');return;}companies.push(val);companies.sort((a,b)=>a.localeCompare(b));inp.value='';try{await DB.addCompany(val);}catch(e){console.error(e);}renderCompanies();updateBadges();showToast('✓ '+val+' toegevoegd');}
-async function removeCompany(name){if(!confirm('Verwijder '+name+'?'))return;companies=companies.filter(c=>c!==name);try{await DB.deleteCompany(name);}catch(e){console.error(e);}renderCompanies();updateBadges();}
+async function removeCompany(name){if(!confirm('Verwijder '+name+'?'))return;companies=companies.filter(c=>c!==name);delete companyOwners[name];try{await DB.deleteCompany(name);await DB.saveCompanyOwners(companyOwners);}catch(e){console.error(e);}renderCompanies();updateBadges();}
 async function renameCompany(oldName){
   const newName=prompt('Naam wijzigen:',oldName);
   if(!newName||newName.trim()===oldName) return;
   const n=newName.trim();
   if(companies.find(c=>c.toLowerCase()===n.toLowerCase())){showToast('Naam bestaat al');return;}
+  if(companyOwners[oldName]){companyOwners[n]=companyOwners[oldName];delete companyOwners[oldName];}
   companies=companies.map(c=>c===oldName?n:c);
   companies.sort((a,b)=>a.localeCompare(b));
-  try{ await DB.deleteCompany(oldName); await DB.addCompany(n); }catch(e){console.error(e);}
+  try{ await DB.deleteCompany(oldName); await DB.addCompany(n); await DB.saveCompanyOwners(companyOwners); }catch(e){console.error(e);}
   renderCompanies();updateBadges();showToast('✓ Hernoemd naar '+n);
 }
-function renderCompanies(){document.getElementById('comp-grid').innerHTML=companies.map(c=>{const cnt=offerLog.filter(l=>l.company===c).length;return`<div class="comp-item"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${esc(c)}</span>${cnt>0?`<span class="cnt">${cnt}×</span>`:''}<span class="comp-del" onclick="renameCompany('${esc(c)}')" title="Naam wijzigen" style="margin-right:2px"><i class="ti ti-pencil" style="font-size:10px"></i></span><span class="comp-del" onclick="removeCompany('${esc(c)}')"><i class="ti ti-trash" style="font-size:10px"></i></span></div>`;}).join('');document.getElementById('nb-co').textContent=companies.length;}
+async function setCompanyOwner(name, owner){
+  companyOwners[name] = owner || '';
+  try{ await DB.saveCompanyOwners(companyOwners); }catch(e){console.error(e);}
+  renderCompanies();
+}
+function renderCompanies(){
+  const OWNER_USERS = ['','Marlie','Frank','Julieta','Jeen'];
+  document.getElementById('comp-grid').innerHTML=companies.map(c=>{
+    const cnt=offerLog.filter(l=>l.company===c).length;
+    const owner=companyOwners[c]||'';
+    const ownerPill=owner?'<span class="upill '+(UCLS[owner]||'up-m')+'" style="font-size:9px;margin-right:4px">'+esc(owner)+'</span>':'';
+    const ownerSel='<select onchange="setCompanyOwner(\''+esc(c)+'\',this.value)" style="font-size:10px;border:.5px solid #ddd;border-radius:3px;padding:1px 3px;color:var(--muted);background:#fff;margin-right:4px">'+OWNER_USERS.map(u=>'<option value="'+u+'"'+(owner===u?' selected':'')+'>'+( u||'— eigenaar —')+'</option>').join('')+'</select>';
+    return'<div class="comp-item"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">'+ownerPill+esc(c)+'</span>'+ownerSel+(cnt>0?'<span class="cnt">'+cnt+'×</span>':'')+'<span class="comp-del" onclick="renameCompany(\''+esc(c)+'\')" title="Naam wijzigen" style="margin-right:2px"><i class="ti ti-pencil" style="font-size:10px"></i></span><span class="comp-del" onclick="removeCompany(\''+esc(c)+'\')"><i class="ti ti-trash" style="font-size:10px"></i></span></div>';
+  }).join('');
+  document.getElementById('nb-co').textContent=companies.length;
+}
 
 // ── SETTINGS
 function renderSettings(){
