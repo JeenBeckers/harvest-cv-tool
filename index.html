@@ -556,6 +556,7 @@ b,strong{font-weight:500}
     <div class="navtab" onclick="showTab('vac')" id="tab-vac"><i class="ti ti-briefcase"></i> Vacatures <span class="nbadge" id="nb-vac">0</span></div>
     <div class="navtab" onclick="showTab('push')" id="tab-push"><i class="ti ti-bolt"></i> Push CVs <span class="nbadge-push" id="nb-push">0</span></div>
     <div class="navtab" onclick="showTab('offer')" id="tab-offer"><i class="ti ti-send"></i> Aanbiedingen</div>
+    <div class="navtab" onclick="showTab('funnel')" id="tab-funnel"><i class="ti ti-filter"></i> Funnel</div>
     <div class="navtab" onclick="showTab('meetings')" id="tab-meetings"><i class="ti ti-calendar"></i> Afspraken</div>
     <div class="navtab" onclick="showTab('companies')" id="tab-companies"><i class="ti ti-building"></i> Bedrijven <span class="nbadge" id="nb-co">0</span></div>
     <div class="navtab" onclick="showTab('match')" id="tab-match"><i class="ti ti-sparkles"></i> AI Match</div>
@@ -902,6 +903,11 @@ b,strong{font-weight:500}
 
     <div id="view-meetings" style="display:none">
       <!-- inhoud via renderMeetings() -->
+    </div>
+
+    <!-- FUNNEL -->
+    <div id="view-funnel" style="display:none">
+      <!-- rendered by renderFunnelTab() -->
     </div>
 
     <!-- AI MATCH -->
@@ -1262,6 +1268,15 @@ const DB = {
   async deleteMeeting(id) {
     await sbFetch('meetings?id=eq.' + id, { method: 'DELETE' });
   },
+  async getFunnelData() {
+    try {
+      const val = await this.getSetting('funnel_data');
+      return val ? JSON.parse(val) : [];
+    } catch(e) { return []; }
+  },
+  async saveFunnelData(data) {
+    try { await this.setSetting('funnel_data', JSON.stringify(data)); } catch(e) { console.error('saveFunnelData:', e); }
+  },
 };
 // ══════════════════════════════════════════════
 const COLS=[{bg:'#e8f2ff',tx:'#1a56a8'},{bg:'#fef3e2',tx:'#a05a00'},{bg:'#f3e8ff',tx:'#6b21a8'},{bg:'#e8f5e9',tx:'#2e7d32'},{bg:'#fde8e8',tx:'#9b1c1c'},{bg:'#e8f5f0',tx:'#065f46'},{bg:'#fef9e7',tx:'#78350f'}];
@@ -1291,6 +1306,7 @@ function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):'';}
 
 let CU='Marlie',sel=new Set(),offerMode='register',logFilter='all';
 let meetings = [], meetingsFilter = 'all';
+let funnelData = [];
 let vacTypeFilter='all', vacSidebarOwner='all', showClosedVac=false;
 let activeFilters={sales:'all',recruit:'all',bureau:'all',cv:'all',push:'all',tc:'all',role:'all',avail:'all'};
 let cvLib=[],offerLog=[],companies=[...DEFAULT_COMPANIES],vacatures=[];
@@ -1479,6 +1495,7 @@ async function loadFromStorage(){
     if(!comps.length){ for(const c of DEFAULT_COMPANIES) await DB.addCompany(c).catch(()=>{}); }
     if(!users.length){ for(const u of DEFAULT_USERS) await DB.upsertUser(u).catch(()=>{}); }
     meetings = await DB.getMeetings().catch(()=>[]);
+    funnelData = await DB.getFunnelData();
     console.log('DB loaded ok');
   }catch(e){
     console.error('DB load failed:',e);
@@ -2078,10 +2095,11 @@ function renderKanbanCard(candId, stageKey, vacId){
   const v=vacatures.find(x=>x.id===vacId);
   const placedDate = stageKey==='aangenomen' ? (v?.kanbanData?.aangenomenDates?.[candId]||'') : '';
   const dateLabel = placedDate ? placedDate.slice(0,7) : '';
+  const startDate = stageKey==='aangenomen' ? (v?.kanbanData?.startDates?.[candId]||'') : '';
+  const startLabel = startDate ? startDate.slice(0,7) : '';
   const dateBtn = stageKey==='aangenomen'
-    ? `<div onclick="event.stopPropagation();setPlacementDate('${vacId}','${candId}')" style="margin-top:4px;font-size:9px;color:${dateLabel?'var(--hg)':'#bbb'};cursor:pointer;display:flex;align-items:center;gap:3px">
-        <i class="ti ti-calendar" style="font-size:9px"></i> ${dateLabel||'Datum instellen'}
-       </div>`
+    ? '<div onclick="event.stopPropagation();setPlacementDate(\'' + vacId + '\',\'' + candId + '\')" style="margin-top:4px;font-size:9px;color:' + (dateLabel?'var(--hg)':'#bbb') + ';cursor:pointer;display:flex;align-items:center;gap:3px"><i class="ti ti-calendar" style="font-size:9px"></i> ' + (dateLabel||'Plaatsing instellen') + '</div>'
+      + '<div onclick="event.stopPropagation();setStartDate(\'' + vacId + '\',\'' + candId + '\')" style="margin-top:2px;font-size:9px;color:' + (startLabel?'#1e40af':'#bbb') + ';cursor:pointer;display:flex;align-items:center;gap:3px"><i class="ti ti-player-play" style="font-size:9px"></i> ' + (startLabel?'Start: '+startLabel:'Startdatum instellen') + '</div>'
     : '';
   return`<div class="kanban-card ${cv.push?'is-push':''}" id="kcard-${candId}-${stageKey}"
     draggable="true"
@@ -2114,6 +2132,225 @@ function setPlacementDate(vacId, candId) {
   DB.upsertVacature(v).catch(e=>console.error(e));
   renderKanban(v);
   showToast('✓ Plaatsingsdatum opgeslagen');
+}
+
+function setStartDate(vacId, candId) {
+  const v = vacatures.find(x=>x.id===vacId); if(!v) return;
+  const current = v.kanbanData?.startDates?.[candId] || '';
+  const val = prompt('Startdatum (YYYY-MM-DD):', current || new Date().toISOString().slice(0,10));
+  if(!val) return;
+  if(!v.kanbanData) v.kanbanData={};
+  if(!v.kanbanData.startDates) v.kanbanData.startDates={};
+  v.kanbanData.startDates[candId] = val.trim();
+  DB.upsertVacature(v).catch(e=>console.error(e));
+  renderKanban(v);
+  showToast('✓ Startdatum opgeslagen');
+}
+
+// ── FUNNEL
+const FUNNEL_OWNERS = ['Frank','Julieta','Marlie'];
+const MONTHS_2026 = [7,8,9,10,11,12];
+const MONTH_NAMES = ['','Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+
+function canEditFunnel(owner) {
+  const me = appUsers.find(u=>u.name===CU);
+  return owner === CU || (me && me.role === 'Admin');
+}
+
+function getFunnelEntry(owner, year, month, isYearTarget) {
+  return funnelData.find(e =>
+    e.owner === owner &&
+    e.year === year &&
+    (isYearTarget ? e.isYearTarget === true : (e.month === month && !e.isYearTarget))
+  );
+}
+
+function ensureFunnelEntry(owner, year, month, isYearTarget) {
+  let entry = getFunnelEntry(owner, year, month, isYearTarget);
+  if (!entry) {
+    entry = {
+      id: 'fe_' + Math.random().toString(36).slice(2),
+      owner, year,
+      month: isYearTarget ? null : month,
+      isYearTarget: !!isYearTarget,
+      slots: []
+    };
+    funnelData.push(entry);
+  }
+  return entry;
+}
+
+function getFunnelRealization(owner, year, month) {
+  let count = 0;
+  for (const v of vacatures) {
+    if (!v.kanbanData?.startDates) continue;
+    const salesOwner = v.salesOwner || '';
+    if (salesOwner !== owner) continue;
+    for (const [candId, sd] of Object.entries(v.kanbanData.startDates)) {
+      if (!sd) continue;
+      const d = new Date(sd);
+      if (d.getFullYear() === year && (d.getMonth()+1) === month) count++;
+    }
+  }
+  return count;
+}
+
+function getFunnelRealizationYear(owner, year) {
+  let count = 0;
+  for (const v of vacatures) {
+    if (!v.kanbanData?.startDates) continue;
+    if ((v.salesOwner||'') !== owner) continue;
+    for (const [candId, sd] of Object.entries(v.kanbanData.startDates)) {
+      if (!sd) continue;
+      if (new Date(sd).getFullYear() === year) count++;
+    }
+  }
+  return count;
+}
+
+async function addFunnelSlot(owner, year, month, isYearTarget, company) {
+  if (!canEditFunnel(owner)) return;
+  const entry = ensureFunnelEntry(owner, year, month, isYearTarget);
+  entry.slots.push({ id: 'fs_'+Math.random().toString(36).slice(2), company: company||'To find', note: '' });
+  await DB.saveFunnelData(funnelData);
+  renderFunnelTab();
+}
+
+async function removeFunnelSlot(entryId, slotId) {
+  const entry = funnelData.find(e=>e.id===entryId);
+  if (!entry || !canEditFunnel(entry.owner)) return;
+  entry.slots = entry.slots.filter(s=>s.id!==slotId);
+  await DB.saveFunnelData(funnelData);
+  renderFunnelTab();
+}
+
+async function updateFunnelSlotCompany(entryId, slotId, company) {
+  const entry = funnelData.find(e=>e.id===entryId);
+  if (!entry || !canEditFunnel(entry.owner)) return;
+  const slot = entry.slots.find(s=>s.id===slotId);
+  if (slot) { slot.company = company; }
+  await DB.saveFunnelData(funnelData);
+}
+
+let _funnelOwnerFilter = 'all';
+
+function renderFunnelTab() {
+  const el = document.getElementById('view-funnel');
+  if (!el || el.style.display === 'none') return;
+
+  const me = appUsers.find(u=>u.name===CU);
+  const isAdmin = me && me.role === 'Admin';
+
+  const ownerBtns = '<div class="fchip' + (_funnelOwnerFilter==='all'?' active':'') + '" onclick="setFunnelFilter(\'all\',this)">Totaal</div>'
+    + FUNNEL_OWNERS.map(o => '<div class="fchip' + (_funnelOwnerFilter===o?' active':'') + '" onclick="setFunnelFilter(\'' + o + '\',this)">' + o + '</div>').join('');
+
+  const visOwners = _funnelOwnerFilter === 'all' ? FUNNEL_OWNERS : [_funnelOwnerFilter];
+
+  let tableRows = '';
+  for (const m of MONTHS_2026) {
+    let doel = 0, real = 0;
+    let ownerCells = '';
+    for (const owner of visOwners) {
+      const entry = getFunnelEntry(owner, 2026, m, false);
+      const slotCount = entry ? entry.slots.length : 0;
+      const realized = getFunnelRealization(owner, 2026, m);
+      doel += slotCount;
+      real += realized;
+      const canEdit = canEditFunnel(owner);
+      let slotsHtml = '';
+      if (entry && entry.slots.length > 0) {
+        slotsHtml = entry.slots.map(s => {
+          const coOpts = ['To find',...companies.map(c=>c.name)].map(c => '<option value="' + c + '"' + (s.company===c?' selected':'') + '>' + c + '</option>').join('');
+          const rmBtn = canEdit ? '<span onclick="removeFunnelSlot(\'' + entry.id + '\',\'' + s.id + '\')" style="cursor:pointer;color:#bbb;margin-left:4px;font-size:10px" title="Verwijderen">✕</span>' : '';
+          if (canEdit) {
+            return '<div style="display:flex;align-items:center;gap:3px;margin-bottom:3px"><select onchange="updateFunnelSlotCompany(\'' + entry.id + '\',\'' + s.id + '\',this.value)" style="font-size:10px;padding:1px 3px;border:1px solid #ddd;border-radius:3px;max-width:130px">' + coOpts + '</select>' + rmBtn + '</div>';
+          } else {
+            return '<div style="font-size:10px;color:var(--muted);margin-bottom:2px">' + (s.company||'To find') + '</div>';
+          }
+        }).join('');
+      }
+      const addBtn = canEdit
+        ? '<div onclick="addFunnelSlot(\'' + owner + '\',2026,' + m + ',false,\'To find\')" style="font-size:10px;cursor:pointer;color:var(--hg);margin-top:3px">+ slot</div>'
+        : '';
+      ownerCells += '<td style="vertical-align:top;padding:6px 8px;min-width:160px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Doel: <strong>' + slotCount + '</strong> · Realisatie: <strong style="color:' + (realized>=slotCount&&slotCount>0?'#2e7d32':'var(--hg)') + '">' + realized + '</strong></div>' + slotsHtml + addBtn + '</td>';
+    }
+    const isCurrentMonth = (new Date().getMonth()+1) === m && new Date().getFullYear() === 2026;
+    tableRows += '<tr style="' + (isCurrentMonth?'background:rgba(9,43,19,.04)':'') + '">'
+      + '<td style="padding:6px 8px;font-weight:600;white-space:nowrap;vertical-align:top">' + MONTH_NAMES[m] + ' 2026' + (isCurrentMonth?' <span style="font-size:9px;background:var(--hg);color:#fff;padding:1px 5px;border-radius:3px">huidig</span>':'') + '</td>'
+      + (_funnelOwnerFilter==='all' ? '<td style="padding:6px 8px;font-weight:600;vertical-align:top">' + doel + '</td><td style="padding:6px 8px;font-weight:600;vertical-align:top;color:' + (real>=doel&&doel>0?'#2e7d32':'var(--hg)') + '">' + real + '</td>' : '')
+      + ownerCells
+      + '</tr>';
+  }
+
+  const totalDoel2026 = MONTHS_2026.reduce((s,m) => {
+    return s + visOwners.reduce((ss, o) => { const e=getFunnelEntry(o,2026,m,false); return ss+(e?e.slots.length:0); }, 0);
+  }, 0);
+  const totalReal2026 = MONTHS_2026.reduce((s,m) => s + visOwners.reduce((ss,o) => ss+getFunnelRealization(o,2026,m), 0), 0);
+
+  const ownerHeaders = visOwners.map(o => '<th style="padding:6px 8px;text-align:left">' + o + '</th>').join('');
+  const totalHeaders = _funnelOwnerFilter==='all' ? '<th style="padding:6px 8px">Totaal doel</th><th style="padding:6px 8px">Totaal real.</th>' : '';
+
+  let target2027Html = '';
+  for (const owner of visOwners) {
+    const entry = getFunnelEntry(owner, 2027, null, true);
+    const slotCount = entry ? entry.slots.length : 0;
+    const realized = getFunnelRealizationYear(owner, 2027);
+    const canEdit = canEditFunnel(owner);
+    let slotsHtml = '';
+    if (entry && entry.slots.length > 0) {
+      slotsHtml = entry.slots.map(s => {
+        const rmBtn = canEdit ? '<span onclick="removeFunnelSlot(\'' + entry.id + '\',\'' + s.id + '\')" style="cursor:pointer;color:#bbb;margin-left:4px;font-size:10px">✕</span>' : '';
+        if (canEdit) {
+          const coOpts = ['To find',...companies.map(c=>c.name)].map(c => '<option value="' + c + '"' + (s.company===c?' selected':'') + '>' + c + '</option>').join('');
+          return '<span style="display:inline-flex;align-items:center;gap:2px;background:#f0f0f0;border-radius:3px;padding:1px 4px;margin:2px"><select onchange="updateFunnelSlotCompany(\'' + entry.id + '\',\'' + s.id + '\',this.value)" style="font-size:10px;border:none;background:transparent">' + coOpts + '</select>' + rmBtn + '</span>';
+        } else {
+          return '<span style="display:inline-block;background:#f0f0f0;border-radius:3px;padding:1px 6px;margin:2px;font-size:10px">' + (s.company||'To find') + '</span>';
+        }
+      }).join('');
+    }
+    const addBtn = canEdit
+      ? '<button class="bmain g" style="font-size:10px;padding:3px 8px;margin-top:6px" onclick="addFunnelSlot(\'' + owner + '\',2027,null,true,\'To find\')">+ slot</button>'
+      : '';
+    target2027Html += '<div class="scard" style="min-width:200px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+      + '<span class="upill ' + (UCLS[owner]||'up-m') + '">' + owner + '</span>'
+      + '<span style="font-size:18px;font-weight:600">' + slotCount + '</span>'
+      + '</div>'
+      + '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">Realisatie: <strong style="color:' + (realized>0?'var(--hg)':'#bbb') + '">' + realized + '</strong></div>'
+      + slotsHtml
+      + addBtn
+      + '</div>';
+  }
+
+  el.innerHTML = '<div class="stitle"><i class="ti ti-filter" style="font-size:15px;vertical-align:middle"></i> Funnel</div>'
+    + '<div class="ssub">Plaatsingsdoelen per persoon — realisatie via startdatum op kanban</div>'
+    + '<div style="display:flex;gap:5px;margin-bottom:16px;flex-wrap:wrap">' + ownerBtns + '</div>'
+    + '<div class="panel">'
+    + '<div class="ptitle"><i class="ti ti-calendar-month"></i> Doelen 2026 (Jul–Dec)</div>'
+    + '<div class="twrap"><table class="tbl" style="min-width:500px">'
+    + '<thead><tr><th style="padding:6px 8px">Maand</th>' + totalHeaders + ownerHeaders + '</tr></thead>'
+    + '<tbody>' + tableRows + '</tbody>'
+    + '<tfoot><tr style="background:rgba(9,43,19,.05);font-weight:600"><td style="padding:6px 8px">Totaal</td>'
+    + (_funnelOwnerFilter==='all' ? '<td style="padding:6px 8px">' + totalDoel2026 + '</td><td style="padding:6px 8px;color:' + (totalReal2026>=totalDoel2026&&totalDoel2026>0?'#2e7d32':'var(--hg)') + '">' + totalReal2026 + '</td>' : '')
+    + visOwners.map(o => {
+        const d = MONTHS_2026.reduce((s,m)=>{const e=getFunnelEntry(o,2026,m,false);return s+(e?e.slots.length:0);},0);
+        const r = MONTHS_2026.reduce((s,m)=>s+getFunnelRealization(o,2026,m),0);
+        return '<td style="padding:6px 8px">' + d + ' doel · <strong style="color:' + (r>=d&&d>0?'#2e7d32':'var(--hg)') + '">' + r + ' real</strong></td>';
+      }).join('')
+    + '</tr></tfoot>'
+    + '</table></div>'
+    + '</div>'
+    + '<div class="panel">'
+    + '<div class="ptitle"><i class="ti ti-target"></i> Jaardoel 2027</div>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap">' + target2027Html + '</div>'
+    + '</div>';
+}
+
+function setFunnelFilter(val, el) {
+  _funnelOwnerFilter = val;
+  document.querySelectorAll('#view-funnel .fchip').forEach(c=>c.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderFunnelTab();
 }
 
 // ── DRAG & DROP
@@ -3952,7 +4189,7 @@ function closeVacModal(){document.getElementById('vac-modal').style.display='non
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('modal').style.display='none';document.getElementById('vac-modal').style.display='none';document.getElementById('merge-modal').style.display='none';document.getElementById('bulk-modal').style.display='none';}});
 
 // ── GENERAL
-function refreshAll(){renderCVList();renderPushTab();renderDashboard();renderCompanies();renderVacatures();renderArchive();updateBadges();renderMeetings();}
+function refreshAll(){renderCVList();renderPushTab();renderDashboard();renderCompanies();renderVacatures();renderArchive();updateBadges();renderMeetings();const fv=document.getElementById('view-funnel');if(fv&&fv.style.display!=='none')renderFunnelTab();}
 function updateBadges(){
   const active=cvLib.filter(cv=>!cv.archived).length;
   const pushCount=cvLib.filter(cv=>cv.push&&!cv.archived).length;
@@ -3973,7 +4210,7 @@ function setUser(u){
   renderDashboard();updatePreview();
 }
 function showTab(t){
-  ['lib','push','offer','vac','dash','archive','companies','match','meetings','settings'].forEach(x=>{
+  ['lib','push','offer','vac','dash','archive','companies','match','meetings','funnel','settings'].forEach(x=>{
     const v=document.getElementById('view-'+x); if(v) v.style.display=x===t?'':'none';
     const tb=document.getElementById('tab-'+x); if(tb) tb.classList.toggle('active',x===t);
   });
@@ -3987,6 +4224,7 @@ function showTab(t){
   if(t==='settings')renderSettings();
   if(t==='match')initMatchTab();
   if(t==='meetings') renderMeetings();
+  if(t==='funnel') renderFunnelTab();
   if(t==='vac'){ document.querySelector('.content').style.padding = '0'; } else { document.querySelector('.content').style.padding = '16px'; }
 }
 // ── AI MATCH
