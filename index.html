@@ -897,8 +897,23 @@ b,strong{font-weight:500}
     <!-- BEDRIJVEN -->
     <div id="view-companies" style="display:none">
       <div class="stitle">Bedrijven</div><div class="ssub">Klanten beheren</div>
-      <div class="add-comp-row"><input type="text" id="new-co-input" placeholder="Naam nieuw bedrijf…" onkeydown="if(event.key==='Enter')addCompany()"><button class="bmain g" onclick="addCompany()"><i class="ti ti-plus"></i> Toevoegen</button></div>
-      <div class="comp-grid" id="comp-grid"></div>
+      <div class="panel" style="margin-bottom:14px">
+        <div class="ptitle"><i class="ti ti-plus"></i> Nieuw bedrijf toevoegen</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+          <div class="fg" style="min-width:200px"><label class="fl">Naam *</label><input class="fi" id="new-co-input" placeholder="bijv. ING" style="font-size:12px" onkeydown="if(event.key==='Enter')addCompany()"></div>
+          <div class="fg" style="min-width:140px"><label class="fl">Account eigenaar</label>
+            <select class="fi" id="new-co-owner" style="font-size:12px">
+              <option value="">— geen —</option>
+              <option>Marlie</option><option>Frank</option><option>Julieta</option><option>Jeen</option>
+            </select>
+          </div>
+          <button class="bmain g" onclick="addCompany()" style="margin-bottom:1px"><i class="ti ti-plus"></i> Toevoegen</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ptitle"><i class="ti ti-building"></i> Alle bedrijven <span id="nb-co-inline" style="font-weight:300;color:var(--muted);font-size:11px"></span></div>
+        <div id="comp-grid"></div>
+      </div>
     </div>
 
     <div id="view-meetings" style="display:none">
@@ -3790,7 +3805,20 @@ function renderLogTable(){
 function renderTopCVs(){const cnts={};offerLog.forEach(l=>{cnts[l.candidateId]=(cnts[l.candidateId]||0)+1;});const sorted=[...cvLib].filter(cv=>!cv.archived).sort((a,b)=>(cnts[b.id]||0)-(cnts[a.id]||0)).slice(0,6);document.getElementById('topcvs').innerHTML=sorted.map(cv=>{const col=colFor(cv.name),cnt=cnts[cv.id]||0;return`<div class="cvc" onclick="openModal('${cv.id}')"><div class="ava" style="background:${col.bg};color:${col.tx}">${ini(cv.name)}</div><div class="cvn">${cv.push?'⚡ ':''}${esc(cv.name)}</div><div class="cvr">${esc(cv.role)}</div><div style="display:flex;gap:3px;flex-wrap:wrap"><span class="tag" style="background:${cnt>2?'var(--hgl)':'#f0f0f0'};color:${cnt>2?'var(--hg)':'#aaa'};font-weight:600">${cnt}×</span></div></div>`;}).join('');}
 
 // ── COMPANIES
-async function addCompany(){const inp=document.getElementById('new-co-input');const val=inp.value.trim();if(!val)return;if(companies.find(c=>c.toLowerCase()===val.toLowerCase())){showToast('Staat al in de lijst');return;}companies.push(val);companies.sort((a,b)=>a.localeCompare(b));inp.value='';try{await DB.addCompany(val);}catch(e){console.error(e);}renderCompanies();updateBadges();showToast('✓ '+val+' toegevoegd');}
+async function addCompany(){
+  const inp=document.getElementById('new-co-input');
+  const val=inp.value.trim();
+  if(!val)return;
+  if(companies.find(c=>c.toLowerCase()===val.toLowerCase())){showToast('Staat al in de lijst');return;}
+  const owner=document.getElementById('new-co-owner')?.value||'';
+  companies.push(val);
+  companies.sort((a,b)=>a.localeCompare(b));
+  if(owner) companyOwners[val]=owner;
+  inp.value='';
+  const ownerSel=document.getElementById('new-co-owner');if(ownerSel)ownerSel.value='';
+  try{await DB.addCompany(val);if(owner)await DB.saveCompanyOwners(companyOwners);}catch(e){console.error(e);}
+  renderCompanies();updateBadges();showToast('✓ '+val+' toegevoegd');
+}
 async function removeCompany(name){if(!confirm('Verwijder '+name+'?'))return;companies=companies.filter(c=>c!==name);delete companyOwners[name];try{await DB.deleteCompany(name);await DB.saveCompanyOwners(companyOwners);}catch(e){console.error(e);}renderCompanies();updateBadges();}
 async function renameCompany(oldName){
   const newName=prompt('Naam wijzigen:',oldName);
@@ -3810,14 +3838,34 @@ async function setCompanyOwner(name, owner){
 }
 function renderCompanies(){
   const OWNER_USERS = ['','Marlie','Frank','Julieta','Jeen'];
-  document.getElementById('comp-grid').innerHTML=companies.map(c=>{
-    const cnt=offerLog.filter(l=>l.company===c).length;
-    const owner=companyOwners[c]||'';
-    const ownerPill=owner?'<span class="upill '+(UCLS[owner]||'up-m')+'" style="font-size:9px;margin-right:4px">'+esc(owner)+'</span>':'';
-    const ownerSel='<select onchange="setCompanyOwner(\''+esc(c)+'\',this.value)" style="font-size:10px;border:.5px solid #ddd;border-radius:3px;padding:1px 3px;color:var(--muted);background:#fff;margin-right:4px">'+OWNER_USERS.map(u=>'<option value="'+u+'"'+(owner===u?' selected':'')+'>'+( u||'— eigenaar —')+'</option>').join('')+'</select>';
-    return'<div class="comp-item"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">'+ownerPill+esc(c)+'</span>'+ownerSel+(cnt>0?'<span class="cnt">'+cnt+'×</span>':'')+'<span class="comp-del" onclick="renameCompany(\''+esc(c)+'\')" title="Naam wijzigen" style="margin-right:2px"><i class="ti ti-pencil" style="font-size:10px"></i></span><span class="comp-del" onclick="removeCompany(\''+esc(c)+'\')"><i class="ti ti-trash" style="font-size:10px"></i></span></div>';
+  const rows = companies.map(c => {
+    const cnt = offerLog.filter(l=>l.company===c).length;
+    const owner = companyOwners[c]||'';
+    const ownerCell = owner
+      ? '<span class="upill '+(UCLS[owner]||'up-m')+'" style="font-size:10px">'+esc(owner)+'</span>'
+      : '<span style="color:#ccc;font-size:11px">—</span>';
+    const ownerSel = '<select onchange="setCompanyOwner(\''+esc(c)+'\',this.value)" style="font-size:10px;border:.5px solid #ddd;border-radius:3px;padding:2px 4px;background:#fff;color:var(--muted)">'
+      + OWNER_USERS.map(u=>'<option value="'+u+'"'+(owner===u?' selected':'')+'>'+(u||'— geen —')+'</option>').join('')
+      + '</select>';
+    return '<tr style="border-bottom:.5px solid #f0f0f0">'
+      + '<td style="padding:8px 10px;font-size:12px;font-weight:400">'+esc(c)+'</td>'
+      + '<td style="padding:8px 10px">'+ownerCell+'</td>'
+      + '<td style="padding:8px 10px">'+ownerSel+'</td>'
+      + '<td style="padding:8px 10px;color:var(--muted);font-size:11px">'+(cnt>0?cnt+'×':'—')+'</td>'
+      + '<td style="padding:8px 10px;white-space:nowrap">'
+        + '<button class="bsm" onclick="renameCompany(\''+esc(c)+'\')" title="Naam wijzigen" style="font-size:9px;padding:2px 5px;margin-right:3px"><i class="ti ti-pencil" style="font-size:9px"></i></button>'
+        + '<button class="bsm" onclick="removeCompany(\''+esc(c)+'\')" title="Verwijderen" style="font-size:9px;padding:2px 5px"><i class="ti ti-trash" style="font-size:9px"></i></button>'
+      + '</td>'
+      + '</tr>';
   }).join('');
-  document.getElementById('nb-co').textContent=companies.length;
+
+  document.getElementById('comp-grid').innerHTML = '<div class="twrap"><table class="tbl" style="width:100%">'
+    + '<thead><tr><th style="text-align:left;padding:6px 10px;font-weight:400;color:var(--muted)">Bedrijf</th><th style="padding:6px 10px;font-weight:400;color:var(--muted);text-align:left">Eigenaar</th><th style="padding:6px 10px;font-weight:400;color:var(--muted);text-align:left">Wijzigen</th><th style="padding:6px 10px;font-weight:400;color:var(--muted);text-align:left">Aanbod</th><th style="padding:6px 10px"></th></tr></thead>'
+    + '<tbody>'+rows+'</tbody>'
+    + '</table></div>';
+
+  const nb = document.getElementById('nb-co'); if(nb) nb.textContent=companies.length;
+  const nbi = document.getElementById('nb-co-inline'); if(nbi) nbi.textContent=companies.length+' bedrijven';
 }
 
 // ── SETTINGS
