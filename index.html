@@ -561,7 +561,7 @@ b,strong{font-weight:500}
     <div class="navtab" onclick="showTab('push')" id="tab-push"><i class="ti ti-bolt"></i> Push CVs <span class="nbadge-push" id="nb-push">0</span></div>
     <div class="navtab" onclick="showTab('offer')" id="tab-offer"><i class="ti ti-send"></i> Aanbiedingen</div>
     <div class="navtab" onclick="showTab('meetings')" id="tab-meetings"><i class="ti ti-calendar"></i> Afspraken</div>
-    <div class="navtab" onclick="showTab('funnel')" id="tab-funnel"><i class="ti ti-filter"></i> Funnel</div>
+    <div class="navtab" onclick="showTab('funnel')" id="tab-funnel"><i class="ti ti-target"></i> Target</div>
     <div class="navtab" onclick="showTab('companies')" id="tab-companies"><i class="ti ti-building"></i> Bedrijven <span class="nbadge" id="nb-co">0</span></div>
     <div class="navtab" onclick="showTab('archive')" id="tab-archive"><i class="ti ti-archive"></i> Archief <span class="nbadge" id="nb-archive">0</span></div>
     <div class="navtab" onclick="showTab('match')" id="tab-match"><i class="ti ti-sparkles"></i> AI Match</div>
@@ -2523,7 +2523,7 @@ function renderFunnelTab() {
     + '</div>'
     + '</div>';
 
-  el.innerHTML = '<div class="stitle"><i class="ti ti-filter" style="font-size:15px;vertical-align:middle"></i> Funnel</div>'
+  el.innerHTML = '<div class="stitle"><i class="ti ti-target" style="font-size:15px;vertical-align:middle"></i> Target</div>'
     + '<div class="ssub">Plaatsingsdoelen per persoon — realisatie via startdatum op kanban</div>'
     + jaarPanel
     + '<div style="display:flex;gap:5px;margin-bottom:16px;flex-wrap:wrap">' + ownerBtns + '</div>'
@@ -5028,7 +5028,7 @@ function renderMeetings() {
             ${['Marlie','Frank','Julieta','Jeen'].map(u=>`<option${u===CU?' selected':''}>${u}</option>`).join('')}
           </select>
         </div>
-        <div class="fg" style="min-width:180px"><label class="fl">Funnel doel <span style="font-weight:300;color:var(--muted)">(optioneel)</span></label>
+        <div class="fg" style="min-width:180px"><label class="fl">Target doel <span style="font-weight:300;color:var(--muted)">(optioneel)</span></label>
           <select class="fi" id="mtg-funnel" style="font-size:12px">
             ${buildMtgFunnelOptions(CU)}
           </select>
@@ -5056,7 +5056,7 @@ function renderMeetings() {
           <th style="text-align:left;padding:5px 8px;font-weight:400">Type</th>
           <th style="text-align:left;padding:5px 8px;font-weight:400">Vertical</th>
           <th style="text-align:left;padding:5px 8px;font-weight:400">Omschrijving</th>
-          <th style="text-align:left;padding:5px 8px;font-weight:400">Funnel doel</th>
+          <th style="text-align:left;padding:5px 8px;font-weight:400">Target doel</th>
           <th style="padding:5px 8px"></th>
         </tr></thead>
         <tbody>${sorted.map(m=>`<tr style="border-bottom:.5px solid #f0f0f0">
@@ -5067,7 +5067,7 @@ function renderMeetings() {
           <td style="padding:6px 8px;white-space:nowrap">${m.meetingType?`<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f0f4ff;color:#3b5bdb;font-weight:500">${esc(m.meetingType)}</span>`:'<span style="color:#ccc">—</span>'}</td>
           <td style="padding:6px 8px;color:var(--muted)">${esc(m.vertical||'—')}</td>
           <td style="padding:6px 8px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.description||'—')}</td>
-          <td style="padding:6px 8px">${m.funnelRef?`<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f0fdf4;color:#166534;font-weight:500"><i class="ti ti-filter" style="font-size:9px"></i> ${esc(funnelEntryLabel(m.funnelRef))}</span>`:'<span style="color:#ccc">—</span>'}</td>
+          <td style="padding:6px 8px">${m.funnelRef?`<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f0fdf4;color:#166534;font-weight:500"><i class="ti ti-target" style="font-size:9px"></i> ${esc(funnelEntryLabel(m.funnelRef))}</span>`:'<span style="color:#ccc">—</span>'}</td>
           <td style="padding:6px 8px;white-space:nowrap">
             <button class="btn-act edit" onclick="showEditMeetingModal('${m.id}')" title="Bewerken">✏️</button>
             <button class="btn-act del" onclick="deleteMeeting('${m.id}')" title="Verwijderen">🗑️</button>
@@ -5139,7 +5139,7 @@ function showEditMeetingModal(id) {
         ${['Marlie','Frank','Julieta','Jeen'].map(u=>`<option${m.user===u?' selected':''}>${u}</option>`).join('')}
       </select>
     </div>
-    <div class="fg" style="margin-bottom:8px"><label class="fl">Funnel doel <span style="font-weight:300;color:var(--muted)">(optioneel)</span></label>
+    <div class="fg" style="margin-bottom:8px"><label class="fl">Target doel <span style="font-weight:300;color:var(--muted)">(optioneel)</span></label>
       <select class="fi" id="me-funnel" style="font-size:12px">
         ${buildMtgFunnelOptionsSelected(m.user, m.funnelRef||'')}
       </select>
