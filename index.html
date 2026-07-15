@@ -1293,6 +1293,12 @@ const DB = {
   async saveCompanyOwners(data) {
     try { await this.setSetting('company_owners',JSON.stringify(data)); } catch(e){console.error(e);}
   },
+  async getFunnelMeta() {
+    try { const v=await this.getSetting('funnel_meta'); return v?JSON.parse(v):null; } catch(e){return null;}
+  },
+  async saveFunnelMeta(data) {
+    try { await this.setSetting('funnel_meta',JSON.stringify(data)); } catch(e){console.error(e);}
+  },
   async getFunnelData() {
     try {
       const val = await this.getSetting('funnel_data');
@@ -1333,6 +1339,7 @@ let CU='Marlie',sel=new Set(),offerMode='register',logFilter='all';
 let meetings = [], meetingsFilter = 'all';
 let companyOwners = {};
 let funnelData = [];
+let funnelMeta = { historicalPlacements: 26, remainingTarget: 30, cutoffDate: '2026-07-15' };
 let vacTypeFilter='all', vacSidebarOwner='all', showClosedVac=false;
 let activeFilters={sales:'all',recruit:'all',bureau:'all',cv:'all',push:'all',tc:'all',role:'all',avail:'all'};
 let cvLib=[],offerLog=[],companies=[...DEFAULT_COMPANIES],vacatures=[];
@@ -1523,6 +1530,8 @@ async function loadFromStorage(){
     meetings = await DB.getMeetings().catch(()=>[]);
     funnelData = await DB.getFunnelData();
     companyOwners = await DB.getCompanyOwners();
+    const savedMeta = await DB.getFunnelMeta();
+    if (savedMeta) funnelMeta = savedMeta;
     const OWNER_SEED = {
       'ASR':'Julieta','ABN AMRO':'Marlie','Tikkie':'Marlie','ASN Bank':'Marlie','DNB':'Marlie',
       'DELA':'Julieta','Lumera':'Julieta','NN':'Marlie','Triodosbank':'Julieta','Triodos':'Julieta',
@@ -2255,6 +2264,32 @@ function getFunnelRealization(owner, year, month) {
   return count;
 }
 
+function getPlacementsAfterCutoff() {
+  const cutoff = funnelMeta.cutoffDate || '2026-07-15';
+  let count = 0;
+  for (const v of vacatures) {
+    if (!v.kanbanData?.startDates) continue;
+    for (const sd of Object.values(v.kanbanData.startDates)) {
+      if (sd && sd >= cutoff && sd <= '2026-12-31') count++;
+    }
+  }
+  return count;
+}
+
+async function saveFunnelMeta() {
+  const me = appUsers.find(u=>u.name===CU);
+  if (!me || me.role !== 'Admin') return;
+  const hist = parseInt(prompt('Plaatsingen tot 15 juli 2026:', funnelMeta.historicalPlacements));
+  if (isNaN(hist)) return;
+  const target = parseInt(prompt('Doel rest van 2026 (na 15 juli):', funnelMeta.remainingTarget));
+  if (isNaN(target)) return;
+  funnelMeta.historicalPlacements = hist;
+  funnelMeta.remainingTarget = target;
+  await DB.saveFunnelMeta(funnelMeta);
+  renderFunnelTab();
+  showToast('✓ Jaaroverзicht bijgewerkt');
+}
+
 function getFunnelRealizationYear(owner, year) {
   let count = 0;
   for (const v of vacatures) {
@@ -2433,8 +2468,53 @@ function renderFunnelTab() {
     + gridLines + bars
     + '</svg>';
 
+  // ── Jaaroverzicht 2026
+  const realAfter = getPlacementsAfterCutoff();
+  const hist = funnelMeta.historicalPlacements || 0;
+  const remTarget = funnelMeta.remainingTarget || 0;
+  const remaining = Math.max(0, remTarget - realAfter);
+  const totalReal = hist + realAfter;
+  const totalTarget = hist + remTarget;
+  const pctTotal = Math.min(100, Math.round(totalReal / totalTarget * 100));
+  const isAdminUser = (appUsers.find(u=>u.name===CU)?.role === 'Admin');
+  const editBtn = isAdminUser ? '<button class="btn-act edit" onclick="saveFunnelMeta()" title="Doelstelling aanpassen" style="margin-left:8px;vertical-align:middle">✏️</button>' : '';
+
+  const countdownColor = remaining === 0 ? '#2e7d32' : remaining <= 10 ? '#e65100' : 'var(--hg)';
+  const jaarPanel = '<div class="panel" style="margin-bottom:14px">'
+    + '<div class="ptitle" style="margin-bottom:12px"><i class="ti ti-chart-arrows-vertical"></i> Jaaroverzicht 2026' + editBtn + '</div>'
+    + '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">'
+    // Historisch blok
+    + '<div style="text-align:center;min-width:100px">'
+    + '<div style="font-size:32px;font-weight:700;color:var(--hg);line-height:1">' + hist + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:4px">Geplaatst<br>t/m 15 jul</div>'
+    + '</div>'
+    + '<div style="font-size:24px;color:#ccc;align-self:center">+</div>'
+    // Realisatie na cutoff
+    + '<div style="text-align:center;min-width:100px">'
+    + '<div style="font-size:32px;font-weight:700;color:#2e7d32;line-height:1">' + realAfter + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:4px">Geplaatst<br>na 15 jul</div>'
+    + '</div>'
+    + '<div style="font-size:24px;color:#ccc;align-self:center">=</div>'
+    // Totaal
+    + '<div style="text-align:center;min-width:100px">'
+    + '<div style="font-size:32px;font-weight:700;color:var(--hg);line-height:1">' + totalReal + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:4px">Totaal<br>geplaatst</div>'
+    + '</div>'
+    + '<div style="flex:1;min-width:200px;align-self:center;padding:0 8px">'
+    + '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px"><span>Voortgang naar ' + totalTarget + '</span><span>' + pctTotal + '%</span></div>'
+    + '<div class="bar-wrap" style="height:10px;border-radius:5px"><div class="bar-fill" style="width:' + pctTotal + '%;background:' + (pctTotal>=100?'#2e7d32':pctTotal>=70?'#e65100':'var(--hg)') + ';border-radius:5px"></div></div>'
+    + '</div>'
+    // Countdown
+    + '<div style="text-align:center;min-width:110px;padding:10px 16px;background:' + (remaining===0?'#f0fdf4':'#fff8f0') + ';border-radius:8px;border:.5px solid ' + (remaining===0?'#86efac':'#fed7aa') + '">'
+    + '<div style="font-size:36px;font-weight:800;color:' + countdownColor + ';line-height:1">' + remaining + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:4px">nog te plaatsen<br>t/m 31 dec</div>'
+    + '</div>'
+    + '</div>'
+    + '</div>';
+
   el.innerHTML = '<div class="stitle"><i class="ti ti-filter" style="font-size:15px;vertical-align:middle"></i> Funnel</div>'
     + '<div class="ssub">Plaatsingsdoelen per persoon — realisatie via startdatum op kanban</div>'
+    + jaarPanel
     + '<div style="display:flex;gap:5px;margin-bottom:16px;flex-wrap:wrap">' + ownerBtns + '</div>'
     + '<div class="panel">'
     + '<div class="ptitle"><i class="ti ti-chart-bar"></i> Realisatie 2026</div>'
