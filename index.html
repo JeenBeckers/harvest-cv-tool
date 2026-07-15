@@ -100,13 +100,13 @@ b,strong{font-weight:500}
 .tag-push{background:var(--pushl);color:var(--push);font-weight:500}
 .tag-vac{background:var(--timberwolf);color:var(--hg)}
 .tag-archived{background:var(--hgl);color:var(--muted)}
-.upill{display:inline-flex;align-items:center;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:400}
-.up-j{background:var(--timberwolf);color:var(--hg)}
-.up-f{background:var(--pushl);color:var(--push)}
-.up-m{background:var(--timberwolf);color:var(--hg)}
-.up-b{background:var(--timberwolf);color:var(--hg)}
-.up-w{background:var(--pushl);color:var(--push)}
-.up-je{background:#dbeafe;color:#1e40af}
+.upill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:500;letter-spacing:.01em}
+.up-j{background:#f3e8ff;color:#6d28d9}   /* Julieta – paars */
+.up-f{background:#fee2e2;color:#b91c1c}   /* Frank – rood */
+.up-m{background:#fff3e0;color:#c2440a}   /* Marlie – oranje */
+.up-b{background:#d1fae5;color:#065f46}   /* Bastijn – groen */
+.up-w{background:#e0f2fe;color:#0369a1}   /* Wessal – blauw */
+.up-je{background:#e0e7ff;color:#3730a3}  /* Jeen – indigo */
 
 /* ── PUSH TOGGLE ── */
 .push-toggle{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:3px;font-size:10px;font-weight:400;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--muted);transition:all .15s;font-family:var(--font)}
@@ -119,6 +119,12 @@ b,strong{font-weight:500}
 .bsm.p{background:var(--hg);color:var(--beige);border-color:var(--hg)}
 .bsm.p:hover{background:var(--hg2)}
 .bsm.warn{background:var(--pushl);color:var(--push);border-color:var(--push)}
+.btn-act{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:5px;border:.5px solid #e0e0e0;background:#fff;cursor:pointer;font-size:11px;transition:background .12s,border-color .12s}
+.btn-act:hover{background:#f5f5f5;border-color:#ccc}
+.btn-act.edit{color:var(--hg)}
+.btn-act.edit:hover{background:#f0f7f2;border-color:var(--hg)}
+.btn-act.del{color:#c62828}
+.btn-act.del:hover{background:#fff5f5;border-color:#c62828}
 .bsm.warn:hover{opacity:.8}
 .bsm:disabled{opacity:.35;cursor:not-allowed}
 .selbar{background:var(--hgl);border:1px solid var(--border);border-radius:var(--rad);padding:8px 12px;margin-bottom:9px;font-size:13px;color:var(--hg);display:flex;align-items:center;gap:7px;font-weight:300}
@@ -3855,26 +3861,32 @@ function renderCompanies(){
   const rows = companies.map(c => {
     const cnt = offerLog.filter(l=>l.company===c).length;
     const owner = companyOwners[c]||'';
-    const ownerCell = owner
+    const ownerPill = owner
       ? '<span class="upill '+(UCLS[owner]||'up-m')+'" style="font-size:10px">'+esc(owner)+'</span>'
-      : '<span style="color:#ccc;font-size:11px">—</span>';
-    const ownerSel = '<select onchange="setCompanyOwner(\''+esc(c)+'\',this.value)" style="font-size:10px;border:.5px solid #ddd;border-radius:3px;padding:2px 4px;background:#fff;color:var(--muted)">'
+      : '<span style="color:#bbb;font-size:11px">—</span>';
+    const ownerSel = '<select onchange="setCompanyOwner(\''+esc(c)+'\',this.value)" style="font-size:11px;border:.5px solid #ddd;border-radius:4px;padding:3px 6px;background:#fff;color:#444;max-width:110px">'
       + OWNER_USERS.map(u=>'<option value="'+u+'"'+(owner===u?' selected':'')+'>'+(u||'— geen —')+'</option>').join('')
       + '</select>';
     return '<tr style="border-bottom:.5px solid #f0f0f0">'
-      + '<td style="padding:8px 10px;font-size:12px;font-weight:400">'+esc(c)+'</td>'
-      + '<td style="padding:8px 10px">'+ownerCell+'</td>'
-      + '<td style="padding:8px 10px">'+ownerSel+'</td>'
-      + '<td style="padding:8px 10px;color:var(--muted);font-size:11px">'+(cnt>0?cnt+'×':'—')+'</td>'
-      + '<td style="padding:8px 10px;white-space:nowrap">'
-        + '<button class="bsm" onclick="renameCompany(\''+esc(c)+'\')" title="Naam wijzigen" style="font-size:9px;padding:2px 5px;margin-right:3px"><i class="ti ti-pencil" style="font-size:9px"></i></button>'
-        + '<button class="bsm" onclick="removeCompany(\''+esc(c)+'\')" title="Verwijderen" style="font-size:9px;padding:2px 5px"><i class="ti ti-trash" style="font-size:9px"></i></button>'
+      + '<td style="padding:9px 12px;font-size:12px;color:#1a1a1a;font-weight:400">'+esc(c)+'</td>'
+      + '<td style="padding:9px 12px">'+ownerPill+'</td>'
+      + '<td style="padding:9px 12px">'+ownerSel+'</td>'
+      + '<td style="padding:9px 12px;color:var(--muted);font-size:11px">'+(cnt>0?cnt+'×':'—')+'</td>'
+      + '<td style="padding:9px 12px;white-space:nowrap;display:flex;gap:4px">'
+        + '<button class="btn-act edit" onclick="renameCompany(\''+esc(c)+'\')" title="Naam wijzigen"><i class="ti ti-pencil"></i></button>'
+        + '<button class="btn-act del" onclick="removeCompany(\''+esc(c)+'\')" title="Verwijderen"><i class="ti ti-trash"></i></button>'
       + '</td>'
       + '</tr>';
   }).join('');
 
   document.getElementById('comp-grid').innerHTML = '<div class="twrap"><table class="tbl" style="width:100%">'
-    + '<thead><tr><th style="text-align:left;padding:6px 10px;font-weight:400;color:var(--muted)">Bedrijf</th><th style="padding:6px 10px;font-weight:400;color:var(--muted);text-align:left">Eigenaar</th><th style="padding:6px 10px;font-weight:400;color:var(--muted);text-align:left">Wijzigen</th><th style="padding:6px 10px;font-weight:400;color:var(--muted);text-align:left">Aanbod</th><th style="padding:6px 10px"></th></tr></thead>'
+    + '<thead><tr>'
+    + '<th style="text-align:left;padding:6px 12px;font-weight:400;color:var(--muted);font-size:11px">Bedrijf</th>'
+    + '<th style="padding:6px 12px;font-weight:400;color:var(--muted);font-size:11px;text-align:left">Eigenaar</th>'
+    + '<th style="padding:6px 12px;font-weight:400;color:var(--muted);font-size:11px;text-align:left">Wijzigen</th>'
+    + '<th style="padding:6px 12px;font-weight:400;color:var(--muted);font-size:11px;text-align:left">Aanbod</th>'
+    + '<th style="padding:6px 12px"></th>'
+    + '</tr></thead>'
     + '<tbody>'+rows+'</tbody>'
     + '</table></div>';
 
