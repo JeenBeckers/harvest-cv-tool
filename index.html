@@ -4649,7 +4649,7 @@ function currentWeekKey() { return isoWeekKey(new Date()); }
 function buildWeekOptions(selectedKey) {
   const opts = [];
   const now = new Date();
-  for (let i = -16; i <= 4; i++) {
+  for (let i = -53; i <= 20; i++) {
     const d = new Date(now);
     d.setDate(d.getDate() + i * 7);
     const key = isoWeekKey(d);
