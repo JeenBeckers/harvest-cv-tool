@@ -2279,7 +2279,7 @@ function renderFunnelTab() {
       let slotsHtml = '';
       if (entry && entry.slots.length > 0) {
         slotsHtml = entry.slots.map(s => {
-          const coOpts = ['To find',...companies.map(c=>c.name)].map(c => '<option value="' + c + '"' + (s.company===c?' selected':'') + '>' + c + '</option>').join('');
+          const coOpts = ['To find',...companies.map(c=>typeof c==='string'?c:(c.name||''))].map(c => '<option value="' + c + '"' + (s.company===c?' selected':'') + '>' + c + '</option>').join('');
           const rmBtn = canEdit ? '<span onclick="removeFunnelSlot(\'' + entry.id + '\',\'' + s.id + '\')" style="cursor:pointer;color:#bbb;margin-left:4px;font-size:10px" title="Verwijderen">✕</span>' : '';
           if (canEdit) {
             return '<div style="display:flex;align-items:center;gap:3px;margin-bottom:3px"><select onchange="updateFunnelSlotCompany(\'' + entry.id + '\',\'' + s.id + '\',this.value)" style="font-size:10px;padding:1px 3px;border:1px solid #ddd;border-radius:3px;max-width:130px">' + coOpts + '</select>' + rmBtn + '</div>';
@@ -2289,7 +2289,7 @@ function renderFunnelTab() {
         }).join('');
       }
       const addBtn = canEdit
-        ? '<div onclick="addFunnelSlot(\'' + owner + '\',2026,' + m + ',false,\'To find\')" style="font-size:10px;cursor:pointer;color:var(--hg);margin-top:3px">+ Kandidaat</div>'
+        ? '<div onclick="addFunnelSlot(\'' + owner + '\',2026,' + m + ',false,\'To find\')" style="font-size:10px;cursor:pointer;color:var(--hg);margin-top:3px">+ Positie</div>'
         : '';
       ownerCells += '<td style="vertical-align:top;padding:6px 8px;min-width:160px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Doel: <strong>' + slotCount + '</strong> · Realisatie: <strong style="color:' + (realized>=slotCount&&slotCount>0?'#2e7d32':'var(--hg)') + '">' + realized + '</strong></div>' + slotsHtml + addBtn + '</td>';
     }
@@ -2320,7 +2320,7 @@ function renderFunnelTab() {
       slotsHtml = entry.slots.map(s => {
         const rmBtn = canEdit ? '<span onclick="removeFunnelSlot(\'' + entry.id + '\',\'' + s.id + '\')" style="cursor:pointer;color:#bbb;margin-left:4px;font-size:10px">✕</span>' : '';
         if (canEdit) {
-          const coOpts = ['To find',...companies.map(c=>c.name)].map(c => '<option value="' + c + '"' + (s.company===c?' selected':'') + '>' + c + '</option>').join('');
+          const coOpts = ['To find',...companies.map(c=>typeof c==='string'?c:(c.name||''))].map(c => '<option value="' + c + '"' + (s.company===c?' selected':'') + '>' + c + '</option>').join('');
           return '<span style="display:inline-flex;align-items:center;gap:2px;background:#f0f0f0;border-radius:3px;padding:1px 4px;margin:2px"><select onchange="updateFunnelSlotCompany(\'' + entry.id + '\',\'' + s.id + '\',this.value)" style="font-size:10px;border:none;background:transparent">' + coOpts + '</select>' + rmBtn + '</span>';
         } else {
           return '<span style="display:inline-block;background:#f0f0f0;border-radius:3px;padding:1px 6px;margin:2px;font-size:10px">' + (s.company||'To find') + '</span>';
@@ -2328,7 +2328,7 @@ function renderFunnelTab() {
       }).join('');
     }
     const addBtn = canEdit
-      ? '<button class="bmain g" style="font-size:10px;padding:3px 8px;margin-top:6px" onclick="addFunnelSlot(\'' + owner + '\',2027,null,true,\'To find\')">+ Kandidaat</button>'
+      ? '<button class="bmain g" style="font-size:10px;padding:3px 8px;margin-top:6px" onclick="addFunnelSlot(\'' + owner + '\',2027,null,true,\'To find\')">+ Positie</button>'
       : '';
     target2027Html += '<div class="scard" style="min-width:200px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
