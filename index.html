@@ -2474,7 +2474,23 @@ async function dropCard(e,toStage,vacId){
   // Add to target
   if(!v.kanbanData[toStage]) v.kanbanData[toStage]=[];
   if(!v.kanbanData[toStage].includes(_dragCandId)) v.kanbanData[toStage].push(_dragCandId);
-  if(toStage==='aangenomen'){ if(!v.kanbanData.aangenomenDates) v.kanbanData.aangenomenDates={}; v.kanbanData.aangenomenDates[_dragCandId]=new Date().toISOString().slice(0,10); }
+  if(toStage==='aangenomen'){
+    if(!v.kanbanData.aangenomenDates) v.kanbanData.aangenomenDates={};
+    v.kanbanData.aangenomenDates[_dragCandId]=new Date().toISOString().slice(0,10);
+    if(!v.kanbanData.startDates) v.kanbanData.startDates={};
+    const candIdForPrompt=_dragCandId;
+    _dragCandId=null;_dragFromStage=null;
+    try{ await DB.upsertVacature(v); }catch(e){ console.error('dropCard save failed:',e); }
+    renderKanban(v);renderKanbanHeader(v);renderVacSidebar();
+    const sd=prompt('Startdatum kandidaat (YYYY-MM-DD):', new Date().toISOString().slice(0,10));
+    if(sd){
+      v.kanbanData.startDates[candIdForPrompt]=sd.trim();
+      DB.upsertVacature(v).catch(e=>console.error(e));
+      renderKanban(v);
+      showToast('✓ Startdatum opgeslagen');
+    }
+    return;
+  }
   _dragCandId=null;_dragFromStage=null;
   try{ await DB.upsertVacature(v); }catch(e){ console.error('dropCard save failed:',e); }
   renderKanban(v);
