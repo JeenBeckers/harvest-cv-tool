@@ -3763,7 +3763,17 @@ function renderTopCVs(){const cnts={};offerLog.forEach(l=>{cnts[l.candidateId]=(
 // ── COMPANIES
 async function addCompany(){const inp=document.getElementById('new-co-input');const val=inp.value.trim();if(!val)return;if(companies.find(c=>c.toLowerCase()===val.toLowerCase())){showToast('Staat al in de lijst');return;}companies.push(val);companies.sort((a,b)=>a.localeCompare(b));inp.value='';try{await DB.addCompany(val);}catch(e){console.error(e);}renderCompanies();updateBadges();showToast('✓ '+val+' toegevoegd');}
 async function removeCompany(name){if(!confirm('Verwijder '+name+'?'))return;companies=companies.filter(c=>c!==name);try{await DB.deleteCompany(name);}catch(e){console.error(e);}renderCompanies();updateBadges();}
-function renderCompanies(){document.getElementById('comp-grid').innerHTML=companies.map(c=>{const cnt=offerLog.filter(l=>l.company===c).length;return`<div class="comp-item"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${esc(c)}</span>${cnt>0?`<span class="cnt">${cnt}×</span>`:''}<span class="comp-del" onclick="removeCompany('${esc(c)}')"><i class="ti ti-trash" style="font-size:10px"></i></span></div>`;}).join('');document.getElementById('nb-co').textContent=companies.length;}
+async function renameCompany(oldName){
+  const newName=prompt('Naam wijzigen:',oldName);
+  if(!newName||newName.trim()===oldName) return;
+  const n=newName.trim();
+  if(companies.find(c=>c.toLowerCase()===n.toLowerCase())){showToast('Naam bestaat al');return;}
+  companies=companies.map(c=>c===oldName?n:c);
+  companies.sort((a,b)=>a.localeCompare(b));
+  try{ await DB.deleteCompany(oldName); await DB.addCompany(n); }catch(e){console.error(e);}
+  renderCompanies();updateBadges();showToast('✓ Hernoemd naar '+n);
+}
+function renderCompanies(){document.getElementById('comp-grid').innerHTML=companies.map(c=>{const cnt=offerLog.filter(l=>l.company===c).length;return`<div class="comp-item"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${esc(c)}</span>${cnt>0?`<span class="cnt">${cnt}×</span>`:''}<span class="comp-del" onclick="renameCompany('${esc(c)}')" title="Naam wijzigen" style="margin-right:2px"><i class="ti ti-pencil" style="font-size:10px"></i></span><span class="comp-del" onclick="removeCompany('${esc(c)}')"><i class="ti ti-trash" style="font-size:10px"></i></span></div>`;}).join('');document.getElementById('nb-co').textContent=companies.length;}
 
 // ── SETTINGS
 function renderSettings(){
