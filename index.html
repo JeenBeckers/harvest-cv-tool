@@ -4757,7 +4757,7 @@ function renderMeetings() {
         <div class="fg" style="min-width:140px"><label class="fl">Bedrijf *</label>
           <select class="fi" id="mtg-company" style="font-size:12px">
             <option value="">— Kies bedrijf —</option>
-            ${companies.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('')}
+            ${companies.map(c=>`<option value="${esc(typeof c==='string'?c:c.name||'')}">${esc(typeof c==='string'?c:c.name||'')}</option>`).join('')}
           </select>
         </div>
         <div class="fg" style="min-width:120px"><label class="fl">Contactpersoon</label><input class="fi" id="mtg-contact" placeholder="Jan de Vries" style="font-size:12px"></div>
