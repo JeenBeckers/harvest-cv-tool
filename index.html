@@ -2322,9 +2322,64 @@ function renderFunnelTab() {
       + '</div>';
   }
 
+  // ── Bar chart
+  const chartW=560, chartH=160, padL=28, padB=32, padT=14, padR=10;
+  const innerW=chartW-padL-padR, innerH=chartH-padB-padT;
+  const barGroupW = innerW / MONTHS_2026.length;
+  const barW = Math.min(32, barGroupW * 0.5);
+
+  const chartMonthData = MONTHS_2026.map(m => {
+    const doel = visOwners.reduce((s,o)=>{ const e=getFunnelEntry(o,2026,m,false); return s+(e?e.slots.length:0); },0);
+    const real = visOwners.reduce((s,o)=>s+getFunnelRealization(o,2026,m),0);
+    return { m, doel, real };
+  });
+  const maxVal = Math.max(1, ...chartMonthData.map(d=>Math.max(d.doel, d.real)));
+  const yScale = innerH / maxVal;
+
+  const gridLines = [0, Math.ceil(maxVal/2), maxVal].filter((v,i,a)=>a.indexOf(v)===i).map(v => {
+    const y = padT + innerH - v*yScale;
+    return '<line x1="' + padL + '" y1="' + y.toFixed(1) + '" x2="' + (chartW-padR) + '" y2="' + y.toFixed(1) + '" stroke="#e8e8e8" stroke-width="0.5"/>'
+      + '<text x="' + (padL-4) + '" y="' + (y+3).toFixed(1) + '" text-anchor="end" font-size="9" fill="#aaa">' + v + '</text>';
+  }).join('');
+
+  const bars = chartMonthData.map((d, i) => {
+    const cx = padL + i * barGroupW + barGroupW/2;
+    const doelH = d.doel * yScale;
+    const realH = d.real * yScale;
+    const doelY = padT + innerH - doelH;
+    const realY = padT + innerH - realH;
+    const pct = d.doel > 0 ? d.real / d.doel : 1;
+    const barColor = pct >= 1 ? '#2e7d32' : pct >= 0.75 ? '#e65100' : '#c62828';
+    const doelBar = d.doel > 0
+      ? '<rect x="' + (cx - barW/2 - 1).toFixed(1) + '" y="' + doelY.toFixed(1) + '" width="' + barW + '" height="' + doelH.toFixed(1) + '" fill="rgba(9,43,19,.12)" rx="2"/>'
+      : '';
+    const realBar = d.real > 0
+      ? '<rect x="' + (cx - barW/2 + 1).toFixed(1) + '" y="' + realY.toFixed(1) + '" width="' + barW + '" height="' + realH.toFixed(1) + '" fill="' + barColor + '" rx="2" opacity="0.9"/>'
+      : '';
+    const label = '<text x="' + cx.toFixed(1) + '" y="' + (chartH-16) + '" text-anchor="middle" font-size="9" fill="#aaa">' + MONTH_NAMES[d.m] + '</text>';
+    const valLabel = d.doel > 0
+      ? '<text x="' + cx.toFixed(1) + '" y="' + (chartH-6) + '" text-anchor="middle" font-size="8" fill="#999">' + d.real + '/' + d.doel + '</text>'
+      : '<text x="' + cx.toFixed(1) + '" y="' + (chartH-6) + '" text-anchor="middle" font-size="8" fill="#ccc">—</text>';
+    return doelBar + realBar + label + valLabel;
+  }).join('');
+
+  const chartLegend = '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#888"><span style="width:12px;height:10px;background:rgba(9,43,19,.12);display:inline-block;border-radius:2px"></span>Doel</span>'
+    + '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#888;margin-left:12px"><span style="width:12px;height:10px;background:#2e7d32;display:inline-block;border-radius:2px"></span>≥100% groen</span>'
+    + '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#888;margin-left:12px"><span style="width:12px;height:10px;background:#e65100;display:inline-block;border-radius:2px"></span>≥75% oranje</span>'
+    + '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#888;margin-left:12px"><span style="width:12px;height:10px;background:#c62828;display:inline-block;border-radius:2px"></span>&lt;75% rood</span>';
+
+  const svgChart = '<div style="margin-bottom:8px">' + chartLegend + '</div>'
+    + '<svg viewBox="0 0 ' + chartW + ' ' + chartH + '" style="width:100%;max-width:' + chartW + 'px;display:block">'
+    + gridLines + bars
+    + '</svg>';
+
   el.innerHTML = '<div class="stitle"><i class="ti ti-filter" style="font-size:15px;vertical-align:middle"></i> Funnel</div>'
     + '<div class="ssub">Plaatsingsdoelen per persoon — realisatie via startdatum op kanban</div>'
     + '<div style="display:flex;gap:5px;margin-bottom:16px;flex-wrap:wrap">' + ownerBtns + '</div>'
+    + '<div class="panel">'
+    + '<div class="ptitle"><i class="ti ti-chart-bar"></i> Realisatie 2026</div>'
+    + svgChart
+    + '</div>'
     + '<div class="panel">'
     + '<div class="ptitle"><i class="ti ti-calendar-month"></i> Doelen 2026 (Jul–Dec)</div>'
     + '<div class="twrap"><table class="tbl" style="min-width:500px">'
