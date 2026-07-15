@@ -2097,10 +2097,14 @@ function renderKanbanCard(candId, stageKey, vacId){
   const dateLabel = placedDate ? placedDate.slice(0,7) : '';
   const startDate = stageKey==='aangenomen' ? (v?.kanbanData?.startDates?.[candId]||'') : '';
   const startLabel = startDate ? startDate.slice(0,7) : '';
+  const gesprekDate = (stageKey==='gesprek'||stageKey==='gesprek2') ? (v?.kanbanData?.gesprekDates?.[candId+':'+stageKey]||'') : '';
+  const gesprekLabel = gesprekDate ? gesprekDate.slice(0,10) : '';
   const dateBtn = stageKey==='aangenomen'
     ? '<div onclick="event.stopPropagation();setPlacementDate(\'' + vacId + '\',\'' + candId + '\')" style="margin-top:4px;font-size:9px;color:' + (dateLabel?'var(--hg)':'#bbb') + ';cursor:pointer;display:flex;align-items:center;gap:3px"><i class="ti ti-calendar" style="font-size:9px"></i> ' + (dateLabel||'Plaatsing instellen') + '</div>'
       + '<div onclick="event.stopPropagation();setStartDate(\'' + vacId + '\',\'' + candId + '\')" style="margin-top:2px;font-size:9px;color:' + (startLabel?'#1e40af':'#bbb') + ';cursor:pointer;display:flex;align-items:center;gap:3px"><i class="ti ti-player-play" style="font-size:9px"></i> ' + (startLabel?'Start: '+startLabel:'Startdatum instellen') + '</div>'
-    : '';
+    : (stageKey==='gesprek'||stageKey==='gesprek2')
+      ? '<div onclick="event.stopPropagation();setGesprekDate(\'' + vacId + '\',\'' + candId + '\',\'' + stageKey + '\')" style="margin-top:4px;font-size:9px;color:' + (gesprekLabel?'var(--hg)':'#bbb') + ';cursor:pointer;display:flex;align-items:center;gap:3px"><i class="ti ti-calendar" style="font-size:9px"></i> ' + (gesprekLabel||'Datum instellen') + '</div>'
+      : '';
   return`<div class="kanban-card ${cv.push?'is-push':''}" id="kcard-${candId}-${stageKey}"
     draggable="true"
     ondragstart="dragStart(event,'${candId}','${stageKey}')"
@@ -2132,6 +2136,21 @@ function setPlacementDate(vacId, candId) {
   DB.upsertVacature(v).catch(e=>console.error(e));
   renderKanban(v);
   showToast('✓ Plaatsingsdatum opgeslagen');
+}
+
+function setGesprekDate(vacId, candId, stageKey) {
+  const v = vacatures.find(x=>x.id===vacId); if(!v) return;
+  const key = candId+':'+stageKey;
+  const current = v.kanbanData?.gesprekDates?.[key] || '';
+  const label = stageKey==='gesprek' ? '1e gesprek' : '2e gesprek';
+  const val = prompt('Datum '+label+' (YYYY-MM-DD):', current || new Date().toISOString().slice(0,10));
+  if(!val) return;
+  if(!v.kanbanData) v.kanbanData={};
+  if(!v.kanbanData.gesprekDates) v.kanbanData.gesprekDates={};
+  v.kanbanData.gesprekDates[key] = val.trim();
+  DB.upsertVacature(v).catch(e=>console.error(e));
+  renderKanban(v);
+  showToast('✓ Gespreksdatum opgeslagen');
 }
 
 function setStartDate(vacId, candId) {
@@ -2474,6 +2493,22 @@ async function dropCard(e,toStage,vacId){
   // Add to target
   if(!v.kanbanData[toStage]) v.kanbanData[toStage]=[];
   if(!v.kanbanData[toStage].includes(_dragCandId)) v.kanbanData[toStage].push(_dragCandId);
+  if(toStage==='gesprek'||toStage==='gesprek2'){
+    const label=toStage==='gesprek'?'1e gesprek':'2e gesprek';
+    const candIdForPrompt=_dragCandId;
+    _dragCandId=null;_dragFromStage=null;
+    try{ await DB.upsertVacature(v); }catch(e){ console.error('dropCard save failed:',e); }
+    renderKanban(v);renderKanbanHeader(v);renderVacSidebar();
+    const gd=prompt('Datum '+label+' (YYYY-MM-DD):', new Date().toISOString().slice(0,10));
+    if(gd){
+      if(!v.kanbanData.gesprekDates) v.kanbanData.gesprekDates={};
+      v.kanbanData.gesprekDates[candIdForPrompt+':'+toStage]=gd.trim();
+      DB.upsertVacature(v).catch(e=>console.error(e));
+      renderKanban(v);
+      showToast('✓ Gesprreksdatum opgeslagen');
+    }
+    return;
+  }
   if(toStage==='aangenomen'){
     if(!v.kanbanData.aangenomenDates) v.kanbanData.aangenomenDates={};
     v.kanbanData.aangenomenDates[_dragCandId]=new Date().toISOString().slice(0,10);
