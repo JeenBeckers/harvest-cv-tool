@@ -2270,9 +2270,9 @@ function renderFunnelTab() {
         }).join('');
       }
       const addBtn = canEdit
-        ? '<div onclick="addFunnelSlot(\'' + owner + '\',2026,' + m + ',false,\'To find\')" style="font-size:10px;cursor:pointer;color:var(--hg);margin-top:3px">+ slot</div>'
+        ? '<div onclick="addFunnelSlot(\'' + owner + '\',2026,' + m + ',false,\'To find\')" style="font-size:10px;cursor:pointer;color:var(--hg);margin-top:3px">+ Kandidaat</div>'
         : '';
-      ownerCells += '<td style="vertical-align:top;padding:6px 8px;min-width:160px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Doel: <strong>' + slotCount + '</strong> · Realisatie: <strong style="color:' + (realized>=slotCount&&slotCount>0?'#2e7d32':'var(--hg)') + '">' + realized + '</strong></div>' + slotsHtml + addBtn + '</td>';
+      ownerCells += '<td style="vertical-align:top;padding:6px 8px;min-width:160px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Doel: <strong>' + KandidaatCount + '</strong> · Realisatie: <strong style="color:' + (realized>=slotCount&&slotCount>0?'#2e7d32':'var(--hg)') + '">' + realized + '</strong></div>' + KandidaatsHtml + addBtn + '</td>';
     }
     const isCurrentMonth = (new Date().getMonth()+1) === m && new Date().getFullYear() === 2026;
     tableRows += '<tr style="' + (isCurrentMonth?'background:rgba(9,43,19,.04)':'') + '">'
@@ -2309,15 +2309,15 @@ function renderFunnelTab() {
       }).join('');
     }
     const addBtn = canEdit
-      ? '<button class="bmain g" style="font-size:10px;padding:3px 8px;margin-top:6px" onclick="addFunnelSlot(\'' + owner + '\',2027,null,true,\'To find\')">+ slot</button>'
+      ? '<button class="bmain g" style="font-size:10px;padding:3px 8px;margin-top:6px" onclick="addFunnelSlot(\'' + owner + '\',2027,null,true,\'To find\')">+ Kandidaat</button>'
       : '';
     target2027Html += '<div class="scard" style="min-width:200px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
       + '<span class="upill ' + (UCLS[owner]||'up-m') + '">' + owner + '</span>'
-      + '<span style="font-size:18px;font-weight:600">' + slotCount + '</span>'
+      + '<span style="font-size:18px;font-weight:600">' + KandidaatCount + '</span>'
       + '</div>'
       + '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">Realisatie: <strong style="color:' + (realized>0?'var(--hg)':'#bbb') + '">' + realized + '</strong></div>'
-      + slotsHtml
+      + KandidaatsHtml
       + addBtn
       + '</div>';
   }
@@ -2399,6 +2399,42 @@ function renderFunnelTab() {
     + '<div class="ptitle"><i class="ti ti-target"></i> Jaardoel 2027</div>'
     + '<div style="display:flex;gap:10px;flex-wrap:wrap">' + target2027Html + '</div>'
     + '</div>';
+}
+
+function buildMtgFunnelOptions(user) {
+  const me = appUsers.find(u=>u.name===CU);
+  const isAdmin = me && me.role === 'Admin';
+  const owners = isAdmin ? FUNNEL_OWNERS : [user].filter(u => FUNNEL_OWNERS.includes(u));
+  let opts = '<option value="">— Geen koppeling —</option>';
+  for (const owner of owners) {
+    const prefix = isAdmin ? owner + ' · ' : '';
+    for (const m of MONTHS_2026) {
+      const entry = getFunnelEntry(owner, 2026, m, false);
+      if (!entry || !entry.slots.length) continue;
+      const companies = entry.slots.map(s=>s.company||'To find').join(', ');
+      opts += '<option value="' + entry.id + '">' + prefix + MONTH_NAMES[m] + ' 2026 (' + entry.slots.length + ' kandidaat' + (entry.slots.length!==1?'en':'') + ': ' + companies + ')</option>';
+    }
+    const yr = getFunnelEntry(owner, 2027, null, true);
+    if (yr && yr.slots.length) {
+      opts += '<option value="' + yr.id + '">' + prefix + 'Jaardoel 2027 (' + yr.slots.length + ' kandidaat' + (yr.slots.length!==1?'en':'') + ')</option>';
+    }
+  }
+  return opts;
+}
+
+function updateMtgFunnelOptions() {
+  const userSel = document.getElementById('mtg-user');
+  const funnelSel = document.getElementById('mtg-funnel');
+  if (!userSel || !funnelSel) return;
+  funnelSel.innerHTML = buildMtgFunnelOptions(userSel.value);
+}
+
+function funnelEntryLabel(entryId) {
+  if (!entryId) return '';
+  const entry = funnelData.find(e=>e.id===entryId);
+  if (!entry) return '';
+  const period = entry.isYearTarget ? 'Jaardoel 2027' : (MONTH_NAMES[entry.month]||'') + ' ' + entry.year;
+  return entry.owner + ' · ' + period;
 }
 
 function setFunnelFilter(val, el) {
@@ -4663,8 +4699,13 @@ function renderMeetings() {
         <div class="fg" style="min-width:110px"><label class="fl">Vertical</label><input class="fi" id="mtg-vertical" placeholder="Finance, Gov…" style="font-size:12px"></div>
         <div class="fg" style="min-width:80px"><label class="fl">Weeknummer</label><input class="fi" id="mtg-week" placeholder="${cwk}" value="${cwk}" style="font-size:12px"></div>
         <div class="fg" style="min-width:80px"><label class="fl">Door</label>
-          <select class="fi" id="mtg-user" style="font-size:12px">
+          <select class="fi" id="mtg-user" style="font-size:12px" onchange="updateMtgFunnelOptions()">
             ${['Marlie','Frank','Julieta','Jeen'].map(u=>`<option${u===CU?' selected':''}>${u}</option>`).join('')}
+          </select>
+        </div>
+        <div class="fg" style="min-width:180px"><label class="fl">Funnel doel <span style="font-weight:300;color:var(--muted)">(optioneel)</span></label>
+          <select class="fi" id="mtg-funnel" style="font-size:12px">
+            ${buildMtgFunnelOptions(CU)}
           </select>
         </div>
       </div>
@@ -4690,6 +4731,7 @@ function renderMeetings() {
           <th style="text-align:left;padding:5px 8px;font-weight:400">Type</th>
           <th style="text-align:left;padding:5px 8px;font-weight:400">Vertical</th>
           <th style="text-align:left;padding:5px 8px;font-weight:400">Omschrijving</th>
+          <th style="text-align:left;padding:5px 8px;font-weight:400">Funnel doel</th>
           <th style="padding:5px 8px"></th>
         </tr></thead>
         <tbody>${sorted.map(m=>`<tr style="border-bottom:.5px solid #f0f0f0">
@@ -4700,6 +4742,7 @@ function renderMeetings() {
           <td style="padding:6px 8px;white-space:nowrap">${m.meetingType?`<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f0f4ff;color:#3b5bdb;font-weight:500">${esc(m.meetingType)}</span>`:'<span style="color:#ccc">—</span>'}</td>
           <td style="padding:6px 8px;color:var(--muted)">${esc(m.vertical||'—')}</td>
           <td style="padding:6px 8px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.description||'—')}</td>
+          <td style="padding:6px 8px">${m.funnelRef?`<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f0fdf4;color:#166534;font-weight:500"><i class="ti ti-filter" style="font-size:9px"></i> ${esc(funnelEntryLabel(m.funnelRef))}</span>`:'<span style="color:#ccc">—</span>'}</td>
           <td style="padding:6px 8px;white-space:nowrap">
             <button class="bsm" onclick="showEditMeetingModal('${m.id}')" style="font-size:9px;padding:2px 5px" title="Bewerken"><i class="ti ti-pencil" style="font-size:9px"></i></button>
             <button class="bsm" onclick="deleteMeeting('${m.id}')" style="font-size:9px;padding:2px 5px;color:var(--muted)" title="Verwijderen"><i class="ti ti-trash" style="font-size:9px"></i></button>
@@ -4729,6 +4772,7 @@ async function addMeeting() {
     vertical: document.getElementById('mtg-vertical').value.trim(),
     weekKey: document.getElementById('mtg-week').value.trim() || currentWeekKey(),
     meetingDate: '',
+    funnelRef: document.getElementById('mtg-funnel')?.value || '',
     createdAt: new Date().toISOString()
   };
   meetings.unshift(m);
