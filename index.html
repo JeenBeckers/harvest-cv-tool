@@ -2420,6 +2420,27 @@ function renderFunnelTab() {
     + '</div>';
 }
 
+function buildMtgFunnelOptionsSelected(user, selectedId) {
+  const me = appUsers.find(u=>u.name===CU);
+  const isAdmin = me && me.role === 'Admin';
+  const owners = isAdmin ? FUNNEL_OWNERS : [user].filter(u => FUNNEL_OWNERS.includes(u));
+  let opts = '<option value=""' + (!selectedId?' selected':'') + '>— Geen koppeling —</option>';
+  for (const owner of owners) {
+    const prefix = isAdmin ? owner + ' · ' : '';
+    for (const m of MONTHS_2026) {
+      const entry = getFunnelEntry(owner, 2026, m, false);
+      if (!entry || !entry.slots.length) continue;
+      const cos = entry.slots.map(s=>s.company||'To find').join(', ');
+      opts += '<option value="' + entry.id + '"' + (selectedId===entry.id?' selected':'') + '>' + prefix + MONTH_NAMES[m] + ' 2026 (' + entry.slots.length + ' positie' + (entry.slots.length!==1?'s':'') + ': ' + cos + ')</option>';
+    }
+    const yr = getFunnelEntry(owner, 2027, null, true);
+    if (yr && yr.slots.length) {
+      opts += '<option value="' + yr.id + '"' + (selectedId===yr.id?' selected':'') + '>' + prefix + 'Jaardoel 2027 (' + yr.slots.length + ' positie' + (yr.slots.length!==1?'s':'') + ')</option>';
+    }
+  }
+  return opts;
+}
+
 function buildMtgFunnelOptions(user) {
   const me = appUsers.find(u=>u.name===CU);
   const isAdmin = me && me.role === 'Admin';
@@ -4902,6 +4923,11 @@ function showEditMeetingModal(id) {
         ${['Marlie','Frank','Julieta','Jeen'].map(u=>`<option${m.user===u?' selected':''}>${u}</option>`).join('')}
       </select>
     </div>
+    <div class="fg" style="margin-bottom:8px"><label class="fl">Funnel doel <span style="font-weight:300;color:var(--muted)">(optioneel)</span></label>
+      <select class="fi" id="me-funnel" style="font-size:12px">
+        ${buildMtgFunnelOptionsSelected(m.user, m.funnelRef||'')}
+      </select>
+    </div>
     <div class="fg" style="margin-bottom:14px"><label class="fl">Omschrijving</label><textarea class="fi" id="me-desc" rows="3" style="font-size:12px">${esc(m.description)}</textarea></div>
     <div style="display:flex;gap:6px;justify-content:flex-end">
       <button class="bmain o" onclick="document.getElementById('mtg-edit-modal').remove()" style="font-size:11px;padding:6px 12px">Annuleren</button>
@@ -4922,6 +4948,7 @@ async function saveEditMeeting(id) {
   m.weekKey = document.getElementById('me-week').value.trim() || m.weekKey;
   m.user = document.getElementById('me-user').value;
   m.description = document.getElementById('me-desc').value.trim();
+  m.funnelRef = document.getElementById('me-funnel')?.value || '';
   document.getElementById('mtg-edit-modal')?.remove();
   try { await DB.upsertMeeting(m); } catch(e) { console.error('saveEditMeeting failed:', e); }
   renderMeetings();
