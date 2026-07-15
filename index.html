@@ -3831,24 +3831,30 @@ function renderOfferStats() {
 }
 
 async function renderDashboard(){
-  document.getElementById('dashsub').textContent='Ingelogd als '+CU+' · gedeeld teamoverzicht';
   try {
-    _weekStatsCache = await DB.getWeekStats();
-    await snapshotCurrentWeek();
-  } catch(e) { console.error('week stats:', e); }
-  renderVacPerformance();
-  const active=cvLib.filter(cv=>!cv.archived).length,pushCount=cvLib.filter(cv=>cv.push&&!cv.archived).length;
-  document.getElementById('sgrid').innerHTML=
-    '<div class="scard"><div class="slabel">Actieve kandidaten</div><div class="sval" data-tip="Kandidaten die momenteel actief in de pipeline zitten en niet gearchiveerd zijn.">'+active+'</div><div class="ssub2">'+cvLib.filter(cv=>cv.archived).length+' gearchiveerd</div></div>'
-    +'<div class="scard push"><div class="slabel">⚡ Push kandidaten</div><div class="sval" data-tip="Kandidaten die als Push-kandidaat zijn gemarkeerd — kort beschikbaar of sterk profiel. Actief gepushed bij klanten.">'+pushCount+'</div><div class="ssub2">actief gepushed</div></div>'
-    +'<div class="scard"><div class="slabel">Totaal aanbiedingen</div><div class="sval" data-tip="Totaal aantal geregistreerde aanbiedingen ooit — alle periodes, alle gebruikers. Zie hieronder de uitsplitsing per persoon.">'+offerLog.length+'</div><div class="ssub2">alle periodes</div></div>'
-    +'<div class="scard"><div class="slabel">Mijn aanbiedingen</div><div class="sval" data-tip="Aanbiedingen geregistreerd door '+CU+'. Het verschil met het totaal zijn aanbiedingen door andere teamleden.">'+offerLog.filter(l=>l.user===CU).length+'</div><div class="ssub2">door '+CU+'</div></div>';
-  renderOfferStats();
-  const pushCVs=cvLib.filter(cv=>cv.push&&!cv.archived);
-  const dpg=document.getElementById('dash-push-grid');
-  if(!pushCVs.length){dpg.innerHTML='<div class="empty" style="grid-column:1/-1;padding:12px 0">Geen push kandidaten actief</div>';}
-  else{dpg.innerHTML=pushCVs.map(cv=>{const col=colFor(cv.name),cnt=offerLog.filter(l=>l.candidateId===cv.id).length;return`<div class="push-card" onclick="openModal('${cv.id}')"><div class="ava" style="background:${col.bg};color:${col.tx}">${ini(cv.name)}</div><div class="pname">⚡ ${esc(cv.name)}</div><div class="prole">${esc(cv.role)}</div><div style="display:flex;gap:3px;flex-wrap:wrap"><span class="tag tag-av">${esc(cv.availability)}</span>${cnt>0?`<span class="tag tag-cnt">${cnt}× aangeboden</span>`:''}</div></div>`;}).join('');}
-  renderLogTable();renderTopCVs();
+    document.getElementById('dashsub').textContent='Ingelogd als '+CU+' · gedeeld teamoverzicht';
+    try {
+      _weekStatsCache = await DB.getWeekStats();
+      await snapshotCurrentWeek();
+    } catch(e) { console.error('week stats:', e); }
+    renderVacPerformance();
+    const active=cvLib.filter(cv=>!cv.archived).length,pushCount=cvLib.filter(cv=>cv.push&&!cv.archived).length;
+    document.getElementById('sgrid').innerHTML=
+      '<div class="scard"><div class="slabel">Actieve kandidaten</div><div class="sval" data-tip="Kandidaten die momenteel actief in de pipeline zitten en niet gearchiveerd zijn.">'+active+'</div><div class="ssub2">'+cvLib.filter(cv=>cv.archived).length+' gearchiveerd</div></div>'
+      +'<div class="scard push"><div class="slabel">⚡ Push kandidaten</div><div class="sval" data-tip="Kandidaten die als Push-kandidaat zijn gemarkeerd — kort beschikbaar of sterk profiel. Actief gepushed bij klanten.">'+pushCount+'</div><div class="ssub2">actief gepushed</div></div>'
+      +'<div class="scard"><div class="slabel">Totaal aanbiedingen</div><div class="sval" data-tip="Totaal aantal geregistreerde aanbiedingen ooit — alle periodes, alle gebruikers. Zie hieronder de uitsplitsing per persoon.">'+offerLog.length+'</div><div class="ssub2">alle periodes</div></div>'
+      +'<div class="scard"><div class="slabel">Mijn aanbiedingen</div><div class="sval" data-tip="Aanbiedingen geregistreerd door '+CU+'. Het verschil met het totaal zijn aanbiedingen door andere teamleden.">'+offerLog.filter(l=>l.user===CU).length+'</div><div class="ssub2">door '+CU+'</div></div>';
+    renderOfferStats();
+    const pushCVs=cvLib.filter(cv=>cv.push&&!cv.archived);
+    const dpg=document.getElementById('dash-push-grid');
+    if(!pushCVs.length){dpg.innerHTML='<div class="empty" style="grid-column:1/-1;padding:12px 0">Geen push kandidaten actief</div>';}
+    else{dpg.innerHTML=pushCVs.map(cv=>{const col=colFor(cv.name),cnt=offerLog.filter(l=>l.candidateId===cv.id).length;return`<div class="push-card" onclick="openModal('${cv.id}')"><div class="ava" style="background:${col.bg};color:${col.tx}">${ini(cv.name)}</div><div class="pname">⚡ ${esc(cv.name)}</div><div class="prole">${esc(cv.role)}</div><div style="display:flex;gap:3px;flex-wrap:wrap"><span class="tag tag-av">${esc(cv.availability)}</span>${cnt>0?`<span class="tag tag-cnt">${cnt}× aangeboden</span>`:''}</div></div>`;}).join('');}
+    renderLogTable();renderTopCVs();
+  } catch(e) {
+    console.error('renderDashboard error:', e);
+    const sub = document.getElementById('dashsub');
+    if(sub) sub.textContent = 'Fout bij laden dashboard — zie console voor details: ' + e.message;
+  }
 }
 function setLogFilter(f,el){logFilter=f;document.querySelectorAll('#view-dash .fchip').forEach(c=>c.classList.remove('active'));el.classList.add('active');renderLogTable();}
 function logRow(l,extraClass=''){const m=!l.emailed||l.emailMode==='none'?`<span style="font-size:10px;color:var(--muted)">Handmatig</span>`:l.emailMode==='send'?`<span style="font-size:10px;color:var(--hg);display:flex;align-items:center;gap:2px"><i class="ti ti-send" style="font-size:9px"></i>Concept</span>`:`<span style="font-size:10px;color:#1a73e8;display:flex;align-items:center;gap:2px"><i class="ti ti-inbox" style="font-size:9px"></i>Draft</span>`;return`<tr class="${extraClass}"><td style="color:var(--muted);font-size:10px;white-space:nowrap">${l.date}</td><td style="font-weight:500;font-size:11px">${l.isPush?'⚡ ':''}${esc(l.candidateName)}</td><td style="font-size:11px">${esc(l.company)}${l.contact?`<br><span style="color:#ccc;font-size:10px">${esc(l.contact)}</span>`:''}</td><td style="font-size:10px;color:var(--muted)">${esc(l.role||'—')}</td><td><span class="upill ${UCLS[l.user]||'up-m'}" style="font-size:9px">${esc(l.user)}</span></td><td>${m}${l.hasAttachments?'<i class="ti ti-paperclip" style="font-size:9px;color:#ccc;margin-left:2px"></i>':''}</td><td style="font-size:10px;color:var(--muted)">${esc(l.note||'—')}</td><td style="white-space:nowrap;display:flex;gap:3px"><button class="btn-act edit" onclick="showEditLogModal('${l.id}')" title="Wijzigen">✏️</button><button class="btn-act del" onclick="deleteLogEntry('${l.id}')" title="Verwijderen">🗑️</button></td></tr>`;}
