@@ -4765,10 +4765,10 @@ function renderMeetings() {
       <div class="ptitle"><i class="ti ti-plus"></i> Afspraak registreren</div>
       <div class="frow" style="gap:8px;flex-wrap:wrap">
         <div class="fg" style="min-width:140px"><label class="fl">Bedrijf *</label>
-          <select class="fi" id="mtg-company" style="font-size:12px">
-            <option value="">— Kies bedrijf —</option>
-            ${companies.map(c=>`<option value="${esc(typeof c==='string'?c:c.name||'')}">${esc(typeof c==='string'?c:c.name||'')}</option>`).join('')}
-          </select>
+          <input class="fi" id="mtg-company" list="mtg-company-list" placeholder="Typ om te zoeken…" autocomplete="off" style="font-size:12px">
+          <datalist id="mtg-company-list">
+            ${companies.map(c=>`<option value="${esc(typeof c==='string'?c:c.name||'')}"></option>`).join('')}
+          </datalist>
         </div>
         <div class="fg" style="min-width:120px"><label class="fl">Contactpersoon</label><input class="fi" id="mtg-contact" placeholder="Jan de Vries" style="font-size:12px"></div>
         <div class="fg" style="min-width:120px"><label class="fl">Type afspraak</label>
