@@ -3964,6 +3964,7 @@ function renderCompanies(){
   const OWNER_USERS = ['','Marlie','Frank','Julieta','Jeen'];
   const rows = companies.map(c => {
     const cnt = offerLog.filter(l=>l.company===c).length;
+    const mtgCnt = meetings.filter(m=>m.company===c).length;
     const owner = companyOwners[c]||'';
     const ownerPill = owner
       ? '<span class="upill '+(UCLS[owner]||'up-m')+'" style="font-size:10px">'+esc(owner)+'</span>'
@@ -3976,6 +3977,7 @@ function renderCompanies(){
       + '<td style="padding:9px 12px">'+ownerPill+'</td>'
       + '<td style="padding:9px 12px">'+ownerSel+'</td>'
       + '<td style="padding:9px 12px;color:var(--muted);font-size:11px">'+(cnt>0?cnt+'×':'—')+'</td>'
+      + '<td style="padding:9px 12px;color:var(--muted);font-size:11px">'+(mtgCnt>0?mtgCnt+'×':'—')+'</td>'
       + '<td style="padding:9px 12px;white-space:nowrap;display:flex;gap:4px">'
         + '<button class="btn-act edit" onclick="renameCompany(\''+esc(c)+'\')" title="Naam wijzigen">✏️</button>'
         + '<button class="btn-act del" onclick="removeCompany(\''+esc(c)+'\')" title="Verwijderen">🗑️</button>'
@@ -4012,6 +4014,7 @@ function renderCompanies(){
     + '<th style="padding:6px 12px;font-weight:400;color:var(--muted);font-size:11px;text-align:left">Eigenaar</th>'
     + '<th style="padding:6px 12px;font-weight:400;color:var(--muted);font-size:11px;text-align:left">Wijzigen</th>'
     + '<th style="padding:6px 12px;font-weight:400;color:var(--muted);font-size:11px;text-align:left">Aanbod</th>'
+    + '<th style="padding:6px 12px;font-weight:400;color:var(--muted);font-size:11px;text-align:left">Afspraken</th>'
     + '<th style="padding:6px 12px"></th>'
     + '</tr></thead>'
     + '<tbody>'+rows+'</tbody>'
