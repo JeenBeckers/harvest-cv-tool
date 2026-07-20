@@ -3097,6 +3097,7 @@ const ALL_COLS = [
   {key:'province', label:'Provincie',     default:false, sortFn: cv=>(cv.province||'').toLowerCase()},
   {key:'date',     label:'Datum in proces',default:false,sortFn: cv=>(cv.dateInProcess||'').toLowerCase()},
   {key:'notes',    label:'Bijzonderheden',default:false, sortFn: cv=>(cv.notes||'').toLowerCase()},
+  {key:'werkervaring', label:'Werkervaring', default:false, sortFn: cv=>(cv.werkervaring||'').toLowerCase()},
 ];
 let visibleCols = ALL_COLS.filter(c=>c.default).map(c=>c.key);
 let sortCol = null, sortDir = 'asc';
@@ -3225,6 +3226,7 @@ function renderCVList(){
       province: `<td style="font-size:11px;color:var(--muted)">${esc(cv.province||'—')}</td>`,
       date: `<td style="font-size:11px;color:var(--muted)">${esc(cv.dateInProcess||'—')}</td>`,
       notes: `<td style="font-size:10px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(cv.notes||'')}">${esc(cv.notes||'—')}</td>`,
+      werkervaring: `<td>${cv.werkervaring==='ja'?'<span class="tag" style="background:var(--hgl);color:var(--hg)">Ja</span>':cv.werkervaring==='nee'?'<span class="tag" style="background:#fde8e8;color:#a02020">Nee</span>':'<span style="color:#ddd">—</span>'}</td>`,
     };
     return`<tr class="${cv.push?'push-row':''} ${isSel?'sel-row':''}" style="cursor:pointer" onclick="openModal('${cv.id}')">
       <td class="cv-row-check" onclick="event.stopPropagation()"><input type="checkbox" ${isSel?'checked':''} onchange="toggleSel('${cv.id}',this.checked)" onclick="event.stopPropagation()"></td>
