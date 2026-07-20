@@ -2290,13 +2290,13 @@ function getFunnelRealization(owner, year, month) {
 
 function getPlacementsAfterCutoff() {
   const cutoff = funnelMeta.cutoffDate || '2026-07-15';
-  const today = new Date().toISOString().slice(0,10);
   let count = 0, bbtgCount = 0;
   for (const v of vacatures) {
-    if (!v.kanbanData?.startDates) continue;
+    if (!v.kanbanData?.aangenomenDates) continue;
     const isBBTG = (v.company||'').trim().toUpperCase() === 'BBTG';
-    for (const sd of Object.values(v.kanbanData.startDates)) {
-      if (sd && sd > cutoff && sd <= today) {
+    // Count by placement date (aangenomenDate), not start date — placed = moved to aangenomen
+    for (const ad of Object.values(v.kanbanData.aangenomenDates)) {
+      if (ad && ad > cutoff) {
         if (isBBTG) bbtgCount++;
         else count++;
       }
