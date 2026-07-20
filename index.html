@@ -840,7 +840,7 @@ b,strong{font-weight:500}
           <div class="vkpi accent"><div class="vkpi-label">Vacatures open</div><div class="vkpi-val" id="kpi-vac" data-tip="Aantal vacatures met status 'open' — dit zijn de actieve wervingstrajecten waar kandidaten aan gekoppeld kunnen worden.">0</div><div class="vkpi-sub">actieve vacatures</div></div>
           <div class="vkpi"><div class="vkpi-label">Voorgesteld</div><div class="vkpi-val" id="kpi-voor" data-tip="Unieke kandidaten die in de 'Voorgesteld' kolom staan van minstens één vacature in de geselecteerde periode. Een kandidaat telt maar één keer mee, ook als die bij meerdere vacatures voorgesteld is.">0</div><div class="vkpi-sub">unieke kandidaten</div></div>
           <div class="vkpi"><div class="vkpi-label">Op gesprek</div><div class="vkpi-val" id="kpi-gesp" data-tip="Unieke kandidaten in 'Op gesprek' (1e of 2e gesprek). Geeft aan hoeveel actieve gesprekken er lopen in de geselecteerde periode.">0</div><div class="vkpi-sub">1e + 2e gesprek</div></div>
-          <div class="vkpi push-accent"><div class="vkpi-label">Aangenomen</div><div class="vkpi-val" id="kpi-aang" data-tip="Kandidaten die zijn geplaatst (status: Aangenomen) in de geselecteerde week of maand, gebaseerd op de plaatsingsdatum. Bij 'live' is dit het totaal ooit geplaatst.">0</div><div class="vkpi-sub">geplaatst</div></div>
+          <div class="vkpi push-accent"><div class="vkpi-label">Aangenomen</div><div class="vkpi-val" id="kpi-aang" data-tip="Kandidaten die zijn geplaatst (status: Aangenomen) in de geselecteerde week of maand, gebaseerd op de plaatsingsdatum. Bij 'live' is dit het totaal ooit geplaatst.">0</div><div class="vkpi-sub">geplaatst</div><div id="kpi-aang-names" style="margin-top:6px;font-size:10px;color:var(--muted);line-height:1.6;text-align:left"></div></div>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
           <span class="sdiv" style="margin-bottom:0;border:none;padding:0">Historische ontwikkeling</span>
@@ -3610,6 +3610,30 @@ function renderVacPerformance() {
   document.getElementById('kpi-gesp').textContent = kpiGesp;
   document.getElementById('kpi-aang').textContent = kpiAang;
   document.getElementById('kpi-aang').closest('.vkpi').querySelector('.vkpi-sub').textContent = kpiSub;
+  // Populate placed candidate names
+  {
+    let placedIds = [];
+    if (!_dashPeriodFilter) {
+      // Live: all candidates in aangenomen stage
+      for (const v of vacatures) {
+        for (const id of (v.kanbanData?.aangenomen || [])) placedIds.push(id);
+      }
+    } else if (_dashPeriodFilter.includes('-W')) {
+      placedIds = [...(getPlacementsByWeek()[_dashPeriodFilter] || new Set())];
+    } else {
+      placedIds = [...(getPlacementsByMonth()[_dashPeriodFilter] || new Set())];
+    }
+    const namesEl = document.getElementById('kpi-aang-names');
+    if (placedIds.length) {
+      namesEl.innerHTML = placedIds.map(id => {
+        const cv = cvLib.find(c => c.id === id);
+        const name = cv ? cv.name : id;
+        return `<span onclick="openModal('${id}')" style="cursor:pointer;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%" title="${name}">${name}</span>`;
+      }).join('');
+    } else {
+      namesEl.innerHTML = '';
+    }
+  }
 
   const tb = document.getElementById('week-tbody');
   const thead = document.getElementById('hist-thead');
