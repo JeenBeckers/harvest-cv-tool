@@ -728,7 +728,10 @@ b,strong{font-weight:500}
           <!-- Add vacature form -->
           <div id="add-vac-inline" style="display:none;padding:12px;border-bottom:.5px solid #eee;background:#faf9f6">
             <div style="font-size:11px;font-weight:400;color:var(--hg);margin-bottom:8px;display:flex;align-items:center;gap:5px"><i class="ti ti-briefcase" style="font-size:11px"></i> Nieuwe vacature</div>
-            <div class="fg" style="margin-bottom:6px"><label class="fl">Bedrijf *</label><input class="fi" id="vac-co" placeholder="bijv. ABN AMRO" type="text" style="font-size:12px"></div>
+            <div class="fg" style="margin-bottom:6px"><label class="fl">Bedrijf *</label>
+              <input class="fi" id="vac-co" placeholder="Kies of typ bedrijf…" list="vac-co-list" autocomplete="off" style="font-size:12px">
+              <datalist id="vac-co-list"></datalist>
+            </div>
             <div class="fg" style="margin-bottom:6px"><label class="fl">Rol *</label><input class="fi" id="vac-role" placeholder="bijv. Senior Backend Engineer" type="text" style="font-size:12px"></div>
             <div class="fg" style="margin-bottom:6px"><label class="fl">Standplaats</label><input class="fi" id="vac-location" placeholder="bijv. Amsterdam" type="text" style="font-size:12px"></div>
             <div class="fg" style="margin-bottom:6px"><label class="fl">Eigenaar (Sales)</label>
@@ -1729,7 +1732,10 @@ function showVacEditModal(id){
   m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
   m.innerHTML=`<div style="background:#fff;border-radius:8px;padding:22px;width:420px;font-family:var(--font);max-height:90vh;overflow-y:auto">
     <div style="font-size:13px;font-weight:500;color:var(--hg);margin-bottom:16px">${isCamp?'Campagne':'Vacature'} bewerken</div>
-    ${!isCamp?`<div class="fg" style="margin-bottom:8px"><label class="fl">Bedrijf</label><input class="fi" id="ve-company" value="${esc(v.company||'')}" style="font-size:12px"></div>`:''}
+    ${!isCamp?`<div class="fg" style="margin-bottom:8px"><label class="fl">Bedrijf</label>
+      <input class="fi" id="ve-company" value="${esc(v.company||'')}" list="ve-company-list" autocomplete="off" style="font-size:12px">
+      <datalist id="ve-company-list">${companies.map(c=>`<option value="${esc(typeof c==='string'?c:(c.name||''))}">`).join('')}</datalist>
+    </div>`:''}
     <div class="fg" style="margin-bottom:8px"><label class="fl">${isCamp?'Naam campagne':'Rol'}</label><input class="fi" id="ve-role" value="${esc(v.role||'')}" style="font-size:12px"></div>
     ${!isCamp?`<div class="fg" style="margin-bottom:8px"><label class="fl">Standplaats</label><input class="fi" id="ve-location" value="${esc(v.location||'')}" style="font-size:12px"></div>`:''}
     <div class="fg" style="margin-bottom:8px"><label class="fl">Eigenaar (Sales)</label>
@@ -1820,6 +1826,9 @@ function showAddVacPanel(){
   const c=document.getElementById('add-campagne-inline');
   c.style.display='none';
   p.style.display=p.style.display==='none'?'block':'none';
+  // Populate company datalist
+  const dl=document.getElementById('vac-co-list');
+  if(dl) dl.innerHTML=companies.map(c=>`<option value="${esc(typeof c==='string'?c:(c.name||''))}">`).join('');
 }
 
 function setVacTypeFilter(val, el){
