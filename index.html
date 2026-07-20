@@ -2429,10 +2429,13 @@ function renderFunnelTab() {
           const coOpts = ['To find',...companies.map(c=>typeof c==='string'?c:(c.name||''))].map(c => '<option value="' + c + '"' + (s.company===c?' selected':'') + '>' + c + '</option>').join('');
           const rmBtn = canEdit ? '<span onclick="removeFunnelSlot(\'' + entry.id + '\',\'' + s.id + '\')" style="cursor:pointer;color:#bbb;margin-left:4px;font-size:10px" title="Verwijderen">✕</span>' : '';
           if (canEdit) {
-            const selectStyle = 'font-size:10px;padding:1px 3px;border:1px solid ' + (isRealized?'#2e7d32':'#ddd') + ';border-radius:3px;max-width:130px' + (isRealized?';font-weight:700;color:#2e7d32':'');
-            return '<div style="display:flex;align-items:center;gap:3px;margin-bottom:3px">' + (isRealized?'<span title="Gerealiseerd" style="color:#2e7d32;font-size:9px">✓</span>':'') + '<select onchange="updateFunnelSlotCompany(\'' + entry.id + '\',\'' + s.id + '\',this.value)" style="' + selectStyle + '">' + coOpts + '</select>' + rmBtn + '</div>';
+            const badge = isRealized ? '<span style="background:#e6f4ea;color:#2e7d32;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;white-space:nowrap">✓ gerealiseerd</span>' : '';
+            return '<div style="display:flex;align-items:center;gap:4px;margin-bottom:4px">'
+              + '<select onchange="updateFunnelSlotCompany(\'' + entry.id + '\',\'' + s.id + '\',this.value)" style="font-size:10px;padding:1px 3px;border:1px solid #ddd;border-radius:3px;max-width:130px">' + coOpts + '</select>'
+              + badge + rmBtn + '</div>';
           } else {
-            return '<div style="font-size:10px;color:' + (isRealized?'#2e7d32':'var(--muted)') + ';font-weight:' + (isRealized?'700':'400') + ';margin-bottom:2px">' + (isRealized?'✓ ':'') + (s.company||'To find') + '</div>';
+            const badge = isRealized ? '<span style="background:#e6f4ea;color:#2e7d32;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px">✓ gerealiseerd</span>' : '';
+            return '<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);margin-bottom:4px">' + (s.company||'To find') + ' ' + badge + '</div>';
           }
         }).join('');
       }
