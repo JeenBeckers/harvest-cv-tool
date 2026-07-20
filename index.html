@@ -4505,6 +4505,12 @@ function openModal(id){
           <option value="vrij" ${(cv.recruitStatus||'vrij')==='vrij'?'selected':''}>Vrij</option>
           <option value="in_proces" ${cv.recruitStatus==='in_proces'?'selected':''}>In proces</option>
         </select></div>
+      <div class="rf"><label class="rl">Werkervaring</label>
+        <select class="ri" id="ed-werkervaring" onchange="markChanged(this)">
+          <option value="" ${!cv.werkervaring?'selected':''}>— Onbekend —</option>
+          <option value="ja" ${cv.werkervaring==='ja'?'selected':''}>Ja</option>
+          <option value="nee" ${cv.werkervaring==='nee'?'selected':''}>Nee</option>
+        </select></div>
     </div>
     <div class="rf" style="margin-bottom:8px"><label class="rl">Skills</label>
       <div id="ed-skills-tag-box" style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;padding:5px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;min-height:36px;cursor:text" onclick="document.getElementById('ed-skills-input').focus()">
@@ -4570,6 +4576,7 @@ async function saveEdit(id){
   cv.talentClass=document.getElementById('ed-tc')?.value||'';
   cv.notes=document.getElementById('ed-notes')?.value.trim()||'';
   cv.recruitStatus=document.getElementById('ed-recruit-status')?.value||'vrij';
+  cv.werkervaring=document.getElementById('ed-werkervaring')?.value||'';
   cv.skills=getEditTaggedSkills();
   try{ await DB.upsertCandidate(cv); } catch(e){ console.error(e); }
   refreshAll();
