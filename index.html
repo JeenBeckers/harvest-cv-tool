@@ -2258,6 +2258,21 @@ function ensureFunnelEntry(owner, year, month, isYearTarget) {
   return entry;
 }
 
+// Returns array of company names (with duplicates) realized for owner in given year/month
+function getFunnelRealizedCompanies(owner, year, month) {
+  const result = [];
+  for (const v of vacatures) {
+    if (!v.kanbanData?.startDates) continue;
+    if ((v.owner || '') !== owner) continue;
+    for (const [candId, sd] of Object.entries(v.kanbanData.startDates)) {
+      if (!sd) continue;
+      const d = new Date(sd);
+      if (d.getFullYear() === year && (d.getMonth()+1) === month) result.push((v.company||'').toLowerCase());
+    }
+  }
+  return result;
+}
+
 function getFunnelRealization(owner, year, month) {
   let count = 0;
   for (const v of vacatures) {
@@ -2366,15 +2381,22 @@ function renderFunnelTab() {
       doel += slotCount;
       real += realized;
       const canEdit = canEditFunnel(owner);
+      const realizedCos = getFunnelRealizedCompanies(owner, 2026, m);
+      const realizedPool = [...realizedCos]; // consumed one-by-one per matched slot
       let slotsHtml = '';
       if (entry && entry.slots.length > 0) {
         slotsHtml = entry.slots.map(s => {
+          const coKey = (s.company||'').toLowerCase();
+          const idx = realizedPool.indexOf(coKey);
+          const isRealized = coKey && coKey !== 'to find' && idx !== -1;
+          if (isRealized) realizedPool.splice(idx, 1); // consume so duplicates match once each
           const coOpts = ['To find',...companies.map(c=>typeof c==='string'?c:(c.name||''))].map(c => '<option value="' + c + '"' + (s.company===c?' selected':'') + '>' + c + '</option>').join('');
           const rmBtn = canEdit ? '<span onclick="removeFunnelSlot(\'' + entry.id + '\',\'' + s.id + '\')" style="cursor:pointer;color:#bbb;margin-left:4px;font-size:10px" title="Verwijderen">✕</span>' : '';
           if (canEdit) {
-            return '<div style="display:flex;align-items:center;gap:3px;margin-bottom:3px"><select onchange="updateFunnelSlotCompany(\'' + entry.id + '\',\'' + s.id + '\',this.value)" style="font-size:10px;padding:1px 3px;border:1px solid #ddd;border-radius:3px;max-width:130px">' + coOpts + '</select>' + rmBtn + '</div>';
+            const selectStyle = 'font-size:10px;padding:1px 3px;border:1px solid ' + (isRealized?'#2e7d32':'#ddd') + ';border-radius:3px;max-width:130px' + (isRealized?';font-weight:700;color:#2e7d32':'');
+            return '<div style="display:flex;align-items:center;gap:3px;margin-bottom:3px">' + (isRealized?'<span title="Gerealiseerd" style="color:#2e7d32;font-size:9px">✓</span>':'') + '<select onchange="updateFunnelSlotCompany(\'' + entry.id + '\',\'' + s.id + '\',this.value)" style="' + selectStyle + '">' + coOpts + '</select>' + rmBtn + '</div>';
           } else {
-            return '<div style="font-size:10px;color:var(--muted);margin-bottom:2px">' + (s.company||'To find') + '</div>';
+            return '<div style="font-size:10px;color:' + (isRealized?'#2e7d32':'var(--muted)') + ';font-weight:' + (isRealized?'700':'400') + ';margin-bottom:2px">' + (isRealized?'✓ ':'') + (s.company||'To find') + '</div>';
           }
         }).join('');
       }
