@@ -741,6 +741,7 @@ b,strong{font-weight:500}
               </select>
             </div>
             <div class="fg" style="margin-bottom:6px"><label class="fl">Notities</label><textarea class="fi" id="vac-notes" rows="2" placeholder="Details, eisen…" style="font-size:12px"></textarea></div>
+            <div class="fg" style="margin-bottom:6px"><label class="fl">Vacaturetekst</label><textarea class="fi" id="vac-text" rows="4" placeholder="Plak of typ hier de volledige vacaturetekst…" style="font-size:12px"></textarea></div>
             <div class="actbar">
               <button class="bmain g" onclick="addVacature()" style="font-size:11px;padding:6px 12px"><i class="ti ti-check"></i> Toevoegen</button>
               <button class="bmain o" onclick="document.getElementById('add-vac-inline').style.display='none';document.getElementById('add-campagne-inline').style.display='none'" style="font-size:11px;padding:6px 10px">Annuleren</button>
@@ -1712,6 +1713,25 @@ async function setVacStatus(id, status){
   if(window._activeVacId===id) renderKanbanHeader(v);
   showToast(status==='open'?'Vacature actief gezet':'Vacature gesloten');
 }
+function toggleVacText(id){
+  const panel=document.getElementById('vac-text-panel-'+id);
+  const chevron=document.getElementById('vt-chevron-'+id);
+  if(!panel)return;
+  const open=panel.style.display==='none';
+  panel.style.display=open?'block':'none';
+  if(chevron) chevron.style.transform=open?'rotate(180deg)':'';
+}
+
+async function saveVacText(id){
+  const v=vacatures.find(x=>x.id===id);if(!v)return;
+  const ta=document.getElementById('vac-text-area-'+id);if(!ta)return;
+  if(!v.kanbanData)v.kanbanData={};
+  v.kanbanData._vacatureText=ta.value.trim();
+  await DB.upsertVacature(v).catch(e=>console.error(e));
+  renderKanbanHeader(v);
+  showToast('✓ Vacaturetekst opgeslagen');
+}
+
 function toggleVacMenu(id){
   const menu=document.getElementById('vac-menu-'+id);
   if(!menu)return;
@@ -2004,6 +2024,18 @@ function renderKanbanHeader(v){
         ${aangenomen>0?` · <strong>${aangenomen} aangenomen</strong>`:''}
         ${v.notes?' · '+esc(v.notes.slice(0,50)):''}${v.notes&&v.notes.length>50?'…':''}
       </div>
+      ${(()=>{const vt=v.kanbanData?._vacatureText;return `<div style="margin-top:6px">
+        <button onclick="toggleVacText('${v.id}')" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--muted);padding:0;display:flex;align-items:center;gap:3px">
+          <i class="ti ti-file-text" style="font-size:10px"></i> ${vt?'Vacaturetekst':'Vacaturetekst toevoegen'} <i class="ti ti-chevron-down" id="vt-chevron-${v.id}" style="font-size:9px"></i>
+        </button>
+        <div id="vac-text-panel-${v.id}" style="display:none;margin-top:6px">
+          <textarea id="vac-text-area-${v.id}" rows="6" style="width:100%;font-size:11px;font-family:var(--font);border:1px solid #ddd;border-radius:5px;padding:7px 9px;resize:vertical;box-sizing:border-box;color:#333;line-height:1.5" placeholder="Plak of typ hier de vacaturetekst…">${esc(vt||'')}</textarea>
+          <div style="display:flex;gap:6px;margin-top:4px">
+            <button onclick="saveVacText('${v.id}')" style="font-size:10px;padding:4px 10px;background:var(--hg);color:#fff;border:none;border-radius:4px;cursor:pointer">Opslaan</button>
+            <button onclick="toggleVacText('${v.id}')" style="font-size:10px;padding:4px 8px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;color:var(--muted)">Sluiten</button>
+          </div>
+        </div>
+      </div>`})()}
     </div>
     <div style="display:flex;gap:6px;align-items:center">
       <span class="${v.status==='open'?'status-open':'status-closed'}" style="font-size:10px">${v.status==='open'?'Open':'Gesloten'}</span>
@@ -2863,10 +2895,12 @@ async function addVacature(){
   if(!co||!role){showToast('Bedrijf en rol zijn verplicht');return;}
   const owner=document.getElementById('vac-owner').value;
   const location=document.getElementById('vac-location').value.trim();
+  const vacTxt=document.getElementById('vac-text').value.trim();
   const newVac={id:'v'+Date.now(),company:co,role,status:'open',owner,location,notes:document.getElementById('vac-notes').value.trim(),candidateIds:[],kanbanData:{},createdDate:today(),type:'vacature'};
   KANBAN_STAGES.forEach(s=>{newVac.kanbanData[s.key]=[];});
+  if(vacTxt) newVac.kanbanData._vacatureText=vacTxt;
   vacatures.push(newVac);
-  ['vac-co','vac-role','vac-notes','vac-location'].forEach(x=>document.getElementById(x).value='');
+  ['vac-co','vac-role','vac-notes','vac-location','vac-text'].forEach(x=>document.getElementById(x).value='');
   document.getElementById('vac-owner').value='';
   document.getElementById('add-vac-inline').style.display='none';
   await DB.upsertVacature(newVac);renderVacSidebar();updateBadges();
