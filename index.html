@@ -403,6 +403,7 @@ b,strong{font-weight:500}
 .col-aangenomen .kanban-col-header{background:var(--timberwolf)}.col-aangenomen .kanban-col-title{color:var(--hg)}.col-aangenomen .kanban-col-count{background:var(--hg);color:var(--beige)}
 .col-afgewezen .kanban-col-header{background:var(--pushl)}.col-afgewezen .kanban-col-title{color:var(--push)}.col-afgewezen .kanban-col-count{background:var(--push);color:var(--beige)}
 .col-onhold .kanban-col-header{background:var(--hgl)}.col-onhold .kanban-col-title{color:var(--muted)}.col-onhold .kanban-col-count{background:var(--timberwolf);color:var(--hg)}
+.col-teruggetrokken .kanban-col-header{background:#fef3e2}.col-teruggetrokken .kanban-col-title{color:#92400e}.col-teruggetrokken .kanban-col-count{background:#f59e0b;color:#fff}
 
 /* ── PUSH ZONE IN KANBAN ── */
 .kanban-push-zone{background:var(--pushl);border-bottom:1px solid var(--push);padding:5px 7px;flex-shrink:0;min-height:32px}
@@ -1898,7 +1899,8 @@ const KANBAN_STAGES = [
   {key:'gesprek2',   label:'Op 2e gesprek',      cls:'col-gesprek2'},
   {key:'aangenomen', label:'Aangenomen',         cls:'col-aangenomen'},
   {key:'afgewezen',  label:'Afgewezen',          cls:'col-afgewezen'},
-  {key:'onhold',     label:'On-Hold',            cls:'col-onhold'},
+  {key:'onhold',        label:'On-Hold',           cls:'col-onhold'},
+  {key:'teruggetrokken',label:'Teruggetrokken',   cls:'col-teruggetrokken'},
 ];
 
 function showAddVacPanel(){
