@@ -1713,6 +1713,66 @@ async function setVacStatus(id, status){
   if(window._activeVacId===id) renderKanbanHeader(v);
   showToast(status==='open'?'Vacature actief gezet':'Vacature gesloten');
 }
+function mdToHtml(md) {
+  if (!md) return '';
+  let html = md
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^### (.+)$/gm,'<h3 style="font-size:13px;font-weight:700;margin:12px 0 4px;color:var(--hg)">$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2 style="font-size:14px;font-weight:700;margin:14px 0 5px;color:var(--hg)">$1</h2>')
+    .replace(/^# (.+)$/gm,'<h1 style="font-size:15px;font-weight:700;margin:14px 0 6px;color:var(--hg)">$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/^- (.+)$/gm,'<li style="margin-left:16px;margin-bottom:3px">$1</li>')
+    .replace(/(<li[\s\S]*?<\/li>)/g, m => '<ul style="margin:4px 0;padding:0">'+m+'</ul>')
+    .replace(/\n{2,}/g,'</p><p style="margin:6px 0">')
+    .replace(/\n/g,'<br>');
+  return '<p style="margin:0">' + html + '</p>';
+}
+
+function vacTextTab(id, tab) {
+  const ta = document.getElementById('vac-text-area-'+id);
+  const pv = document.getElementById('vac-text-preview-'+id);
+  const btnE = document.getElementById('vtt-edit-'+id);
+  const btnP = document.getElementById('vtt-prev-'+id);
+  if (!ta || !pv) return;
+  if (tab === 'preview') {
+    pv.innerHTML = mdToHtml(ta.value);
+    ta.style.display = 'none'; pv.style.display = 'block';
+    btnE.style.background='#fff'; btnE.style.color='var(--muted)'; btnE.style.borderColor='#ddd';
+    btnP.style.background='var(--hg)'; btnP.style.color='#fff'; btnP.style.borderColor='var(--hg)';
+  } else {
+    ta.style.display = 'block'; pv.style.display = 'none';
+    btnE.style.background='var(--hg)'; btnE.style.color='#fff'; btnE.style.borderColor='var(--hg)';
+    btnP.style.background='#fff'; btnP.style.color='var(--muted)'; btnP.style.borderColor='#ddd';
+  }
+}
+
+async function aiFormatVacText(id) {
+  const ta = document.getElementById('vac-text-area-'+id);
+  const btn = document.getElementById('vtt-ai-'+id);
+  if (!ta) return;
+  const text = ta.value.trim();
+  if (!text) { showToast('Voer eerst een vacaturetekst in'); return; }
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="font-size:10px;animation:spin 1s linear infinite"></i> Bezig…';
+  try {
+    const res = await fetch('/api/format-vacancy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const data = await res.json();
+    if (data.error) { showToast('❌ ' + data.error); return; }
+    ta.value = data.formatted;
+    showToast('✓ Opmaak verbeterd door AI');
+  } catch(e) {
+    showToast('❌ Fout: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-sparkles" style="font-size:10px"></i> AI opmaak';
+  }
+}
+
 function toggleVacText(id){
   const panel=document.getElementById('vac-text-panel-'+id);
   const chevron=document.getElementById('vt-chevron-'+id);
@@ -2043,9 +2103,16 @@ function renderKanbanHeader(v){
         </div>
       </div>
     </div>
-    <div id="vac-text-panel-${v.id}" style="display:none;width:100%;padding-top:8px;border-top:1px solid #f0f0f0;margin-top:4px">
-      <textarea id="vac-text-area-${v.id}" rows="8" style="width:100%;font-size:12px;font-family:var(--font);border:1px solid #ddd;border-radius:6px;padding:9px 12px;resize:vertical;box-sizing:border-box;color:#333;line-height:1.6" placeholder="Plak of typ hier de vacaturetekst…">${esc(v.kanbanData?._vacatureText||'')}</textarea>
-      <div style="display:flex;gap:6px;margin-top:6px">
+    <div id="vac-text-panel-${v.id}" style="display:none;width:100%;padding-top:10px;border-top:1px solid #f0f0f0;margin-top:6px">
+      <div style="display:flex;gap:4px;margin-bottom:8px;align-items:center">
+        <button onclick="vacTextTab('${v.id}','edit')" id="vtt-edit-${v.id}" style="font-size:11px;padding:4px 10px;border:1px solid var(--hg);border-radius:4px;background:var(--hg);color:#fff;cursor:pointer">Bewerken</button>
+        <button onclick="vacTextTab('${v.id}','preview')" id="vtt-prev-${v.id}" style="font-size:11px;padding:4px 10px;border:1px solid #ddd;border-radius:4px;background:#fff;color:var(--muted);cursor:pointer">Voorbeeld</button>
+        <div style="flex:1"></div>
+        <button onclick="aiFormatVacText('${v.id}')" id="vtt-ai-${v.id}" style="font-size:11px;padding:4px 12px;border:1px solid #6b21a8;border-radius:4px;background:#f5f0ff;color:#6b21a8;cursor:pointer;display:flex;align-items:center;gap:4px"><i class="ti ti-sparkles" style="font-size:10px"></i> AI opmaak</button>
+      </div>
+      <textarea id="vac-text-area-${v.id}" rows="10" style="width:100%;font-size:12px;font-family:var(--font);border:1px solid #ddd;border-radius:6px;padding:9px 12px;resize:vertical;box-sizing:border-box;color:#333;line-height:1.6" placeholder="Plak of typ hier de vacaturetekst (Markdown ondersteund)…">${esc(v.kanbanData?._vacatureText||'')}</textarea>
+      <div id="vac-text-preview-${v.id}" style="display:none;min-height:120px;border:1px solid #ddd;border-radius:6px;padding:12px 14px;font-size:12px;line-height:1.7;background:#fafafa;overflow-y:auto;max-height:400px"></div>
+      <div style="display:flex;gap:6px;margin-top:8px">
         <button onclick="saveVacText('${v.id}')" style="font-size:11px;padding:5px 14px;background:var(--hg);color:#fff;border:none;border-radius:4px;cursor:pointer"><i class="ti ti-check" style="font-size:10px"></i> Opslaan</button>
         <button onclick="toggleVacText('${v.id}')" style="font-size:11px;padding:5px 10px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;color:var(--muted)">Sluiten</button>
       </div>
