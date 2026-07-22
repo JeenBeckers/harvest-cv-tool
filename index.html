@@ -2084,9 +2084,14 @@ function renderKanbanHeader(v){
         ${aangenomen>0?` · <strong>${aangenomen} aangenomen</strong>`:''}
         ${v.notes?' · '+esc(v.notes.slice(0,50)):''}${v.notes&&v.notes.length>50?'…':''}
       </div>
-      ${(()=>{const vt=v.kanbanData?._vacatureText;return `<div style="margin-top:6px">
-        <button onclick="toggleVacText('${v.id}')" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--muted);padding:0;display:flex;align-items:center;gap:3px">
-          <i class="ti ti-file-text" style="font-size:10px"></i> ${vt?'Vacaturetekst':'Vacaturetekst toevoegen'} <i class="ti ti-chevron-down" id="vt-chevron-${v.id}" style="font-size:9px"></i>
+      ${(()=>{const vt=v.kanbanData?._vacatureText;const snippet=vt?vt.replace(/[#*\n]+/g,' ').replace(/\s+/g,' ').trim().slice(0,160):'';return `<div style="margin-top:6px">
+        <button onclick="toggleVacText('${v.id}')" style="background:none;border:none;cursor:pointer;padding:0;text-align:left;width:100%">
+          <div style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted)">
+            <i class="ti ti-file-text" style="font-size:10px"></i>
+            <span>${vt?'Vacaturetekst':'Vacaturetekst toevoegen'}</span>
+            <i class="ti ti-chevron-down" id="vt-chevron-${v.id}" style="font-size:9px"></i>
+          </div>
+          ${snippet?`<div style="font-size:11px;color:#777;margin-top:3px;line-height:1.4;max-width:600px">${esc(snippet)}${vt.length>160?'…':''}</div>`:''}
         </button>
       </div>`})()}
     </div>
