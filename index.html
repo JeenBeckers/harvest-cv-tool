@@ -365,7 +365,7 @@ b,strong{font-weight:500}
 .vac-role-label{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:300}
 .vac-meta{display:flex;gap:5px;align-items:center;margin-top:4px;flex-wrap:wrap}
 .kanban-area{background:var(--hgl);overflow-x:auto;overflow-y:hidden;display:flex;flex-direction:column}
-.kanban-header{padding:12px 16px;background:#fff;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.kanban-header{padding:12px 16px;background:#fff;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .kanban-vac-title{font-size:13px;font-weight:400;color:var(--hg)}
 .kanban-vac-sub{font-size:11px;color:var(--muted);font-weight:300}
 .kanban-board{display:flex;gap:10px;padding:14px;overflow-x:auto;flex:1;align-items:flex-start}
@@ -2028,13 +2028,6 @@ function renderKanbanHeader(v){
         <button onclick="toggleVacText('${v.id}')" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--muted);padding:0;display:flex;align-items:center;gap:3px">
           <i class="ti ti-file-text" style="font-size:10px"></i> ${vt?'Vacaturetekst':'Vacaturetekst toevoegen'} <i class="ti ti-chevron-down" id="vt-chevron-${v.id}" style="font-size:9px"></i>
         </button>
-        <div id="vac-text-panel-${v.id}" style="display:none;margin-top:6px">
-          <textarea id="vac-text-area-${v.id}" rows="6" style="width:100%;font-size:11px;font-family:var(--font);border:1px solid #ddd;border-radius:5px;padding:7px 9px;resize:vertical;box-sizing:border-box;color:#333;line-height:1.5" placeholder="Plak of typ hier de vacaturetekst…">${esc(vt||'')}</textarea>
-          <div style="display:flex;gap:6px;margin-top:4px">
-            <button onclick="saveVacText('${v.id}')" style="font-size:10px;padding:4px 10px;background:var(--hg);color:#fff;border:none;border-radius:4px;cursor:pointer">Opslaan</button>
-            <button onclick="toggleVacText('${v.id}')" style="font-size:10px;padding:4px 8px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;color:var(--muted)">Sluiten</button>
-          </div>
-        </div>
       </div>`})()}
     </div>
     <div style="display:flex;gap:6px;align-items:center">
@@ -2048,6 +2041,13 @@ function renderKanbanHeader(v){
           <div style="border-top:1px solid #eee;margin:3px 0"></div>
           <div onclick="deleteVacature('${v.id}');closeVacMenu('${v.id}')" style="padding:8px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:7px;color:var(--push)" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background=''"><i class="ti ti-trash" style="font-size:11px"></i> Verwijderen</div>
         </div>
+      </div>
+    </div>
+    <div id="vac-text-panel-${v.id}" style="display:none;width:100%;padding-top:8px;border-top:1px solid #f0f0f0;margin-top:4px">
+      <textarea id="vac-text-area-${v.id}" rows="8" style="width:100%;font-size:12px;font-family:var(--font);border:1px solid #ddd;border-radius:6px;padding:9px 12px;resize:vertical;box-sizing:border-box;color:#333;line-height:1.6" placeholder="Plak of typ hier de vacaturetekst…">${esc(v.kanbanData?._vacatureText||'')}</textarea>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button onclick="saveVacText('${v.id}')" style="font-size:11px;padding:5px 14px;background:var(--hg);color:#fff;border:none;border-radius:4px;cursor:pointer"><i class="ti ti-check" style="font-size:10px"></i> Opslaan</button>
+        <button onclick="toggleVacText('${v.id}')" style="font-size:11px;padding:5px 10px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;color:var(--muted)">Sluiten</button>
       </div>
     </div>`;
 }
