@@ -1098,7 +1098,8 @@ const DB = {
       driveUrl: r.drive_url, push: r.push || false,
       archived: r.archived || false, archivedDate: r.archived_date,
       archivedReason: r.archived_reason || null,
-      source: r.source, recruitStatus: r.recruit_status || 'vrij'
+      source: r.source, recruitStatus: r.recruit_status || 'vrij',
+      werkervaring: r.werkervaring || ''
     }));
   },
   async upsertCandidate(cv) {
@@ -1113,9 +1114,10 @@ const DB = {
       archived: cv.archived || false, archived_date: cv.archivedDate,
       archived_reason: cv.archivedReason || null,
       source: cv.source, recruit_status: cv.recruitStatus || 'vrij',
+      werkervaring: cv.werkervaring || '',
       updated_at: new Date().toISOString()
     };
-    const knownOptionalCols = ['archived_reason', 'recruit_status'];
+    const knownOptionalCols = ['archived_reason', 'recruit_status', 'werkervaring'];
     let rowToSend = {...row};
     for(let attempt = 0; attempt < knownOptionalCols.length + 1; attempt++) {
       try {
