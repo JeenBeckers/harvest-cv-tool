@@ -624,6 +624,12 @@ b,strong{font-weight:500}
         <div class="fg-filter"><div class="fl-filter">Rol</div><div class="fchip-wrap" id="filter-role"><div class="fchip active" onclick="setFilter('role','all',this)">Alle</div><div class="fchip" onclick="setFilter('role','Software Engineer',this)">Software Engineer</div><div class="fchip" onclick="setFilter('role','Data Engineer',this)">Data Engineer</div><div class="fchip" onclick="setFilter('role','AI Engineer',this)">AI Engineer</div><div class="fchip" onclick="setFilter('role','Business Analist',this)">Business Analist</div></div></div>
         <div class="fg-filter"><div class="fl-filter">Status</div><div class="fchip-wrap" id="filter-push"><div class="fchip active" onclick="setFilter('push','all',this)">Alle</div><div class="fchip" onclick="setFilter('push','push',this)">⚡ Push</div></div></div>
         <div class="fg-filter"><div class="fl-filter">Beschikbaarheid</div><div class="fchip-wrap" id="filter-avail"><div class="fchip active" onclick="setFilter('avail','all',this)">Alle</div><div class="fchip" onclick="setFilter('avail','direct',this)">Direct beschikbaar</div></div></div>
+        <div class="fg-filter">
+          <div class="fl-filter">Portefeuille</div>
+          <div class="fchip-wrap">
+            <div class="fchip" id="chip-portefeuille" onclick="togglePortefeuille()">+ In Portefeuille</div>
+          </div>
+        </div>
         <button class="filter-reset" onclick="resetFilters()"><i class="ti ti-refresh" style="font-size:10px"></i> Reset</button>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
@@ -1098,7 +1104,7 @@ const DB = {
       driveUrl: r.drive_url, push: r.push || false,
       archived: r.archived || false, archivedDate: r.archived_date,
       archivedReason: r.archived_reason || null,
-      source: r.source, recruitStatus: r.recruit_status || 'vrij',
+      source: r.source, recruitStatus: r.recruit_status || 'actief_zoeken',
       werkervaring: r.werkervaring || ''
     }));
   },
@@ -1113,7 +1119,7 @@ const DB = {
       drive_url: cv.driveUrl, push: cv.push || false,
       archived: cv.archived || false, archived_date: cv.archivedDate,
       archived_reason: cv.archivedReason || null,
-      source: cv.source, recruit_status: cv.recruitStatus || 'vrij',
+      source: cv.source, recruit_status: cv.recruitStatus || 'actief_zoeken',
       werkervaring: cv.werkervaring || '',
       updated_at: new Date().toISOString()
     };
@@ -1591,10 +1597,26 @@ function resetFilters(){
   ['filter-sales','filter-recruit','filter-bureau','filter-cv','filter-push','filter-tc','filter-role','filter-avail'].forEach(id=>{
     document.getElementById(id).querySelectorAll('.fchip').forEach((c,i)=>c.classList.toggle('active',i===0));
   });
+  window._showPortefeuille = false;
+  const chip = document.getElementById('chip-portefeuille');
+  if(chip){chip.classList.remove('active');chip.textContent='+ In Portefeuille';}
+  renderCVList();
+}
+function togglePortefeuille(){
+  window._showPortefeuille = !window._showPortefeuille;
+  const chip = document.getElementById('chip-portefeuille');
+  if(chip){
+    chip.classList.toggle('active', window._showPortefeuille);
+    chip.textContent = window._showPortefeuille ? '✓ In Portefeuille' : '+ In Portefeuille';
+  }
   renderCVList();
 }
 function applyFilters(list){
   list=list.filter(cv=>!cv.archived);
+  // Standaard alleen Actief Zoeken; toon In Portefeuille alleen als toggle aan is
+  if(!window._showPortefeuille){
+    list=list.filter(cv=>(cv.recruitStatus||'actief_zoeken')!=='in_portefeuille');
+  }
   if(activeFilters.sales!=='all')list=list.filter(cv=>cv.salesOwner===activeFilters.sales);
   if(activeFilters.recruit!=='all')list=list.filter(cv=>cv.recruitOwner===activeFilters.recruit);
   if(activeFilters.bureau!=='all')list=list.filter(cv=>cv.bureau===activeFilters.bureau);
@@ -3383,10 +3405,10 @@ function renderCVList(){
     const isSel=sel.has(cv.id),hasFile=!!cvHtmlStore[cv.id];
     const hasDrive=!!(cv.driveUrl);
     // Recruit status badge
-    const recStatus = cv.recruitStatus || 'vrij';
-    const recBadge = recStatus === 'in_proces'
-      ? `<span class="tag" style="background:#e8f0fe;color:#1a56a8">In proces</span>`
-      : `<span class="tag" style="background:var(--hgl);color:var(--muted)">Vrij</span>`;
+    const recStatus = cv.recruitStatus || 'actief_zoeken';
+    const recBadge = recStatus === 'in_portefeuille'
+      ? `<span class="tag" style="background:#f0f0f0;color:#888">In Portefeuille</span>`
+      : `<span class="tag" style="background:var(--hgl);color:var(--hg)">Actief Zoeken</span>`;
     // Sales status badge
     const inVacStages = ['voorgesteld','gesprek','gesprek2','aangenomen'];
     const isVoorgesteld = vacatures.some(v =>
@@ -4701,8 +4723,8 @@ function openModal(id){
         <select class="ri" id="ed-tc" onchange="markChanged(this)">${tcOpts}</select></div>
       <div class="rf"><label class="rl">Recruitment status</label>
         <select class="ri" id="ed-recruit-status" onchange="markChanged(this)">
-          <option value="vrij" ${(cv.recruitStatus||'vrij')==='vrij'?'selected':''}>Vrij</option>
-          <option value="in_proces" ${cv.recruitStatus==='in_proces'?'selected':''}>In proces</option>
+          <option value="actief_zoeken" ${(cv.recruitStatus||'actief_zoeken')!=='in_portefeuille'?'selected':''}>Actief Zoeken</option>
+          <option value="in_portefeuille" ${cv.recruitStatus==='in_portefeuille'?'selected':''}>In Portefeuille</option>
         </select></div>
       <div class="rf"><label class="rl">Werkervaring</label>
         <select class="ri" id="ed-werkervaring" onchange="markChanged(this)">
@@ -4774,7 +4796,7 @@ async function saveEdit(id){
   cv.status=document.getElementById('ed-status')?.value||'';
   cv.talentClass=document.getElementById('ed-tc')?.value||'';
   cv.notes=document.getElementById('ed-notes')?.value.trim()||'';
-  cv.recruitStatus=document.getElementById('ed-recruit-status')?.value||'vrij';
+  cv.recruitStatus=document.getElementById('ed-recruit-status')?.value||'actief_zoeken';
   cv.werkervaring=document.getElementById('ed-werkervaring')?.value||'';
   cv.skills=getEditTaggedSkills();
   try{ await DB.upsertCandidate(cv); } catch(e){ console.error(e); }
@@ -4822,7 +4844,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElement
 // ── GENERAL
 function refreshAll(){renderCVList();renderPushTab();renderDashboard();renderCompanies();renderVacatures();renderArchive();updateBadges();renderMeetings();const fv=document.getElementById('view-funnel');if(fv&&fv.style.display!=='none')renderFunnelTab();}
 function updateBadges(){
-  const active=cvLib.filter(cv=>!cv.archived).length;
+  const active=cvLib.filter(cv=>!cv.archived&&(cv.recruitStatus||'actief_zoeken')!=='in_portefeuille').length;
   const pushCount=cvLib.filter(cv=>cv.push&&!cv.archived).length;
   const archiveCount=cvLib.filter(cv=>cv.archived).length;
   document.getElementById('nb-lib').textContent=active;
