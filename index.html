@@ -76,9 +76,9 @@ b,strong{font-weight:500}
 
 /* ── TABLE ── */
 .cv-table-wrap{background:#fff;border:1px solid var(--border);border-radius:var(--rad);overflow:hidden;margin-bottom:12px}
-.cv-tbl{width:100%;border-collapse:collapse;font-size:12px}
-.cv-tbl th{background:var(--hgl);padding:7px 9px;text-align:left;font-weight:400;color:var(--muted);font-size:10px;border-bottom:1px solid var(--border);white-space:nowrap;text-transform:uppercase;letter-spacing:.05em}
-.cv-tbl td{padding:8px 9px;border-bottom:1px solid var(--hgl);color:var(--hg);vertical-align:middle;font-weight:300}
+.cv-tbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:auto}
+.cv-tbl th{background:var(--hgl);padding:7px 10px;text-align:left;font-weight:500;color:#444;font-size:11px;border-bottom:1px solid var(--border);white-space:nowrap;text-transform:uppercase;letter-spacing:.05em}
+.cv-tbl td{padding:9px 10px;border-bottom:1px solid var(--hgl);color:#111;vertical-align:middle;font-weight:400;white-space:nowrap}
 .cv-tbl tr:last-child td{border-bottom:none}
 .cv-tbl tr:hover td{background:var(--hgl);cursor:pointer}
 .cv-tbl tr.sel-row td{background:#eae5dc!important}
@@ -555,9 +555,10 @@ b,strong{font-weight:500}
       <button class="ubtn" onclick="doLogout()" title="Uitloggen" style="opacity:.7"><i class="ti ti-logout" style="font-size:11px"></i></button>
     </div>
   </div>
-  <div class="navtabs">
+  <div class="navtabs" id="navtabs-container">
     <div class="navtab" onclick="showTab('dash')" id="tab-dash"><i class="ti ti-chart-bar"></i> Dashboard <span class="nbadge" id="nb-dash">0</span></div>
     <div class="navtab active" onclick="showTab('lib')" id="tab-lib"><i class="ti ti-users"></i> Kandidaten <span class="nbadge" id="nb-lib">0</span></div>
+    <div class="navtab" onclick="showTab('portefeuille')" id="tab-portefeuille"><i class="ti ti-folder-open"></i> In Portefeuille <span class="nbadge" id="nb-portefeuille">0</span></div>
     <div class="navtab" onclick="showTab('vac')" id="tab-vac"><i class="ti ti-briefcase"></i> Vacatures <span class="nbadge" id="nb-vac">0</span></div>
     <div class="navtab" onclick="showTab('push')" id="tab-push"><i class="ti ti-bolt"></i> Push CVs <span class="nbadge-push" id="nb-push">0</span></div>
     <div class="navtab" onclick="showTab('offer')" id="tab-offer"><i class="ti ti-send"></i> Aanbiedingen</div>
@@ -626,9 +627,6 @@ b,strong{font-weight:500}
         <span style="font-size:11px;color:var(--muted)" id="cand-count-label"></span>
         <button class="col-mgr-btn" onclick="toggleColPanel()"><i class="ti ti-columns" style="font-size:11px"></i> Kolommen aanpassen</button>
       </div>
-      <div style="margin-bottom:8px">
-        <button id="btn-portefeuille" onclick="togglePortefeuille()" style="font-size:12px;padding:5px 14px;border-radius:6px;border:1.5px solid var(--hg);background:#fff;color:var(--hg);cursor:pointer;font-family:var(--font);font-weight:500"><i class="ti ti-briefcase" style="font-size:11px;margin-right:4px"></i>Toon In Portefeuille</button>
-      </div>
       <div class="col-mgr-panel" id="col-mgr-panel">
         <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Zichtbare kolommen</div>
         <div class="col-toggle-grid" id="col-toggle-grid"></div>
@@ -652,6 +650,13 @@ b,strong{font-weight:500}
           <button class="bmain o" onclick="clearSel()">Wissen</button>
         </div>
       </div>
+    </div>
+
+    <!-- IN PORTEFEUILLE -->
+    <div id="view-portefeuille" style="display:none">
+      <div class="stitle">In Portefeuille</div>
+      <div class="ssub">Kandidaten in de portefeuille · niet actief bemiddeld</div>
+      <div id="portefeuille-list" style="margin-top:12px"></div>
     </div>
 
     <!-- PUSH TAB -->
@@ -982,7 +987,13 @@ b,strong{font-weight:500}
 
     <!-- INSTELLINGEN -->
     <div id="view-settings" style="display:none">
-      <div class="stitle">Instellingen</div><div class="ssub">Gebruikers, e-mail en handtekening</div>
+      <div class="stitle">Instellingen</div><div class="ssub">Gebruikers, tabbladen, e-mail en handtekening</div>
+      <!-- TABBLADEN -->
+      <div class="settings-section">
+        <div class="settings-title"><i class="ti ti-layout-navbar"></i> Tabbladen</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Kies welke tabbladen je in de navigatie wil zien. 🔒 = altijd zichtbaar.</div>
+        <div class="col-toggle-grid" id="tab-toggle-grid"></div>
+      </div>
       <!-- EIGEN WACHTWOORD WIJZIGEN — zichtbaar voor iedereen -->
       <div class="settings-section">
         <div class="settings-title"><i class="ti ti-lock"></i> Mijn wachtwoord wijzigen</div>
@@ -1550,6 +1561,7 @@ async function loadFromStorage(){
     cvLib=[...CSV_SEED_CVS];offerLog=[];companies=[...DEFAULT_COMPANIES];
     appUsers=[...DEFAULT_USERS];signature=DEFAULT_SIG;vacatures=[];
   }
+  await loadVisibleTabs();
   refreshAll();
 }
 async function saveLib(singleCv){
@@ -1576,24 +1588,6 @@ function resetFilters(){
   window._showPortefeuille = false;
   const btn = document.getElementById('btn-portefeuille');
   if(btn){btn.textContent='+ In Portefeuille';btn.style.background='#f5f5f5';btn.style.color='#666';btn.style.borderColor='#ccc';}
-  renderCVList();
-}
-function togglePortefeuille(){
-  window._showPortefeuille = !window._showPortefeuille;
-  const btn = document.getElementById('btn-portefeuille');
-  if(btn){
-    if(window._showPortefeuille){
-      btn.innerHTML = '<i class="ti ti-briefcase" style="font-size:11px;margin-right:4px"></i>Verberg In Portefeuille';
-      btn.style.background = 'var(--hg)';
-      btn.style.color = '#fff';
-      btn.style.borderColor = 'var(--hg)';
-    } else {
-      btn.innerHTML = '<i class="ti ti-briefcase" style="font-size:11px;margin-right:4px"></i>Toon In Portefeuille';
-      btn.style.background = '#fff';
-      btn.style.color = 'var(--hg)';
-      btn.style.borderColor = 'var(--hg)';
-    }
-  }
   renderCVList();
 }
 function applyFilters(list){
@@ -3306,6 +3300,72 @@ const ALL_COLS = [
 let visibleCols = ALL_COLS.filter(c=>c.default).map(c=>c.key);
 let sortCol = null, sortDir = 'asc';
 
+// ── TAB VISIBILITY
+const TAB_CONFIG = [
+  {key:'dash',        label:'Dashboard',      icon:'ti-chart-bar',    required:false},
+  {key:'lib',         label:'Kandidaten',     icon:'ti-users',        required:true},
+  {key:'portefeuille',label:'In Portefeuille',icon:'ti-folder-open',  required:false},
+  {key:'vac',         label:'Vacatures',      icon:'ti-briefcase',    required:false},
+  {key:'push',        label:'Push CVs',       icon:'ti-bolt',         required:false},
+  {key:'offer',       label:'Aanbiedingen',   icon:'ti-send',         required:false},
+  {key:'meetings',    label:'Afspraken',      icon:'ti-calendar',     required:false},
+  {key:'funnel',      label:'Target',         icon:'ti-target',       required:false},
+  {key:'companies',   label:'Bedrijven',      icon:'ti-building',     required:false},
+  {key:'archive',     label:'Archief',        icon:'ti-archive',      required:false},
+  {key:'match',       label:'AI Match',       icon:'ti-sparkles',     required:false},
+  {key:'settings',    label:'Instellingen',   icon:'ti-settings',     required:true},
+];
+let visibleTabs = TAB_CONFIG.map(t=>t.key); // default: all visible
+
+function updateTabVisibility(){
+  TAB_CONFIG.forEach(t=>{
+    const el = document.getElementById('tab-'+t.key);
+    if(el) el.style.display = visibleTabs.includes(t.key) ? '' : 'none';
+  });
+}
+
+async function saveVisibleTabs(){
+  await DB.setSetting('visible_tabs', JSON.stringify(visibleTabs));
+}
+
+async function loadVisibleTabs(){
+  const v = await DB.getSetting('visible_tabs');
+  if(v){
+    const parsed = JSON.parse(v);
+    // Always keep required tabs
+    visibleTabs = TAB_CONFIG.map(t=>t.key).filter(k=>{
+      const cfg = TAB_CONFIG.find(t=>t.key===k);
+      return cfg?.required || parsed.includes(k);
+    });
+  }
+  updateTabVisibility();
+}
+
+function renderTabToggles(){
+  const g = document.getElementById('tab-toggle-grid');
+  if(!g) return;
+  g.innerHTML = TAB_CONFIG.map(t=>{
+    const on = visibleTabs.includes(t.key);
+    const locked = t.required;
+    return `<span class="col-toggle ${on?'on':''} ${locked?'locked':''}" onclick="${locked?'':'toggleTabVisibility(\''+t.key+'\',this)'}" title="${locked?'Altijd zichtbaar':''}">
+      ${on?'<i class="ti ti-check" style="font-size:9px"></i>':'<i class="ti ti-plus" style="font-size:9px"></i>'}
+      <i class="ti ${t.icon}" style="font-size:10px"></i> ${t.label}${locked?' 🔒':''}
+    </span>`;
+  }).join('');
+}
+
+async function toggleTabVisibility(key, el){
+  if(visibleTabs.includes(key)){
+    if(visibleTabs.length<=2){showToast('Minimaal 2 tabbladen vereist');return;}
+    visibleTabs = visibleTabs.filter(k=>k!==key);
+  } else {
+    visibleTabs = TAB_CONFIG.map(t=>t.key).filter(k=>visibleTabs.includes(k)||k===key);
+  }
+  await saveVisibleTabs();
+  updateTabVisibility();
+  renderTabToggles();
+}
+
 function resetCols(){
   visibleCols = ALL_COLS.filter(c=>c.default).map(c=>c.key);
   sortCol = null; sortDir = 'asc';
@@ -3416,9 +3476,9 @@ function renderCVList(){
       sales: `<td>${cv.salesOwner?`<span class="upill ${UCLS[cv.salesOwner]||''}" style="font-size:10px">${esc(cv.salesOwner)}</span>`:'<span style="color:#ddd">—</span>'}</td>`,
       recruit: `<td>${cv.recruitOwner?`<span class="upill ${UCLS[cv.recruitOwner]||''}" style="font-size:10px">${esc(cv.recruitOwner)}</span>`:'<span style="color:#ddd">—</span>'}</td>`,
       role: `<td><span style="font-size:11px;font-weight:500;color:#333">${esc(normalizeRole(cv))}</span></td>`,
-      skills: `<td style="max-width:220px">${skills||'<span style="color:#ddd">—</span>'}</td>`,
+      skills: `<td style="white-space:normal;max-width:260px">${skills||'<span style="color:#ddd">—</span>'}</td>`,
       avail: `<td><span class="tag tag-av">${esc(cv.availability||'—')}</span></td>`,
-      city: `<td style="font-size:11px;color:var(--muted)">${esc(cv.city||'—')}</td>`,
+      city: `<td>${esc(cv.city||'—')}</td>`,
       bureau: `<td>${cv.bureau?`<span class="tag tag-bureau">${esc(cv.bureau)}</span>`:'<span style="color:#ddd">—</span>'}</td>`,
       status: `<td><span style="font-size:10px;padding:2px 6px;border-radius:6px;background:#f0f0f0;color:#555;white-space:nowrap">${esc(cv.status||'—')}</span></td>`,
       tc: `<td><span style="font-size:10px;font-weight:700;color:var(--hg)">${esc(cv.talentClass||'')}</span></td>`,
@@ -3427,9 +3487,9 @@ function renderCVList(){
       salesStatus: `<td>${salesBadge}</td>`,
       recruitStatus: `<td>${recBadge}</td>`,
       vac: `<td>${linkedVacs.length?linkedVacs.map(v=>`<span class="tag tag-vac" style="cursor:pointer" onclick="openVacModal('${v.id}')" title="${esc(v.company)}">${esc(v.role.split(' ')[0])}</span>`).join(''):'<span style="color:#ddd;font-size:10px">—</span>'}</td>`,
-      province: `<td style="font-size:11px;color:var(--muted)">${esc(cv.province||'—')}</td>`,
-      date: `<td style="font-size:11px;color:var(--muted)">${esc(cv.dateInProcess||'—')}</td>`,
-      notes: `<td style="font-size:10px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(cv.notes||'')}">${esc(cv.notes||'—')}</td>`,
+      province: `<td>${esc(cv.province||'—')}</td>`,
+      date: `<td>${esc(cv.dateInProcess||'—')}</td>`,
+      notes: `<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(cv.notes||'')}">${esc(cv.notes||'—')}</td>`,
       werkervaring: `<td>${cv.werkervaring==='ja'?'<span class="tag" style="background:var(--hgl);color:var(--hg)">Ja</span>':cv.werkervaring==='nee'?'<span class="tag" style="background:#fde8e8;color:#a02020">Nee</span>':'<span style="color:#ddd">—</span>'}</td>`,
     };
     return`<tr class="${cv.push?'push-row':''} ${isSel?'sel-row':''}" style="cursor:pointer" onclick="openModal('${cv.id}')">
@@ -4255,6 +4315,7 @@ function renderCompanies(){
 
 // ── SETTINGS
 function renderSettings(){
+  renderTabToggles();
   // User management
   if(currentUserObj?.role==='Admin') renderUserMgmt();
   const mgmt=document.getElementById('user-mgmt-section');
@@ -4509,9 +4570,11 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElement
 function refreshAll(){renderCVList();renderPushTab();renderDashboard();renderCompanies();renderVacatures();renderArchive();updateBadges();renderMeetings();const fv=document.getElementById('view-funnel');if(fv&&fv.style.display!=='none')renderFunnelTab();}
 function updateBadges(){
   const active=cvLib.filter(cv=>!cv.archived&&(cv.recruitStatus||'actief_zoeken')!=='in_portefeuille').length;
+  const portefeuilleCount=cvLib.filter(cv=>!cv.archived&&cv.recruitStatus==='in_portefeuille').length;
   const pushCount=cvLib.filter(cv=>cv.push&&!cv.archived).length;
   const archiveCount=cvLib.filter(cv=>cv.archived).length;
   document.getElementById('nb-lib').textContent=active;
+  const nbp=document.getElementById('nb-portefeuille');if(nbp)nbp.textContent=portefeuilleCount;
   document.getElementById('nb-push').textContent=pushCount;
   document.getElementById('nb-dash').textContent=offerLog.length;
   document.getElementById('nb-co').textContent=companies.length;
@@ -4527,13 +4590,14 @@ function setUser(u){
   renderDashboard();updatePreview();
 }
 function showTab(t){
-  ['lib','push','offer','vac','dash','archive','companies','match','meetings','funnel','settings'].forEach(x=>{
+  ['lib','portefeuille','push','offer','vac','dash','archive','companies','match','meetings','funnel','settings'].forEach(x=>{
     const v=document.getElementById('view-'+x); if(v) v.style.display=x===t?'':'none';
     const tb=document.getElementById('tab-'+x); if(tb) tb.classList.toggle('active',x===t);
   });
   if(t==='offer'){renderOfferPanel();document.getElementById('f-us').value=CU;setOfferMode(offerMode);}
   if(t==='dash')renderDashboard();
   if(t==='lib')renderCVList();
+  if(t==='portefeuille')renderPortefeuille();
   if(t==='push')renderPushTab();
   if(t==='vac'){renderVacSidebar();}
   if(t==='archive')renderArchive();
@@ -4543,6 +4607,42 @@ function showTab(t){
   if(t==='meetings') renderMeetings();
   if(t==='funnel') renderFunnelTab();
   if(t==='vac'){ document.querySelector('.content').style.padding = '0'; } else { document.querySelector('.content').style.padding = '16px'; }
+}
+
+function renderPortefeuille(){
+  const list = cvLib.filter(cv=>!cv.archived && cv.recruitStatus==='in_portefeuille');
+  const el = document.getElementById('portefeuille-list');
+  if(!el) return;
+  if(!list.length){ el.innerHTML='<div class="empty">Geen kandidaten in portefeuille</div>'; return; }
+  const cols = ALL_COLS.filter(c=>visibleCols.includes(c.key));
+  el.innerHTML = `<table class="cv-tbl" style="width:100%">
+    <thead><tr><th></th>${cols.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead>
+    <tbody>${list.map(cv=>{
+      const color=colFor(cv.name), cnt=offerLog.filter(l=>l.candidateId===cv.id).length;
+      const hasFile=!!cvHtmlStore[cv.id], hasDrive=!!(cv.driveUrl);
+      const skills=(cv.skills||[]).map(s=>`<span class="tag tag-skill">${esc(s)}</span>`).join('');
+      const linkedVacs=vacatures.filter(v=>v.candidateIds.includes(cv.id));
+      const cvBadge=hasFile?`<span class="tag tag-cv">✓ CV</span>`:hasDrive?`<a href="${cv.driveUrl}" target="_blank" style="text-decoration:none"><span class="tag" style="background:#e8f0fe;color:#1a56a8"><i class="ti ti-brand-google-drive" style="font-size:9px"></i> Drive</span></a>`:`<span class="tag tag-nocv">—</span>`;
+      const cellMap={
+        name:`<td><div style="display:flex;align-items:center;gap:7px"><div class="ava" style="background:${color.bg};color:${color.tx}">${ini(cv.name)}</div><div><div class="cv-name">${esc(cv.name)}</div>${cnt>0?`<span class="tag tag-cnt" style="font-size:9px">${cnt}×</span>`:''}</div></div></td>`,
+        sales:`<td>${cv.salesOwner?`<span class="upill ${UCLS[cv.salesOwner]||''}" style="font-size:10px">${esc(cv.salesOwner)}</span>`:'<span style="color:#ddd">—</span>'}</td>`,
+        recruit:`<td>${cv.recruitOwner?`<span class="upill ${UCLS[cv.recruitOwner]||''}" style="font-size:10px">${esc(cv.recruitOwner)}</span>`:'<span style="color:#ddd">—</span>'}</td>`,
+        role:`<td><span style="font-size:11px;font-weight:500;color:#333">${esc(normalizeRole(cv))}</span></td>`,
+        skills:`<td style="max-width:220px">${skills||'<span style="color:#ddd">—</span>'}</td>`,
+        avail:`<td><span class="tag tag-av">${esc(cv.availability||'—')}</span></td>`,
+        city:`<td style="font-size:11px;color:var(--muted)">${esc(cv.city||'—')}</td>`,
+        bureau:`<td>${cv.bureau?`<span class="tag tag-bureau">${esc(cv.bureau)}</span>`:'<span style="color:#ddd">—</span>'}</td>`,
+        status:`<td><span style="font-size:10px;padding:2px 6px;border-radius:6px;background:#f0f0f0;color:#555">${esc(cv.status||'—')}</span></td>`,
+        tc:`<td><span style="font-size:10px;font-weight:700;color:var(--hg)">${esc(cv.talentClass||'')}</span></td>`,
+        cv:`<td>${cvBadge}</td>`,
+        push:`<td><span class="push-toggle ${cv.push?'on':''}" onclick="togglePush('${cv.id}')">${cv.push?'⚡ Push':'⚡'}</span></td>`,
+        vac:`<td>${linkedVacs.length?linkedVacs.map(v=>`<span class="tag tag-vac" style="cursor:pointer" onclick="openVacModal('${v.id}')">${esc(v.role.split(' ')[0])}</span>`).join(''):'<span style="color:#ddd;font-size:10px">—</span>'}</td>`,
+        province:`<td style="font-size:11px;color:var(--muted)">${esc(cv.province||'—')}</td>`,
+        notes:`<td style="font-size:10px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(cv.notes||'—')}</td>`,
+        werkervaring:`<td>${cv.werkervaring==='ja'?'<span class="tag" style="background:var(--hgl);color:var(--hg)">Ja</span>':cv.werkervaring==='nee'?'<span class="tag" style="background:#fde8e8;color:#a02020">Nee</span>':'<span style="color:#ddd">—</span>'}</td>`,
+      };
+      return`<tr style="cursor:pointer" onclick="openModal('${cv.id}')"><td></td>${cols.map(c=>cellMap[c.key]||'<td>—</td>').join('')}</tr>`;
+    }).join('')}</tbody></table>`;
 }
 // ── AI MATCH
 let _matchFilter = 'all';
