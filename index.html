@@ -1928,6 +1928,17 @@ function setVacSidebarOwner(val, el){
   el.classList.add('active');
   renderVacSidebar();
 }
+function vacDaysOpen(v){
+  if(!v.createdDate) return null;
+  const d=new Date(v.createdDate);
+  if(isNaN(d)) return null;
+  return Math.floor((Date.now()-d)/(1000*60*60*24));
+}
+function vacFirstVoorgesteld(v){
+  const dates=v.kanbanData?.voorgesteldDates;
+  if(!dates||!Object.keys(dates).length) return null;
+  return Object.values(dates).sort()[0];
+}
 function renderVacSidebar(){
   const list=document.getElementById('vac-sidebar-list');
   const search=(document.getElementById('vac-search')?.value||'').toLowerCase().trim();
@@ -1991,16 +2002,19 @@ function renderVacSidebar(){
     const ownerCounts = {};
     allIds.forEach(id => { const cv=cvLib.find(c=>c.id===id); if(cv?.salesOwner){ ownerCounts[cv.salesOwner]=(ownerCounts[cv.salesOwner]||0)+1; } });
     const ownerTags = Object.entries(ownerCounts).map(([o,n])=>`<span style="font-size:8px;background:var(--hgl);color:var(--hg);padding:1px 4px;border-radius:2px">${esc(o)} ${n}</span>`).join('');
+    const days=vacDaysOpen(v); const firstVoor=vacFirstVoorgesteld(v);
     return`<div class="vac-list-item ${v.status==='closed'?'closed':''} ${isActive?'active':''}" onclick="selectVacature('${v.id}')">
       <div class="vac-company">${esc(v.company)}</div>
       <div class="vac-role-label">${esc(v.role)}${v.location?` · <span style="color:var(--muted)">${esc(v.location)}</span>`:''}</div>
       <div class="vac-meta">
         <span class="${v.status==='open'?'status-open':'status-closed'}" style="font-size:9px">${v.status==='open'?'Open':'Gesloten'}</span>
         ${v.owner?`<span style="font-size:9px;color:var(--hg)">${esc(v.owner)}</span>`:''}
+        ${days!==null?`<span style="font-size:9px;color:var(--muted)"><i class="ti ti-clock" style="font-size:8px"></i> ${days}d open</span>`:''}
         ${voorgesteld>0?`<span style="font-size:9px;color:var(--push)">↑${voorgesteld}</span>`:''}
         ${gesprek>0?`<span style="font-size:9px;color:var(--hg)">💬${gesprek}</span>`:''}
         ${aangenomen>0?`<span style="font-size:9px;color:var(--hg)">✓${aangenomen}</span>`:''}
       </div>
+      ${firstVoor?`<div style="font-size:9px;color:var(--muted);margin-top:2px"><i class="ti ti-send" style="font-size:8px"></i> Eerste voorstel: ${firstVoor}</div>`:''}
       ${ownerTags?`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px">${ownerTags}</div>`:''}
     </div>`;
   }).join('');
@@ -2089,6 +2103,10 @@ function renderKanbanHeader(v){
         ${aangenomen>0?` · <strong>${aangenomen} aangenomen</strong>`:''}
         ${v.notes?' · '+esc(v.notes.slice(0,50)):''}${v.notes&&v.notes.length>50?'…':''}
       </div>
+      ${(()=>{const days=vacDaysOpen(v);const fv=vacFirstVoorgesteld(v);if(!days&&!fv)return'';return`<div style="display:flex;gap:12px;margin-top:5px;font-size:11px;color:var(--muted)">
+        ${days!==null?`<span><i class="ti ti-clock" style="font-size:10px"></i> <strong style="color:#333">${days}</strong> dagen open</span>`:''}
+        ${fv?`<span><i class="ti ti-send" style="font-size:10px"></i> Eerste voorstel: <strong style="color:#333">${fv}</strong></span>`:''}
+      </div>`;})()}
       ${(()=>{const vt=v.kanbanData?._vacatureText;const snippet=vt?vt.replace(/[#*\n]+/g,' ').replace(/\s+/g,' ').trim().slice(0,160):'';return `<div style="margin-top:6px">
         <button onclick="toggleVacText('${v.id}')" style="background:none;border:none;cursor:pointer;padding:0;text-align:left;width:100%">
           <div style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted)">
@@ -2835,6 +2853,10 @@ async function dropCard(e,toStage,vacId){
   // Add to target
   if(!v.kanbanData[toStage]) v.kanbanData[toStage]=[];
   if(!v.kanbanData[toStage].includes(_dragCandId)) v.kanbanData[toStage].push(_dragCandId);
+  if(toStage==='voorgesteld'&&!v.kanbanData.voorgesteldDates?.[_dragCandId]){
+    if(!v.kanbanData.voorgesteldDates) v.kanbanData.voorgesteldDates={};
+    v.kanbanData.voorgesteldDates[_dragCandId]=new Date().toISOString().slice(0,10);
+  }
   if(toStage==='gesprek'||toStage==='gesprek2'){
     const label=toStage==='gesprek'?'1e gesprek':'2e gesprek';
     const candIdForPrompt=_dragCandId;
@@ -2908,6 +2930,10 @@ async function addToKanban(stageKey,vacId){
   // Remove from other stages first
   KANBAN_STAGES.forEach(s=>{ if(s.key!==stageKey&&v.kanbanData[s.key]) v.kanbanData[s.key]=v.kanbanData[s.key].filter(id=>id!==candId); });
   if(!v.kanbanData[stageKey].includes(candId)) v.kanbanData[stageKey].push(candId);
+  if(stageKey==='voorgesteld'&&!v.kanbanData.voorgesteldDates?.[candId]){
+    if(!v.kanbanData.voorgesteldDates) v.kanbanData.voorgesteldDates={};
+    v.kanbanData.voorgesteldDates[candId]=new Date().toISOString().slice(0,10);
+  }
   if(stageKey==='aangenomen'){
     if(!v.kanbanData.aangenomenDates) v.kanbanData.aangenomenDates={};
     v.kanbanData.aangenomenDates[candId]=new Date().toISOString().slice(0,10);
