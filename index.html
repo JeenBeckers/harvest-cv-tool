@@ -624,16 +624,13 @@ b,strong{font-weight:500}
         <div class="fg-filter"><div class="fl-filter">Rol</div><div class="fchip-wrap" id="filter-role"><div class="fchip active" onclick="setFilter('role','all',this)">Alle</div><div class="fchip" onclick="setFilter('role','Software Engineer',this)">Software Engineer</div><div class="fchip" onclick="setFilter('role','Data Engineer',this)">Data Engineer</div><div class="fchip" onclick="setFilter('role','AI Engineer',this)">AI Engineer</div><div class="fchip" onclick="setFilter('role','Business Analist',this)">Business Analist</div></div></div>
         <div class="fg-filter"><div class="fl-filter">Status</div><div class="fchip-wrap" id="filter-push"><div class="fchip active" onclick="setFilter('push','all',this)">Alle</div><div class="fchip" onclick="setFilter('push','push',this)">⚡ Push</div></div></div>
         <div class="fg-filter"><div class="fl-filter">Beschikbaarheid</div><div class="fchip-wrap" id="filter-avail"><div class="fchip active" onclick="setFilter('avail','all',this)">Alle</div><div class="fchip" onclick="setFilter('avail','direct',this)">Direct beschikbaar</div></div></div>
-        <div class="fg-filter">
-          <div class="fl-filter">Portefeuille</div>
-          <div class="fchip-wrap">
-            <div class="fchip" id="chip-portefeuille" onclick="togglePortefeuille()">+ In Portefeuille</div>
-          </div>
-        </div>
         <button class="filter-reset" onclick="resetFilters()"><i class="ti ti-refresh" style="font-size:10px"></i> Reset</button>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
-        <span style="font-size:11px;color:var(--muted)" id="cand-count-label"></span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:11px;color:var(--muted)" id="cand-count-label"></span>
+          <button id="btn-portefeuille" onclick="togglePortefeuille()" style="font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid #ccc;background:#f5f5f5;color:#666;cursor:pointer;font-family:var(--font)">+ In Portefeuille</button>
+        </div>
         <button class="col-mgr-btn" onclick="toggleColPanel()"><i class="ti ti-columns" style="font-size:11px"></i> Kolommen aanpassen</button>
       </div>
       <div class="col-mgr-panel" id="col-mgr-panel">
@@ -1598,16 +1595,25 @@ function resetFilters(){
     document.getElementById(id).querySelectorAll('.fchip').forEach((c,i)=>c.classList.toggle('active',i===0));
   });
   window._showPortefeuille = false;
-  const chip = document.getElementById('chip-portefeuille');
-  if(chip){chip.classList.remove('active');chip.textContent='+ In Portefeuille';}
+  const btn = document.getElementById('btn-portefeuille');
+  if(btn){btn.textContent='+ In Portefeuille';btn.style.background='#f5f5f5';btn.style.color='#666';btn.style.borderColor='#ccc';}
   renderCVList();
 }
 function togglePortefeuille(){
   window._showPortefeuille = !window._showPortefeuille;
-  const chip = document.getElementById('chip-portefeuille');
-  if(chip){
-    chip.classList.toggle('active', window._showPortefeuille);
-    chip.textContent = window._showPortefeuille ? '✓ In Portefeuille' : '+ In Portefeuille';
+  const btn = document.getElementById('btn-portefeuille');
+  if(btn){
+    if(window._showPortefeuille){
+      btn.textContent = '✓ In Portefeuille';
+      btn.style.background = 'var(--hgl)';
+      btn.style.color = 'var(--hg)';
+      btn.style.borderColor = 'var(--hg)';
+    } else {
+      btn.textContent = '+ In Portefeuille';
+      btn.style.background = '#f5f5f5';
+      btn.style.color = '#666';
+      btn.style.borderColor = '#ccc';
+    }
   }
   renderCVList();
 }
