@@ -1092,7 +1092,7 @@ const DB = {
       archived: r.archived || false, archivedDate: r.archived_date,
       archivedReason: r.archived_reason || null,
       source: r.source, recruitStatus: (r.recruit_status==='in_proces'||r.recruit_status==='in_portefeuille')?'in_portefeuille':'actief_zoeken',
-      werkervaring: r.werkervaring || ''
+      werkervaring: r.werkervaring || '', westijnId: r.westijn_id || null
     }));
   },
   async upsertCandidate(cv) {
@@ -1107,10 +1107,10 @@ const DB = {
       archived: cv.archived || false, archived_date: cv.archivedDate,
       archived_reason: cv.archivedReason || null,
       source: cv.source, recruit_status: cv.recruitStatus || 'actief_zoeken',
-      werkervaring: cv.werkervaring || '',
+      werkervaring: cv.werkervaring || '', westijn_id: cv.westijnId || null,
       updated_at: new Date().toISOString()
     };
-    const knownOptionalCols = ['archived_reason', 'recruit_status', 'werkervaring'];
+    const knownOptionalCols = ['archived_reason', 'recruit_status', 'werkervaring', 'westijn_id'];
     let rowToSend = {...row};
     for(let attempt = 0; attempt < knownOptionalCols.length + 1; attempt++) {
       try {
@@ -3492,11 +3492,14 @@ function renderCVList(){
         : `<span class="tag" style="background:var(--hgl);color:var(--muted)">Active Search</span>`;
     const skills=(cv.skills||[]).map(s=>`<span class="tag tag-skill">${esc(s)}</span>`).join('');
     const linkedVacs=vacatures.filter(v=>v.candidateIds.includes(cv.id));
-    const cvBadge=hasFile
-      ?`<span class="tag tag-cv">✓ CV</span>`
-      :hasDrive
-        ?`<a href="${cv.driveUrl}" target="_blank" style="text-decoration:none"><span class="tag" style="background:#e8f0fe;color:#1a56a8;font-weight:600"><i class="ti ti-brand-google-drive" style="font-size:9px"></i> Drive</span></a>`
-        :`<span class="tag tag-nocv">—</span>`;
+    const westijnUrl=cv.westijnId?`https://westijn.vercel.app/candidates/${cv.westijnId}`:null;
+    const cvBadge=westijnUrl
+      ?`<a href="${westijnUrl}" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none"><span class="tag" style="background:#eaf4ee;color:#1a6630;font-weight:600"><i class="ti ti-file-cv" style="font-size:9px"></i> CV</span></a>`
+      :hasFile
+        ?`<span class="tag tag-cv">✓ CV</span>`
+        :hasDrive
+          ?`<a href="${cv.driveUrl}" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none"><span class="tag" style="background:#e8f0fe;color:#1a56a8;font-weight:600"><i class="ti ti-brand-google-drive" style="font-size:9px"></i> Drive</span></a>`
+          :`<span class="tag tag-nocv">—</span>`;
     const cellMap = {
       name: `<td><div style="display:flex;align-items:center;gap:7px"><div class="ava" style="background:${color.bg};color:${color.tx}">${ini(cv.name)}</div><div><div class="cv-name">${esc(cv.name)}</div>${cnt>0?`<span class="tag tag-cnt" style="font-size:9px">${cnt}×</span>`:''}</div></div></td>`,
       sales: `<td>${cv.salesOwner?`<span class="upill ${UCLS[cv.salesOwner]||''}" style="font-size:10px">${esc(cv.salesOwner)}</span>`:'<span style="color:#ddd">—</span>'}</td>`,
