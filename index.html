@@ -585,7 +585,7 @@ b,strong{font-weight:500}
         <div class="frow q">
           <div class="fg"><label class="fl">Sales eigenaar</label>
         <input class="fi" id="ac-sales" list="sales-options" placeholder="Naam of kies…" autocomplete="off">
-        <datalist id="sales-options"><option value="Julieta"><option value="Frank"><option value="Marlie"><option value="Jeen"></datalist>
+        <datalist id="sales-options"><option value="Julieta"><option value="Marlie"><option value="Jeen"></datalist>
       </div>
           <div class="fg"><label class="fl">Recruitment eigenaar</label><select class="fi" id="ac-recruit"><option value="">— Kies —</option><option>Bastijn</option><option>Wessal</option></select></div>
           <div class="fg"><label class="fl">Bureau</label><select class="fi" id="ac-bureau"><option value="">— Kies —</option><option>PT</option><option>Ngage</option><option>StarApple</option><option>Sebastiaan</option><option>Eigen Werving</option></select></div>
@@ -608,7 +608,6 @@ b,strong{font-weight:500}
           <div class="fchip-wrap" id="filter-sales">
             <div class="fchip active" onclick="setFilter('sales','all',this)">Alle</div>
             <div class="fchip" onclick="setFilter('sales','Julieta',this)">Julieta</div>
-            <div class="fchip" onclick="setFilter('sales','Frank',this)">Frank</div>
             <div class="fchip" onclick="setFilter('sales','Marlie',this)">Marlie</div>
             <div class="fchip" onclick="setFilter('sales','Jeen',this)">Jeen</div>
             <div class="fchip" onclick="setFilter('sales','',this)">Niet ingevuld</div>
@@ -697,7 +696,7 @@ b,strong{font-weight:500}
         <div class="frow t">
           <div class="fg"><label class="fl">E-mailadres klant</label><input class="fi" id="f-email" placeholder="contact@bedrijf.nl" type="email" oninput="updatePreview()"></div>
           <div class="fg"><label class="fl">Rol / Vacature</label><input class="fi" id="f-ro" placeholder="Senior Backend Engineer" type="text" oninput="updatePreview()"></div>
-          <div class="fg"><label class="fl">Aangeboden door</label><select class="fi" id="f-us" onchange="updatePreview()"><option>Marlie</option><option>Julieta</option><option>Frank</option><option>Jeen</option></select></div>
+          <div class="fg"><label class="fl">Aangeboden door</label><select class="fi" id="f-us" onchange="updatePreview()"><option>Marlie</option><option>Julieta</option><option>Jeen</option></select></div>
         </div>
         <div class="frow s"><div class="fg"><label class="fl">Notitie</label><textarea class="fi" id="f-no" rows="2" placeholder="warm lead, tweede ronde…" oninput="updatePreview()"></textarea></div></div>
       </div>
@@ -742,7 +741,7 @@ b,strong{font-weight:500}
             <div class="fg" style="margin-bottom:6px"><label class="fl">Eigenaar (Sales)</label>
               <select class="fi" id="vac-owner" style="font-size:12px">
                 <option value="">— Kies eigenaar —</option>
-                <option>Marlie</option><option>Julieta</option><option>Frank</option><option>Jeen</option>
+                <option>Marlie</option><option>Julieta</option><option>Jeen</option>
               </select>
             </div>
             <div class="fg" style="margin-bottom:6px"><label class="fl">Notities</label><textarea class="fi" id="vac-notes" rows="2" placeholder="Details, eisen…" style="font-size:12px"></textarea></div>
@@ -772,7 +771,7 @@ b,strong{font-weight:500}
               <div class="fg"><label class="fl">Eigenaar (Sales)</label>
                 <select class="fi" id="camp-owner" style="font-size:12px">
                   <option value="">— Kies eigenaar —</option>
-                  <option>Marlie</option><option>Julieta</option><option>Frank</option><option>Jeen</option>
+                  <option>Marlie</option><option>Julieta</option><option>Jeen</option>
                 </select>
               </div>
               <div class="fg"><label class="fl">Doel plaatsingen</label>
@@ -797,7 +796,7 @@ b,strong{font-weight:500}
               <button class="owner-chip active" id="vf-ow-all" onclick="setVacSidebarOwner('all',this)" style="font-size:10px;padding:2px 7px">Iedereen</button>
               <button class="owner-chip" onclick="setVacSidebarOwner('Marlie',this)" style="font-size:10px;padding:2px 7px">Marlie</button>
               <button class="owner-chip" onclick="setVacSidebarOwner('Julieta',this)" style="font-size:10px;padding:2px 7px">Julieta</button>
-              <button class="owner-chip" onclick="setVacSidebarOwner('Frank',this)" style="font-size:10px;padding:2px 7px">Frank</button>
+              <button class="owner-chip" onclick="setVacSidebarOwner('Jeen',this)" style="font-size:10px;padding:2px 7px">Jeen</button>
               <button class="owner-chip" onclick="setVacSidebarOwner('Jeen',this)" style="font-size:10px;padding:2px 7px">Jeen</button>
             </div>
             <div style="display:flex;align-items:center;gap:5px">
@@ -834,7 +833,7 @@ b,strong{font-weight:500}
               <button class="owner-chip active" onclick="setVacOwnerFilter('all',this)">Iedereen</button>
               <button class="owner-chip" onclick="setVacOwnerFilter('Marlie',this)">Marlie</button>
               <button class="owner-chip" onclick="setVacOwnerFilter('Julieta',this)">Julieta</button>
-              <button class="owner-chip" onclick="setVacOwnerFilter('Frank',this)">Frank</button>
+              <button class="owner-chip" onclick="setVacOwnerFilter('Jeen',this)">Jeen</button>
               <button class="owner-chip" onclick="setVacOwnerFilter('Jeen',this)">Jeen</button>
             </div>
             <div style="display:flex;align-items:center;gap:5px">
@@ -917,7 +916,7 @@ b,strong{font-weight:500}
           <div class="fg" style="min-width:140px"><label class="fl">Account eigenaar</label>
             <select class="fi" id="new-co-owner" style="font-size:12px">
               <option value="">— geen —</option>
-              <option>Marlie</option><option>Frank</option><option>Julieta</option><option>Jeen</option>
+              <option>Marlie</option><option>Jeen</option><option>Julieta</option>
             </select>
           </div>
           <button class="bmain g" onclick="addCompany()" style="margin-bottom:1px"><i class="ti ti-plus"></i> Toevoegen</button>
@@ -1328,11 +1327,11 @@ const DEFAULT_USERS = [
 ];
 let appUsers = [...DEFAULT_USERS];
 let currentUserObj = null;
-const USERS=['Julieta','Frank','Marlie','Bastijn','Wessal'];
+const USERS=['Julieta','Jeen','Marlie','Bastijn','Wessal'];
 const UCLS={Julieta:'up-j',Frank:'up-f',Marlie:'up-m',Bastijn:'up-b',Wessal:'up-w',Jeen:'up-je'};
 const DEFAULT_COMPANIES=['ABN AMRO','ASN Bank','ASR','BNG','CGI','DELA','Essent','Firan','GVB','KPN','Lumera','RIVM','Tikkie','Triodosbank','UWV'];
 const DEFAULT_SIG=`Met vriendelijke groet,\n\nHarvest Lead Programs B.V.\nwww.harvest.nl`;
-const DEFAULT_EMAILS={Marlie:'jeen.beckers@harvest.nl',Julieta:'',Frank:''};
+const DEFAULT_EMAILS={Marlie:'jeen.beckers@harvest.nl',Julieta:'',Jeen:'jeen.beckers@harvest.nl'};
 
 function colFor(n){let h=0;for(let c of n)h=(h+c.charCodeAt(0))%COLS.length;return COLS[h];}
 function ini(n){return n.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase();}
@@ -1825,7 +1824,7 @@ function showVacEditModal(id){
     <div class="fg" style="margin-bottom:8px"><label class="fl">Eigenaar (Sales)</label>
       <select class="fi" id="ve-owner" style="font-size:12px">
         <option value="">— Geen eigenaar —</option>
-        ${['Marlie','Julieta','Frank','Jeen'].map(o=>`<option${v.owner===o?' selected':''}>${o}</option>`).join('')}
+        ${['Marlie','Julieta','Jeen'].map(o=>`<option${v.owner===o?' selected':''}>${o}</option>`).join('')}
       </select>
     </div>
     ${isCamp?`
@@ -1887,7 +1886,7 @@ function showOwnerEdit(id){
     <option value="">— Geen eigenaar —</option>
     <option${v.owner==='Marlie'?' selected':''}>Marlie</option>
     <option${v.owner==='Julieta'?' selected':''}>Julieta</option>
-    <option${v.owner==='Frank'?' selected':''}>Frank</option>
+    <option${v.owner==='Jeen'?' selected':''}>Jeen</option>
     <option${v.owner==='Jeen'?' selected':''}>Jeen</option>
   </select>`;
   el.querySelector('select').focus();
@@ -2362,7 +2361,7 @@ function setStartDate(vacId, candId) {
 }
 
 // ── FUNNEL
-const FUNNEL_OWNERS = ['Frank','Julieta','Marlie'];
+const FUNNEL_OWNERS = ['Jeen','Julieta','Marlie'];
 const MONTHS_2026 = [7,8,9,10,11,12];
 const MONTH_NAMES = ['','Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
 
@@ -3670,7 +3669,7 @@ async function snapshotCurrentWeek() {
   const key = isoWeekKey(new Date());
   const stats = computeVacStats('all');
   // Per-owner breakdown
-  const owners = ['Marlie','Julieta','Frank'];
+  const owners = ['Marlie','Julieta','Jeen'];
   stats.per_owner = {};
   for (const o of owners) stats.per_owner[o] = computeVacStats(o);
   _weekStatsCache[key] = stats;
@@ -4279,7 +4278,7 @@ async function setCompanyOwner(name, owner){
   renderCompanies();
 }
 function renderCompanies(){
-  const OWNER_USERS = ['','Marlie','Frank','Julieta','Jeen'];
+  const OWNER_USERS = ['','Marlie','Jeen','Julieta'];
   const rows = companies.map(c => {
     const cnt = offerLog.filter(l=>l.company===c).length;
     const mtgCnt = meetings.filter(m=>m.company===c).length;
@@ -4304,7 +4303,7 @@ function renderCompanies(){
   }).join('');
 
   const TARGET = 10;
-  const countCards = ['Marlie','Frank','Julieta'].map(u => {
+  const countCards = ['Marlie','Jeen','Julieta'].map(u => {
     const n = companies.filter(c => companyOwners[c] === u).length;
     const pct = Math.min(100, Math.round(n / TARGET * 100));
     const ok = n >= TARGET;
@@ -4461,7 +4460,7 @@ function openModal(id){
     <div class="record-grid four" style="margin-bottom:8px">
       <div class="rf"><label class="rl">Sales eigenaar</label>
         <input class="ri" id="ed-sales" value="${esc(cv.salesOwner||'')}" list="sales-opts-rec" oninput="markChanged(this)" autocomplete="off">
-        <datalist id="sales-opts-rec"><option value="Julieta"><option value="Frank"><option value="Marlie"></datalist>
+        <datalist id="sales-opts-rec"><option value="Julieta"><option value="Jeen"><option value="Marlie"></datalist>
       </div>
       <div class="rf"><label class="rl">Recruitment</label>
         <select class="ri" id="ed-recruit" onchange="markChanged(this)">${recruitOpts}</select></div>
@@ -4945,7 +4944,7 @@ function downloadCVasPDF(id){
 })();
 
 // ── MEETINGS TAB
-const MTG_USERS = ['Marlie','Frank','Julieta'];
+const MTG_USERS = ['Marlie','Jeen','Julieta'];
 const MTG_TARGET = 7;
 
 function currentWeekKey() { return isoWeekKey(new Date()); }
@@ -4997,7 +4996,7 @@ function renderMeetings() {
     const ok = cnt >= MTG_TARGET;
     return `<div class="scard" style="min-width:140px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <span class="upill up-${u==='Marlie'?'m':u==='Frank'?'f':'j'}">${u}</span>
+        <span class="upill up-${u==='Marlie'?'m':u==='Jeen'?'je':'j'}">${u}</span>
         <span style="font-size:18px;font-weight:600;color:${ok?'#2e7d32':'var(--hg)'}">${cnt}</span>
       </div>
       <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${ok?'#4caf50':'var(--hg)'}"></div></div>
@@ -5005,7 +5004,7 @@ function renderMeetings() {
     </div>`;
   }).join('');
 
-  const COLORS = {Marlie:'#092B13',Frank:'#782410',Julieta:'#4a1d96'};
+  const COLORS = {Marlie:'#092B13',Jeen:'#782410',Julieta:'#4a1d96'};
   const chartW=560, chartH=140, padL=30, padB=24, padT=10, padR=10;
   const innerW=chartW-padL-padR, innerH=chartH-padB-padT;
   const maxVal = Math.max(MTG_TARGET, ...MTG_USERS.flatMap(u => weeks.map(wk => meetings.filter(m=>m.user===u&&m.weekKey===wk).length)));
@@ -5082,7 +5081,7 @@ function renderMeetings() {
         </div>
         <div class="fg" style="min-width:80px"><label class="fl">Door</label>
           <select class="fi" id="mtg-user" style="font-size:12px" onchange="updateMtgFunnelOptions()">
-            ${['Marlie','Frank','Julieta','Jeen'].map(u=>`<option${u===CU?' selected':''}>${u}</option>`).join('')}
+            ${['Marlie','Jeen','Julieta'].map(u=>`<option${u===CU?' selected':''}>${u}</option>`).join('')}
           </select>
         </div>
         <div class="fg" style="min-width:180px"><label class="fl">Target doel <span style="font-weight:300;color:var(--muted)">(optioneel)</span></label>
@@ -5101,7 +5100,7 @@ function renderMeetings() {
       <div class="ptitle" style="margin-bottom:8px"><i class="ti ti-list"></i> Alle afspraken</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
         <button class="owner-chip ${meetingsFilter==='all'?'active':''}" onclick="setMeetingsFilter('all',this)">Iedereen</button>
-        ${['Marlie','Frank','Julieta','Jeen'].map(u=>`<button class="owner-chip ${meetingsFilter===u?'active':''}" onclick="setMeetingsFilter('${u}',this)">${u}</button>`).join('')}
+        ${['Marlie','Jeen','Julieta'].map(u=>`<button class="owner-chip ${meetingsFilter===u?'active':''}" onclick="setMeetingsFilter('${u}',this)">${u}</button>`).join('')}
       </div>
       ${sorted.length===0?'<div class="empty" style="padding:20px 0">Nog geen afspraken geregistreerd.</div>':`
       <table style="width:100%;border-collapse:collapse;font-size:11px">
@@ -5118,7 +5117,7 @@ function renderMeetings() {
         </tr></thead>
         <tbody>${sorted.map(m=>`<tr style="border-bottom:.5px solid #f0f0f0">
           <td style="padding:6px 8px;white-space:nowrap;color:var(--muted)">${weekLabel(m.weekKey)}</td>
-          <td style="padding:6px 8px"><span class="upill up-${m.user==='Marlie'?'m':m.user==='Frank'?'f':m.user==='Julieta'?'j':'b'}" style="font-size:9px">${esc(m.user)}</span></td>
+          <td style="padding:6px 8px"><span class="upill up-${m.user==='Marlie'?'m':m.user==='Jeen'?'je':m.user==='Julieta'?'j':'b'}" style="font-size:9px">${esc(m.user)}</span></td>
           <td style="padding:6px 8px;font-weight:400">${esc(m.company)}</td>
           <td style="padding:6px 8px;color:var(--muted)">${esc(m.contact||'—')}</td>
           <td style="padding:6px 8px;white-space:nowrap">${m.meetingType?`<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f0f4ff;color:#3b5bdb;font-weight:500">${esc(m.meetingType)}</span>`:'<span style="color:#ccc">—</span>'}</td>
@@ -5196,7 +5195,7 @@ function showEditMeetingModal(id) {
     <div class="fg" style="margin-bottom:8px"><label class="fl">Weeknummer (bijv. 2026-W26)</label><input class="fi" id="me-week" value="${esc(m.weekKey)}" style="font-size:12px"></div>
     <div class="fg" style="margin-bottom:8px"><label class="fl">Door</label>
       <select class="fi" id="me-user" style="font-size:12px">
-        ${['Marlie','Frank','Julieta','Jeen'].map(u=>`<option${m.user===u?' selected':''}>${u}</option>`).join('')}
+        ${['Marlie','Jeen','Julieta'].map(u=>`<option${m.user===u?' selected':''}>${u}</option>`).join('')}
       </select>
     </div>
     <div class="fg" style="margin-bottom:8px"><label class="fl">Target doel <span style="font-weight:300;color:var(--muted)">(optioneel)</span></label>
