@@ -568,6 +568,7 @@ b,strong{font-weight:500}
     <div class="navtab" onclick="showTab('archive')" id="tab-archive"><i class="ti ti-archive"></i> Archief <span class="nbadge" id="nb-archive">0</span></div>
     <div class="navtab" onclick="showTab('match')" id="tab-match"><i class="ti ti-sparkles"></i> AI Match</div>
     <div class="navtab" onclick="showTab('settings')" id="tab-settings"><i class="ti ti-settings"></i> Instellingen</div>
+    <div class="navtab" onclick="showTab('rapport')" id="tab-rapport" style="display:none"><i class="ti ti-chart-area"></i> Teamrapport</div>
   </div>
   <div class="content">
 
@@ -982,6 +983,11 @@ b,strong{font-weight:500}
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- TEAMRAPPORT (alleen Jeen) -->
+    <div id="view-rapport" style="display:none;padding:0">
+      <div id="rapport-content" style="max-width:760px;margin:0 auto;padding:16px 16px 48px"></div>
     </div>
 
     <!-- INSTELLINGEN -->
@@ -1437,6 +1443,9 @@ function applyRolePermissions(user){
   const isAdmin = user.role === 'Admin';
   const mgmt = document.getElementById('user-mgmt-section');
   if(mgmt) mgmt.style.display = isAdmin ? '' : 'none';
+  // Teamrapport tab only for admins
+  const rapportTab = document.getElementById('tab-rapport');
+  if(rapportTab) rapportTab.style.display = user.role === 'Admin' ? '' : 'none';
 }
 
 // ── USER MANAGEMENT
@@ -3347,6 +3356,9 @@ function updateTabVisibility(){
     const el = document.getElementById('tab-'+t.key);
     if(el) el.style.display = visibleTabs.includes(t.key) ? '' : 'none';
   });
+  // Rapport tab: only for admins, managed separately from TAB_CONFIG
+  const rapportTab = document.getElementById('tab-rapport');
+  if(rapportTab) rapportTab.style.display = (currentUserObj?.role === 'Admin') ? '' : 'none';
 }
 
 async function saveVisibleTabs(){
@@ -4617,8 +4629,330 @@ function setUser(u){
   const fus=document.getElementById('f-us'); if(fus) fus.value=u;
   renderDashboard();updatePreview();
 }
+// ── TEAMRAPPORT ──────────────────────────────────────────────────────────────
+let _rapportLoading = false;
+
+// Tooltip logic for vacature stat cells
+window._rttMap = {};
+function rapportTT(el, show){
+  let tt = document.getElementById('rapport-tt');
+  if(!show){ if(tt) tt.style.opacity='0'; return; }
+  const id = el.getAttribute('data-rtt');
+  if(!id) return;
+  const data = window._rttMap[id];
+  if(!data || !data.items.length) return;
+  if(!tt){
+    tt=document.createElement('div');
+    tt.id='rapport-tt';
+    tt.style.cssText='position:fixed;z-index:9999;background:#092B13;color:#FFFBF5;padding:10px 14px;font-size:12px;line-height:1.6;pointer-events:none;max-width:360px;box-shadow:0 4px 20px rgba(0,0,0,.3);transition:opacity .1s';
+    document.body.appendChild(tt);
+  }
+  const sorted=[...data.items].sort((a,b)=>a.localeCompare(b,'nl'));
+  tt.innerHTML=`<div style="font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(232,240,233,.5);margin-bottom:7px">${esc(data.title)} (${sorted.length})</div>`
+    +sorted.map(i=>`<div style="border-bottom:1px solid rgba(255,255,255,.07);padding:4px 0;color:#FFFBF5">${esc(i)}</div>`).join('');
+  const r=el.getBoundingClientRect();
+  tt.style.opacity='0';
+  tt.style.left='-9999px';
+  tt.style.display='block';
+  requestAnimationFrame(()=>{
+    const ttW=Math.min(360, tt.offsetWidth);
+    const ttH=tt.offsetHeight;
+    let left=r.left+r.width/2-ttW/2;
+    let top=r.bottom+8;
+    if(left+ttW>window.innerWidth-8) left=window.innerWidth-ttW-8;
+    if(left<8) left=8;
+    if(top+ttH>window.innerHeight-8) top=r.top-ttH-8;
+    tt.style.left=left+'px';
+    tt.style.top=top+'px';
+    tt.style.opacity='1';
+  });
+}
+
+async function renderRapport(force=false){
+  const el = document.getElementById('rapport-content');
+  if(!el) return;
+  if(_rapportLoading) return;
+  _rapportLoading = true;
+
+  el.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <div style="font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8070;margin-bottom:4px">Harvest Talent</div>
+      <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#092B13">Teamrapport Juli &amp; Augustus 2026</div>
+      <div style="font-size:11px;color:#8a8070;margin-top:4px">Peildatum 24 augustus 2026 · Jeen · Marlie · Julieta</div>
+    </div>
+    <button class="bsm" onclick="renderRapport(true)" id="rapport-refresh-btn"><i class="ti ti-refresh"></i> Verversen</button>
+  </div>
+  <div style="text-align:center;padding:40px;color:#8a8070;font-size:13px"><i class="ti ti-loader" style="font-size:24px;display:block;margin-bottom:8px"></i>Data ophalen…</div>`;
+
+  try {
+    // Fetch all vacatures (open + closed) and candidates (active + archived)
+    const [vacsOpen, vacsClosed, candsActive, candsArchived] = await Promise.all([
+      sbFetch('vacatures?select=id,company,role,owner,type,status,created_date,kanban_data&status=eq.open&limit=500'),
+      sbFetch('vacatures?select=id,company,role,owner,type,status,created_date,kanban_data&status=eq.closed&limit=500'),
+      sbFetch('candidates?archived=eq.false&select=id,name&limit=1000'),
+      sbFetch('candidates?archived=eq.true&select=id,name&limit=1000'),
+    ]);
+
+    const vacs = [...vacsOpen, ...vacsClosed];
+    const candMap = {};
+    [...candsActive, ...candsArchived].forEach(c => { candMap[c.id] = c.name; });
+    const cname = id => candMap[id] || id;
+
+    // Vacature stats per month
+    // geopend = nieuwe vacs die maand (won+lost+open created that month)
+    // nog open = alle open vacs created <= that month (cumulative)
+    const REPORT_MONTHS = ['2026-07','2026-08'];
+    const vacStats = {'2026-07':{geopend:0,won:0,lost:0,open:0},'2026-08':{geopend:0,won:0,lost:0,open:0}};
+    const vacLists = {'2026-07':{geopend:[],won:[],lost:[],open:[]},'2026-08':{geopend:[],won:[],lost:[],open:[]}};
+
+    for(const v of vacs){
+      if(v.type==='campagne') continue;
+      const m=(v.created_date||'').slice(0,7);
+      const kd=v.kanban_data||{};
+      const startDates=kd.startDates||{};
+      const hasStart=Object.keys(startDates).length>0;
+      const label=`${v.company} – ${v.role}`;
+
+      // Geopend / won / lost — based on created_date month
+      if(vacStats[m]){
+        vacStats[m].geopend++;
+        vacLists[m].geopend.push(label);
+        if(v.status!=='open'){
+          if(hasStart){
+            vacStats[m].won++;
+            const starters=Object.entries(startDates).map(([cid,sd])=>`${cname(cid)} (${sd})`).join(', ');
+            vacLists[m].won.push(`${label}${starters?` → ${starters}`:''}`);
+          } else {
+            vacStats[m].lost++;
+            vacLists[m].lost.push(label);
+          }
+        }
+      }
+
+      // Nog open: cumulative — add to every report month >= created_date month
+      if(v.status==='open' && m){
+        for(const rm of REPORT_MONTHS){
+          if(m<=rm){
+            vacStats[rm].open++;
+            if(!vacLists[rm].open.includes(label)) vacLists[rm].open.push(label);
+          }
+        }
+      }
+    }
+
+    // Aangenomen per month with startdates
+    const aangenomenByMonth = {'2026-07':[],'2026-08':[]};
+    const upcomingStarts = []; // startDate > today
+    const today = '2026-08-24';
+
+    for(const v of vacs){
+      const kd = v.kanban_data||{};
+      const aangenomenDates = kd.aangenomenDates||{};
+      const startDates = kd.startDates||{};
+      for(const [cid, aDate] of Object.entries(aangenomenDates)){
+        const m=(aDate||'').slice(0,7);
+        const startDate=startDates[cid]||null;
+        const entry={name:cname(cid),company:v.company,role:v.role,owner:v.owner,aangenomenDate:aDate,startDate};
+        if(aangenomenByMonth[m]) aangenomenByMonth[m].push(entry);
+        if(startDate && startDate>today) upcomingStarts.push({...entry,vacType:v.type});
+      }
+    }
+
+    // Dedup upcoming starts by candidate name (same person may appear in multiple vacs)
+    const seenStarts=new Set();
+    const dedupedStarts=upcomingStarts.filter(s=>{if(seenStarts.has(s.name))return false;seenStarts.add(s.name);return true;});
+    dedupedStarts.sort((a,b)=>a.startDate.localeCompare(b.startDate));
+
+    // Scorecard totals
+    const owners=['Jeen','Marlie','Julieta'];
+    const scorecards={};
+    for(const o of owners) scorecards[o]={aangenomen:0,gestart:0,sepOkt:{},aangenomenList:[],gestartList:[],sepOktList:{}};
+    for(const m of Object.values(aangenomenByMonth)){
+      for(const e of m){
+        if(!scorecards[e.owner]) continue;
+        const label=`${e.name}${e.company?` (${e.company})`:''}`;
+        scorecards[e.owner].aangenomen++;
+        scorecards[e.owner].aangenomenList.push(label);
+        if(e.startDate && e.startDate<=today){
+          scorecards[e.owner].gestart++;
+          scorecards[e.owner].gestartList.push(label);
+        }
+        if(e.startDate && e.startDate>today){
+          const mo=e.startDate.slice(0,7);
+          scorecards[e.owner].sepOkt[mo]=(scorecards[e.owner].sepOkt[mo]||0)+1;
+          if(!scorecards[e.owner].sepOktList[mo]) scorecards[e.owner].sepOktList[mo]=[];
+          scorecards[e.owner].sepOktList[mo].push(label);
+        }
+      }
+    }
+
+    const ownerColor={'Marlie':'#4a90d9','Julieta':'#9b59b6','Jeen':'#782410'};
+    const pill=(s,cls)=>`<span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;letter-spacing:.03em;white-space:nowrap;${cls}">${s}</span>`;
+    const oc=(o)=>`<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:7px;height:7px;border-radius:50%;background:${ownerColor[o]||'#888'};display:inline-block"></span>${o}</span>`;
+
+    // Jul total
+    const julTotal=Object.values(vacStats['2026-07']).reduce((a,b)=>a+b,0);
+    const augTotal=Object.values(vacStats['2026-08']).reduce((a,b)=>a+b,0);
+    const allAangenomen=[...aangenomenByMonth['2026-07'],...aangenomenByMonth['2026-08']];
+    const totalAangenomen=allAangenomen.length;
+    const totalGestart=allAangenomen.filter(e=>e.startDate&&e.startDate<=today).length;
+    const totalComingStarts=dedupedStarts.length;
+
+    // Render month table rows
+    const monthRows=(month)=>{
+      const entries=aangenomenByMonth[month];
+      if(!entries.length) return `<tr><td colspan="4" style="color:#8a8070;font-size:12px;padding:10px 0">Geen plaatsingen deze maand</td></tr>`;
+      return entries.map(e=>{
+        const startPill=e.startDate
+          ? (e.startDate<=today ? pill(e.startDate.slice(5).replace('-','/'),`background:#DDEADE;color:#0f5222`)
+          : e.startDate<='2026-09-30' ? pill('1 sep',`background:#fde8d2;color:#6b2a0a`)
+          : pill('1 okt',`background:#f0e8f5;color:#4a1a6b`))
+          : `<span style="color:#ccc">—</span>`;
+        return `<tr>
+          <td style="padding:9px 10px 9px 0;border-bottom:1px solid #EDE7DC;font-size:13px;font-weight:500">${esc(e.name)}<div style="font-size:11px;color:#7a7060">${esc(e.role||'')}</div></td>
+          <td style="padding:9px 10px 9px 0;border-bottom:1px solid #EDE7DC;font-size:13px;color:#444">${esc(e.company||'')}</td>
+          <td style="padding:9px 10px 9px 0;border-bottom:1px solid #EDE7DC;font-size:12px">${oc(e.owner||'')}</td>
+          <td style="padding:9px 0;border-bottom:1px solid #EDE7DC;text-align:right">${startPill}</td>
+        </tr>`;
+      }).join('');
+    };
+
+    const tableHead=`<thead><tr>
+      <th style="font-size:9px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:#8a8070;padding:0 10px 10px 0;border-bottom:1px solid #C8CFC4;text-align:left">Kandidaat</th>
+      <th style="font-size:9px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:#8a8070;padding:0 10px 10px 0;border-bottom:1px solid #C8CFC4;text-align:left">Opdrachtgever</th>
+      <th style="font-size:9px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:#8a8070;padding:0 10px 10px 0;border-bottom:1px solid #C8CFC4;text-align:left">Eigenaar</th>
+      <th style="font-size:9px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:#8a8070;padding:0 0 10px 0;border-bottom:1px solid #C8CFC4;text-align:right">Start</th>
+    </tr></thead>`;
+
+    // Tooltip helper: stores data in global map, puts ID in attribute
+    let _rttIdx=0;
+    const ttAttr=(items,title)=>{
+      if(!items.length) return '';
+      const id='rtt_'+(++_rttIdx);
+      window._rttMap[id]={title,items};
+      return `data-rtt="${id}"`;
+    };
+
+    const cell=(lbl,val,sub='',valColor='#092B13',items=[],title='')=>`<div style="padding:20px 0 16px;flex:1;text-align:center">
+      <div style="font-size:9px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8a8070;margin-bottom:5px">${lbl}</div>
+      <div style="font-family:'Playfair Display',serif;font-size:32px;font-weight:700;line-height:1;color:${valColor};cursor:${items.length?'pointer':'default'};display:inline-block;${items.length?'text-decoration:underline;text-decoration-style:dotted;text-underline-offset:4px;text-decoration-color:'+valColor+'66':''}" ${ttAttr(items,title||lbl)} onmouseenter="rapportTT(this,true)" onmouseleave="rapportTT(this,false)">${val}</div>
+      ${sub?`<div style="font-size:11px;color:#8a8070;margin-top:3px">${sub}</div>`:''}
+    </div>`;
+    const statCell=(num,labelTxt,color,items,title)=>`<div style="text-align:center;cursor:${items.length?'pointer':'default'};padding:6px 4px;border-radius:4px;transition:background .12s" ${ttAttr(items,title)} onmouseenter="rapportTT(this,true)" onmouseleave="rapportTT(this,false)">
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:${color};${items.length?'text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;text-decoration-color:'+color+'66':''}">${num}</div>
+      <div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#8a8070;margin-top:3px">${labelTxt}</div>
+    </div>`;
+
+    const vacStatCard=(month,label)=>{
+      const s=vacStats[month];
+      const l=vacLists[month];
+      return `<div style="border:1px solid #C8CFC4;overflow:hidden;flex:1">
+        <div style="background:#f5f0e8;padding:9px 14px;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#5c4a2a;border-bottom:1px solid #C8CFC4">${label}</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);background:#fff;padding:12px 14px;gap:8px">
+          ${statCell(s.geopend,'Geopend','#092B13',l.geopend,'Geopend deze maand')}
+          ${statCell(s.won,'Gewonnen','#1a6b38',l.won,'Gewonnen')}
+          ${statCell(s.lost,'Verloren','#782410',l.lost,'Verloren')}
+          ${statCell(s.open,'Nog open','#8a8070',l.open,'Nog open (cumulatief)')}
+        </div>
+      </div>`;
+    };
+
+    const scRow=(label,num,color,items,title)=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #F0EBE3;font-size:12px;cursor:${items.length?'pointer':'default'};border-radius:3px" ${ttAttr(items,title)} onmouseenter="rapportTT(this,true)" onmouseleave="rapportTT(this,false)">
+      <span style="color:#7a7060">${label}</span>
+      <span style="font-weight:600;color:${color};${items.length?'text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px;text-decoration-color:'+color+'66':''}">${num}</span>
+    </div>`;
+
+    const scCard=(owner)=>{
+      const s=scorecards[owner];
+      const sepOktLines=Object.entries(s.sepOkt).map(([m,n])=>{
+        const lbl=m==='2026-09'?'Sep-starts':m==='2026-10'?'Okt-starts':'Starts '+m.slice(5);
+        return scRow(lbl,n,'#782410',s.sepOktList[m]||[],`${lbl} — ${owner}`);
+      }).join('');
+      return `<div style="border:1px solid #C8CFC4;overflow:hidden;flex:1">
+        <div style="background:#092B13;padding:11px 14px;display:flex;justify-content:space-between;align-items:baseline">
+          <span style="font-size:13px;font-weight:600;color:#FFFBF5">${owner}</span>
+          <span style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#DDEADE;cursor:${s.aangenomenList.length?'pointer':'default'}" ${ttAttr(s.aangenomenList,`Aangenomen — ${owner}`)} onmouseenter="rapportTT(this,true)" onmouseleave="rapportTT(this,false)">${s.aangenomen}</span>
+        </div>
+        <div style="padding:12px 14px;background:#fff">
+          ${scRow('Aangenomen',s.aangenomen,'#1a6b38',s.aangenomenList,`Aangenomen — ${owner}`)}
+          ${scRow('Al gestart',s.gestart,'#444',s.gestartList,`Al gestart — ${owner}`)}
+          ${sepOktLines}
+        </div>
+      </div>`;
+    };
+
+    const secHead=(title,sub)=>`<div style="display:flex;align-items:center;gap:12px;margin:32px 0 14px">
+      <span style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#092B13">${title}</span>
+      <div style="flex:1;height:1px;background:#D8D0C4"></div>
+      <span style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8070">${sub}</span>
+    </div>`;
+
+    const startRows=dedupedStarts.map(e=>{
+      const mo=e.startDate.slice(0,7);
+      const dateLabel=mo==='2026-09'?'1 sep':mo==='2026-10'?'1 okt':e.startDate.slice(5).replace('-','/');
+      return `<div style="display:grid;grid-template-columns:72px 1fr auto;gap:16px;align-items:baseline;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.08)">
+        <span style="font-family:'Playfair Display',serif;font-size:13px;font-weight:700;color:#DDEADE">${dateLabel}</span>
+        <span style="font-size:13px;color:#FFFBF5;font-weight:500">${esc(e.name)}</span>
+        <span style="font-size:12px;color:rgba(232,240,233,.5);text-align:right">${esc(e.company||'')} · ${esc(e.owner||'')}</span>
+      </div>`;
+    }).join('');
+
+    const refreshedAt=new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8070;margin-bottom:4px">Harvest Talent</div>
+          <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#092B13">Teamrapport Juli &amp; Augustus 2026</div>
+          <div style="font-size:11px;color:#8a8070;margin-top:4px">Peildatum 24 aug 2026 · Jeen · Marlie · Julieta</div>
+        </div>
+        <button class="bsm" onclick="renderRapport(true)" title="Data opnieuw ophalen"><i class="ti ti-refresh"></i> Verversen <span style="font-size:10px;color:#aaa;margin-left:4px">${refreshedAt}</span></button>
+      </div>
+
+      <!-- Summary -->
+      <div style="display:flex;border-bottom:1px solid #C8CFC4;margin-bottom:28px">
+        ${cell('Aangenomen',totalAangenomen,`jul ${aangenomenByMonth['2026-07'].length} · aug ${aangenomenByMonth['2026-08'].length}`,'#092B13',allAangenomen.map(e=>`${e.name}${e.company?` (${e.company})`:''}`),'Aangenomen')}
+        ${cell('Al gestart',totalGestart,'op de werkvloer','#092B13',allAangenomen.filter(e=>e.startDate&&e.startDate<=today).map(e=>`${e.name}${e.company?` (${e.company})`:''}`),'Al gestart')}
+        ${cell('Aankomende starts',totalComingStarts,'bevestigd','#782410',dedupedStarts.map(e=>`${e.name}${e.company?` (${e.company})`:''} — ${e.startDate}`),'Aankomende starts')}
+        ${cell('Nieuwe vacatures',julTotal+augTotal,`jul ${julTotal} · aug ${augTotal}`,'#092B13',[...vacLists['2026-07'].geopend,...vacLists['2026-08'].geopend],'Nieuwe vacatures')}
+      </div>
+
+      <!-- Vacature stats -->
+      ${secHead('Vacature-ontwikkeling','Per maand')}
+      <div style="display:flex;gap:12px;margin-bottom:4px">
+        ${vacStatCard('2026-07','Juli 2026')}
+        ${vacStatCard('2026-08','Augustus 2026')}
+      </div>
+
+      <!-- Scorecards -->
+      ${secHead('Teamscores','Jul + Aug')}
+      <div style="display:flex;gap:12px;margin-bottom:4px">
+        ${owners.map(o=>scCard(o)).join('')}
+      </div>
+
+      <!-- Juli -->
+      ${secHead('Juli',aangenomenByMonth['2026-07'].length+' aangenomen')}
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">${tableHead}<tbody>${monthRows('2026-07')}</tbody></table></div>
+
+      <!-- Augustus -->
+      ${secHead('Augustus',aangenomenByMonth['2026-08'].length+' aangenomen')}
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">${tableHead}<tbody>${monthRows('2026-08')}</tbody></table></div>
+
+      <!-- Aankomende starts -->
+      ${secHead('Aankomende starts','Bevestigd')}
+      <div style="background:#092B13;padding:20px 24px">${startRows||'<div style="color:rgba(232,240,233,.4);font-size:13px">Geen aankomende starts gevonden</div>'}</div>
+
+      <div style="font-size:11px;color:#8a8070;margin-top:24px;padding-top:16px;border-top:1px solid #D8D0C4;font-style:italic">Live data uit Jordan · Ververst om ${refreshedAt} · Harvest Talent</div>
+    `;
+  } catch(err) {
+    el.innerHTML = `<div style="color:#782410;padding:20px;border:1px solid #fde8d2;font-size:13px"><strong>Fout bij ophalen data:</strong> ${esc(String(err))}<br><br><button class="bsm" onclick="renderRapport(true)"><i class="ti ti-refresh"></i> Opnieuw proberen</button></div>`;
+  } finally {
+    _rapportLoading = false;
+  }
+}
+
 function showTab(t){
-  ['lib','portefeuille','push','offer','vac','dash','archive','companies','match','meetings','funnel','settings'].forEach(x=>{
+  ['lib','portefeuille','push','offer','vac','dash','archive','companies','match','meetings','funnel','settings','rapport'].forEach(x=>{
     const v=document.getElementById('view-'+x); if(v) v.style.display=x===t?'':'none';
     const tb=document.getElementById('tab-'+x); if(tb) tb.classList.toggle('active',x===t);
   });
@@ -4634,6 +4968,7 @@ function showTab(t){
   if(t==='match')initMatchTab();
   if(t==='meetings') renderMeetings();
   if(t==='funnel') renderFunnelTab();
+  if(t==='rapport') renderRapport();
   if(t==='vac'){ document.querySelector('.content').style.padding = '0'; } else { document.querySelector('.content').style.padding = '16px'; }
 }
 
