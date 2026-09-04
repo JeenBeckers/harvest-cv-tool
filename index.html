@@ -4463,11 +4463,39 @@ function openModal(id){
       </div></div>`).join('') : '<div style="font-size:12px;color:#ccc;padding:6px 0">Nog niet aangeboden</div>'}
     </div>`;
 
+  // Kanban-fases voor deze kandidaat
+  const STAGE_LABELS={'voorgesteld':{label:'Voorgesteld',bg:'var(--pushl)',color:'var(--push)',icon:'↑'},'gesprek':{label:'1e gesprek',bg:'var(--hgl)',color:'var(--hg)',icon:'💬'},'gesprek2':{label:'2e gesprek',bg:'var(--hgl)',color:'var(--hg)',icon:'💬💬'}};
+  const kanbanPositions=[];
+  for(const v of vacatures){
+    const kd=v.kanbanData||{};
+    for(const [stageKey,cfg] of Object.entries(STAGE_LABELS)){
+      if((kd[stageKey]||[]).includes(id)) kanbanPositions.push({v,stageKey,cfg});
+    }
+  }
+
   // Vacatures
   const vacSection = linkedVacs.length ? `
     <div class="rec-section">
       <div class="rec-stitle"><i class="ti ti-briefcase" style="font-size:11px"></i> Gekoppelde vacatures</div>
-      <div style="display:flex;gap:5px;flex-wrap:wrap">${linkedVacs.map(v=>`<span class="tag tag-vac" style="cursor:pointer" onclick="openVacModal('${v.id}')">${esc(v.company)} — ${esc(v.role)}</span>`).join('')}</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">${linkedVacs.map(v=>{
+        const kd=v.kanbanData||{};
+        const stageBadge=Object.entries(STAGE_LABELS).reduce((found,[sk,cfg])=>{
+          if(found) return found;
+          return (kd[sk]||[]).includes(id)?`<span style="font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:${cfg.bg};color:${cfg.color}">${cfg.icon} ${cfg.label}</span>`:null;
+        },null)||'';
+        return`<span class="tag tag-vac" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" onclick="openVacModal('${v.id}')">${esc(v.company)} — ${esc(v.role)}${stageBadge?` ${stageBadge}`:''}</span>`;
+      }).join('')}</div>
+    </div>` : '';
+
+  // In-proces sectie (voorgesteld/gesprek in vacatures, ook als niet gelinkt)
+  const inProcesSection = kanbanPositions.length ? `
+    <div class="rec-section" style="background:var(--hgl);border-radius:var(--rad);padding:8px 12px;margin-bottom:0">
+      <div class="rec-stitle" style="margin-bottom:5px"><i class="ti ti-activity" style="font-size:11px"></i> In proces</div>
+      <div style="display:flex;flex-direction:column;gap:4px">${kanbanPositions.map(({v,cfg})=>`
+        <div style="display:flex;align-items:center;gap:6px;cursor:pointer" onclick="openVacModal('${v.id}')">
+          <span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:3px;background:${cfg.bg};color:${cfg.color};border:1px solid ${cfg.color}22;white-space:nowrap">${cfg.icon} ${cfg.label}</span>
+          <span style="font-size:11px;font-weight:500;color:var(--hg)">${esc(v.company||'?')} — ${esc(v.role||'?')}</span>
+        </div>`).join('')}</div>
     </div>` : '';
 
   document.getElementById('m-body').innerHTML=`
@@ -4526,6 +4554,7 @@ function openModal(id){
     <div class="rf" style="margin-bottom:4px"><label class="rl">Bijzonderheden (CSV import info)</label>
       <textarea class="ri" id="ed-notes" rows="2" oninput="markChanged(this)" style="font-size:11px;color:var(--muted)">${esc(cv.notes||'')}</textarea></div>
 
+    ${inProcesSection}
     ${cvSection}
     ${vacSection}
     ${notesSection}
