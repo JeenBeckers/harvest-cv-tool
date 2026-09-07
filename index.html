@@ -4725,8 +4725,8 @@ async function renderRapport(force=false){
   el.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
     <div>
       <div style="font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8070;margin-bottom:4px">Harvest Talent</div>
-      <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#092B13">Teamrapport Juli &amp; Augustus 2026</div>
-      <div style="font-size:11px;color:#8a8070;margin-top:4px">Peildatum 24 augustus 2026 · Jeen · Marlie · Julieta</div>
+      <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#092B13">Teamrapport Jul · Aug · Sep 2026</div>
+      <div style="font-size:11px;color:#8a8070;margin-top:4px">Peildatum 7 sep 2026 · Jeen · Marlie · Julieta</div>
     </div>
     <button class="bsm" onclick="renderRapport(true)" id="rapport-refresh-btn"><i class="ti ti-refresh"></i> Verversen</button>
   </div>
@@ -4749,9 +4749,9 @@ async function renderRapport(force=false){
     // Vacature stats per month
     // geopend = nieuwe vacs die maand (won+lost+open created that month)
     // nog open = alle open vacs created <= that month (cumulative)
-    const REPORT_MONTHS = ['2026-07','2026-08'];
-    const vacStats = {'2026-07':{geopend:0,won:0,lost:0,open:0},'2026-08':{geopend:0,won:0,lost:0,open:0}};
-    const vacLists = {'2026-07':{geopend:[],won:[],lost:[],open:[]},'2026-08':{geopend:[],won:[],lost:[],open:[]}};
+    const REPORT_MONTHS = ['2026-07','2026-08','2026-09'];
+    const vacStats = {'2026-07':{geopend:0,won:0,lost:0,open:0},'2026-08':{geopend:0,won:0,lost:0,open:0},'2026-09':{geopend:0,won:0,lost:0,open:0}};
+    const vacLists = {'2026-07':{geopend:[],won:[],lost:[],open:[]},'2026-08':{geopend:[],won:[],lost:[],open:[]},'2026-09':{geopend:[],won:[],lost:[],open:[]}};
 
     for(const v of vacs){
       if(v.type==='campagne') continue;
@@ -4789,9 +4789,9 @@ async function renderRapport(force=false){
     }
 
     // Aangenomen per month with startdates
-    const aangenomenByMonth = {'2026-07':[],'2026-08':[]};
+    const aangenomenByMonth = {'2026-07':[],'2026-08':[],'2026-09':[]};
     const upcomingStarts = []; // startDate > today
-    const today = '2026-08-24';
+    const today = '2026-09-07';
 
     for(const v of vacs){
       const kd = v.kanban_data||{};
@@ -4831,10 +4831,11 @@ async function renderRapport(force=false){
     const pill=(s,cls)=>`<span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;letter-spacing:.03em;white-space:nowrap;${cls}">${s}</span>`;
     const oc=(o)=>`<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:7px;height:7px;border-radius:50%;background:${ownerColor[o]||'#888'};display:inline-block"></span>${o}</span>`;
 
-    // Jul total
+    // Month totals
     const julTotal=Object.values(vacStats['2026-07']).reduce((a,b)=>a+b,0);
     const augTotal=Object.values(vacStats['2026-08']).reduce((a,b)=>a+b,0);
-    const allAangenomen=[...aangenomenByMonth['2026-07'],...aangenomenByMonth['2026-08']];
+    const sepTotal=Object.values(vacStats['2026-09']).reduce((a,b)=>a+b,0);
+    const allAangenomen=[...aangenomenByMonth['2026-07'],...aangenomenByMonth['2026-08'],...aangenomenByMonth['2026-09']];
     const totalAangenomen=allAangenomen.length;
     const totalGestart=allAangenomen.filter(e=>e.startDate&&e.startDate<=today).length;
     const totalComingStarts=dedupedStarts.length;
@@ -4846,8 +4847,9 @@ async function renderRapport(force=false){
       return entries.map(e=>{
         const startPill=e.startDate
           ? (e.startDate<=today ? pill(e.startDate.slice(5).replace('-','/'),`background:#DDEADE;color:#0f5222`)
-          : e.startDate<='2026-09-30' ? pill('1 sep',`background:#fde8d2;color:#6b2a0a`)
-          : pill('1 okt',`background:#f0e8f5;color:#4a1a6b`))
+          : e.startDate<='2026-09-30' ? pill(e.startDate.slice(5).replace('-','/'),`background:#fde8d2;color:#6b2a0a`)
+          : e.startDate<='2026-10-31' ? pill('1 okt',`background:#f0e8f5;color:#4a1a6b`)
+          : pill(e.startDate.slice(5).replace('-','/'),`background:#f5f0e8;color:#5c4a2a`))
           : `<span style="color:#ccc">—</span>`;
         return `<tr>
           <td style="padding:9px 10px 9px 0;border-bottom:1px solid #EDE7DC;font-size:13px;font-weight:500">${esc(e.name)}<div style="font-size:11px;color:#7a7060">${esc(e.role||'')}</div></td>
@@ -4925,7 +4927,7 @@ async function renderRapport(force=false){
 
     const startRows=dedupedStarts.map(e=>{
       const mo=e.startDate.slice(0,7);
-      const dateLabel=mo==='2026-09'?'1 sep':mo==='2026-10'?'1 okt':e.startDate.slice(5).replace('-','/');
+      const dateLabel=mo==='2026-09'?e.startDate.slice(5).replace('-','/'):mo==='2026-10'?'1 okt':e.startDate.slice(5).replace('-','/');
       return `<div style="display:grid;grid-template-columns:72px 1fr auto;gap:16px;align-items:baseline;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.08)">
         <span style="font-family:'Playfair Display',serif;font-size:13px;font-weight:700;color:#DDEADE">${dateLabel}</span>
         <span style="font-size:13px;color:#FFFBF5;font-weight:500">${esc(e.name)}</span>
@@ -4939,33 +4941,66 @@ async function renderRapport(force=false){
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
         <div>
           <div style="font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8070;margin-bottom:4px">Harvest Talent</div>
-          <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#092B13">Teamrapport Juli &amp; Augustus 2026</div>
-          <div style="font-size:11px;color:#8a8070;margin-top:4px">Peildatum 24 aug 2026 · Jeen · Marlie · Julieta</div>
+          <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#092B13">Teamrapport Jul · Aug · Sep 2026</div>
+          <div style="font-size:11px;color:#8a8070;margin-top:4px">Peildatum 7 sep 2026 · Jeen · Marlie · Julieta</div>
         </div>
         <button class="bsm" onclick="renderRapport(true)" title="Data opnieuw ophalen"><i class="ti ti-refresh"></i> Verversen <span style="font-size:10px;color:#aaa;margin-left:4px">${refreshedAt}</span></button>
       </div>
 
       <!-- Summary -->
       <div style="display:flex;border-bottom:1px solid #C8CFC4;margin-bottom:28px">
-        ${cell('Aangenomen',totalAangenomen,`jul ${aangenomenByMonth['2026-07'].length} · aug ${aangenomenByMonth['2026-08'].length}`)}
+        ${cell('Aangenomen',totalAangenomen,`jul ${aangenomenByMonth['2026-07'].length} · aug ${aangenomenByMonth['2026-08'].length} · sep ${aangenomenByMonth['2026-09'].length}`)}
         ${cell('Al gestart',totalGestart,'op de werkvloer')}
         ${cell('Aankomende starts',totalComingStarts,'bevestigd','#782410')}
         <div style="padding:20px 0 16px;flex:1;text-align:center">
           <div style="font-size:9px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#8a8070;margin-bottom:5px">Nieuwe vacatures</div>
-          <div style="font-family:'Playfair Display',serif;font-size:32px;font-weight:700;line-height:1;color:#092B13">${julTotal+augTotal}</div>
-          <div style="font-size:11px;color:#8a8070;margin-top:3px">jul ${julTotal} · aug ${augTotal}</div>
+          <div style="font-family:'Playfair Display',serif;font-size:32px;font-weight:700;line-height:1;color:#092B13">${julTotal+augTotal+sepTotal}</div>
+          <div style="font-size:11px;color:#8a8070;margin-top:3px">jul ${julTotal} · aug ${augTotal} · sep ${sepTotal}</div>
         </div>
       </div>
 
       <!-- Vacature stats -->
       ${secHead('Vacature-ontwikkeling','Per maand')}
-      <div style="display:flex;gap:12px;margin-bottom:4px">
+      <div style="display:flex;gap:12px;margin-bottom:4px;flex-wrap:wrap">
         ${vacStatCard('2026-07','Juli 2026')}
         ${vacStatCard('2026-08','Augustus 2026')}
+        ${vacStatCard('2026-09','September 2026')}
       </div>
 
+      <!-- Aanbiedingen pipeline -->
+      ${(()=>{
+        // Per open vacature: toon kandidaten in voorgesteld/gesprek/gesprek2
+        const pipelineRows=[];
+        for(const v of vacs){
+          if(v.type==='campagne') continue;
+          const kd=v.kanban_data||{};
+          const voorgesteld=(kd.voorgesteld||[]).map(cid=>({cid,stage:'voorgesteld',label:'Voorgesteld',bg:'#fef3e8',color:'#782410',icon:'↑'}));
+          const gesprek=(kd.gesprek||[]).map(cid=>({cid,stage:'gesprek',label:'1e gesprek',bg:'#e8f0e9',color:'#0f5222',icon:'💬'}));
+          const gesprek2=(kd.gesprek2||[]).map(cid=>({cid,stage:'gesprek2',label:'2e gesprek',bg:'#e8f0e9',color:'#0f5222',icon:'💬💬'}));
+          const all=[...voorgesteld,...gesprek,...gesprek2];
+          if(!all.length) continue;
+          pipelineRows.push(`
+            <div style="border:1px solid #C8CFC4;margin-bottom:8px">
+              <div style="background:#f5f0e8;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #C8CFC4">
+                <span style="font-size:12px;font-weight:600;color:#092B13">${esc(v.company)} <span style="color:#8a8070;font-weight:400">— ${esc(v.role)}</span></span>
+                <span style="font-size:10px;color:#8a8070">${esc(v.owner||'')}</span>
+              </div>
+              <div style="padding:8px 12px;display:flex;flex-wrap:wrap;gap:6px">
+                ${all.map(({cid,label,bg,color,icon})=>`
+                  <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 8px;border-radius:3px;background:${bg};color:${color}">
+                    ${icon} <strong>${esc(cname(cid))}</strong>
+                    <span style="font-size:9px;opacity:.7">· ${label}</span>
+                  </span>`).join('')}
+              </div>
+            </div>`);
+        }
+        if(!pipelineRows.length) return '';
+        return secHead('Aanbiedingen pipeline','Actief in behandeling')
+          + `<div style="margin-bottom:4px">${pipelineRows.join('')}</div>`;
+      })()}
+
       <!-- Scorecards -->
-      ${secHead('Teamscores','Jul + Aug')}
+      ${secHead('Teamscores','Jul · Aug · Sep')}
       <div style="display:flex;gap:12px;margin-bottom:4px">
         ${owners.map(o=>scCard(o)).join('')}
       </div>
@@ -4977,6 +5012,10 @@ async function renderRapport(force=false){
       <!-- Augustus -->
       ${secHead('Augustus',aangenomenByMonth['2026-08'].length+' aangenomen')}
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">${tableHead}<tbody>${monthRows('2026-08')}</tbody></table></div>
+
+      <!-- September -->
+      ${secHead('September',aangenomenByMonth['2026-09'].length+' aangenomen')}
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">${tableHead}<tbody>${monthRows('2026-09')}</tbody></table></div>
 
       <!-- Aankomende starts -->
       ${secHead('Aankomende starts','Bevestigd')}
