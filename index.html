@@ -4852,9 +4852,9 @@ function _renderKPIContent(el, allCands, allVacs, allOffers) {
         aangenomenInPeriod.push({cid, date:dt, company:v.company, role:v.role, owner:v.owner, vId:v.id});
       }
     });
-    // Activiteit ranking — alle kandidaten in elke fase bijhouden
-    const stages = ['beoogd','voorgesteld','gesprek','gesprek2','aangenomen','afgewezen','onhold','teruggetrokken'];
-    stages.forEach(s => {
+    // Activiteit ranking — alleen actieve fases (niet aangenomen/afgewezen/teruggetrokken)
+    const activeStages = ['beoogd','voorgesteld','gesprek','gesprek2','onhold'];
+    activeStages.forEach(s => {
       (kd[s]||[]).forEach(cid => {
         if(!allCandInFunnel[cid]) allCandInFunnel[cid] = {stages: new Set(), vacs: new Set()};
         allCandInFunnel[cid].stages.add(s);
