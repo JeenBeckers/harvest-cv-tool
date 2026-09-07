@@ -4786,6 +4786,15 @@ function _renderKPIContent(el, allCands, allVacs, allOffers) {
   const candMap = {};
   allCands.forEach(c => { candMap[c.id] = c; });
 
+  // Tooltip helper — reuses the rapportTT system
+  let _kpiTipCtr = 0;
+  const tip = (items, title) => {
+    if(!items || !items.length) return '';
+    const id = 'kpi-tt-' + (++_kpiTipCtr);
+    window._rttMap[id] = {title, items};
+    return `data-rtt="${id}" onmouseenter="rapportTT(this,true)" onmouseleave="rapportTT(this,false)" style="cursor:pointer"`;
+  };
+
   // ── 1. Nieuwe kandidaten per periode
   const nieuwTotal = allCands.filter(c => _kpiInRange(c.created_at, from, to)).length;
   const nieuwEW = allCands.filter(c => _kpiInRange(c.created_at, from, to) && c.bureau==='Eigen Werving').length;
@@ -4917,6 +4926,29 @@ function _renderKPIContent(el, allCands, allVacs, allOffers) {
   const funnelEWPct = funnelTotal ? Math.round(funnelEW/funnelTotal*100) : 0;
   const funnelBureauPct = funnelTotal ? Math.round(funnelBureau/funnelTotal*100) : 0;
 
+  // ── Tooltip data arrays
+  const nieuwItems = allCands.filter(c=>_kpiInRange(c.created_at,from,to))
+    .map(c=>`${c.name} · ${(c.created_at||'').slice(0,10)}${c.bureau?' · '+c.bureau:''}`);
+  const nieuwEWItems = allCands.filter(c=>_kpiInRange(c.created_at,from,to)&&c.bureau==='Eigen Werving')
+    .map(c=>`${c.name} · ${(c.created_at||'').slice(0,10)}`);
+  const nieuwBureauItems = allCands.filter(c=>_kpiInRange(c.created_at,from,to)&&c.bureau!=='Eigen Werving')
+    .map(c=>`${c.name} · ${(c.created_at||'').slice(0,10)}${c.bureau?' · '+c.bureau:''}`);
+  const introItems = offersInPeriod.map(o=>`${o.candidate_name||'?'} → ${o.company||'?'} · ${(o.date||'').slice(0,10)}`);
+  const introKandItems = [...new Set(offersInPeriod.map(o=>o.candidate_name||'?'))];
+  const introKlantItems = Object.entries(introPerKlant).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`${k} (${n}×)`);
+  const aangenomenItems = aangenomenInPeriod.map(e=>{
+    const c=candMap[e.cid];
+    return `${c?c.name:e.cid} → ${e.company||'?'} · ${(e.date||'').slice(0,10)}${c&&c.bureau==='Eigen Werving'?' · EW':''}`;
+  });
+  const afgewezenItems = afgewezenInPeriod.map(c=>`${c.name} · ${(c.archived_date||'').slice(0,10)}`);
+  const ewHireItems = aangenomenInPeriod.filter(e=>candMap[e.cid]&&candMap[e.cid].bureau==='Eigen Werving')
+    .map(e=>`${candMap[e.cid].name} → ${e.company||'?'} · ${(e.date||'').slice(0,10)}`);
+  const bureauHireItems = aangenomenInPeriod.filter(e=>!candMap[e.cid]||candMap[e.cid].bureau!=='Eigen Werving')
+    .map(e=>{const c=candMap[e.cid];return `${c?c.name:e.cid} → ${e.company||'?'} · ${(e.date||'').slice(0,10)}${c&&c.bureau?' · '+c.bureau:''}`;});
+  const funnelEWItems = [...funnelEWIds].map(cid=>{const c=candMap[cid];return c?c.name:cid;});
+  const funnelBureauItems = [...funnelCandIds].filter(cid=>!funnelEWIds.has(cid)).map(cid=>{const c=candMap[cid];return c?(c.bureau?c.name+' · '+c.bureau:c.name):cid;});
+  const tthAvgItems = tthEntries.map(e=>`${e.name} → ${e.company} · ${e.days} dgn`);
+
   // ── Render
   const periods = [
     {k:'week',l:'7 dagen'},{k:'maand',l:'Deze maand'},{k:'kwartaal',l:'Dit kwartaal'},
@@ -4927,11 +4959,14 @@ function _renderKPIContent(el, allCands, allVacs, allOffers) {
     <button class="bsm" style="margin-left:auto" onclick="renderKPI(true)"><i class="ti ti-refresh"></i> Verversen</button>
   </div>`;
 
-  const sCard = (label, val, sub='', col='var(--hg)') => `<div style="flex:1;min-width:140px;padding:18px 16px 14px;background:#fff;border:1px solid var(--timberwolf);border-radius:8px;text-align:center">
-    <div style="font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8070;margin-bottom:6px">${label}</div>
-    <div style="font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:${col};line-height:1">${val}</div>
-    ${sub?`<div style="font-size:11px;color:var(--muted);margin-top:4px">${sub}</div>`:''}
-  </div>`;
+  const sCard = (label, val, sub='', col='var(--hg)', tipItems=[], tipTitle='') => {
+    const tipAttr = tipItems.length ? tip(tipItems, tipTitle||label) : '';
+    return `<div style="flex:1;min-width:140px;padding:18px 16px 14px;background:#fff;border:1px solid var(--timberwolf);border-radius:8px;text-align:center">
+      <div style="font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8070;margin-bottom:6px">${label}</div>
+      <div ${tipAttr} style="font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:${col};line-height:1;display:inline-block;border-radius:4px;padding:0 4px;transition:background .12s">${val}${tipItems.length?'<span style="font-size:11px;opacity:.4;margin-left:2px">▾</span>':''}</div>
+      ${sub?`<div style="font-size:11px;color:var(--muted);margin-top:4px">${sub}</div>`:''}
+    </div>`;
+  };
 
   const sec = (title, icon, body) => `<div style="margin-bottom:28px">
     <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8a8070;margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="ti ${icon}"></i> ${title}</div>
@@ -4947,24 +4982,24 @@ function _renderKPIContent(el, allCands, allVacs, allOffers) {
 
   // Section 1 — Instroom
   html += sec('Instroom kandidaten', 'ti-user-plus', `<div style="display:flex;gap:10px;flex-wrap:wrap">
-    ${sCard('Nieuw toegevoegd', nieuwTotal)}
-    ${sCard('Eigen werving', nieuwEW, nieuwTotal?Math.round(nieuwEW/nieuwTotal*100)+'%':'')}
-    ${sCard('Via bureau', nieuwBureau, nieuwTotal?Math.round(nieuwBureau/nieuwTotal*100)+'%':'')}
+    ${sCard('Nieuw toegevoegd', nieuwTotal, '', 'var(--hg)', nieuwItems, 'Nieuw toegevoegd')}
+    ${sCard('Eigen werving', nieuwEW, nieuwTotal?Math.round(nieuwEW/nieuwTotal*100)+'%':'', 'var(--hg)', nieuwEWItems, 'Eigen werving')}
+    ${sCard('Via bureau', nieuwBureau, nieuwTotal?Math.round(nieuwBureau/nieuwTotal*100)+'%':'', 'var(--hg)', nieuwBureauItems, 'Via bureau')}
   </div>`);
 
   // Section 2 — Introductions
   html += sec('Introductions (voorgesteld)', 'ti-send', `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-    ${sCard('Totaal aanbiedingen', totalIntros)}
-    ${sCard('Unieke kandidaten', uniqueKandIntro)}
-    ${sCard('Unieke klanten', uniqueKlantIntro)}
+    ${sCard('Totaal aanbiedingen', totalIntros, '', 'var(--hg)', introItems, 'Aanbiedingen')}
+    ${sCard('Unieke kandidaten', uniqueKandIntro, '', 'var(--hg)', introKandItems, 'Kandidaten voorgesteld')}
+    ${sCard('Unieke klanten', uniqueKlantIntro, '', 'var(--hg)', introKlantItems, 'Klanten')}
   </div>
   ${topKlanten.length ? `<div style="font-size:11px;font-weight:600;color:#8a8070;margin-bottom:6px">TOP KLANTEN (aanbiedingen)</div>
   <div style="display:flex;flex-wrap:wrap;gap:6px">${topKlanten.map(([k,n])=>`<span style="background:var(--hgl);color:var(--hg);padding:3px 10px;border-radius:4px;font-size:12px;font-weight:500">${esc(k)} <strong>${n}</strong></span>`).join('')}</div>` : ''}`);
 
   // Section 3 & 4 — Aangenomen & Afgewezen
   html += sec('Resultaat', 'ti-trophy', `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-    ${sCard('Aangenomen', aangenomenInPeriod.length, 'in gekozen periode', '#1a5c2a')}
-    ${sCard('Uitgestroomd', afgewezenInPeriod.length, 'gearchiveerd (niet aangenomen)', '#782410')}
+    ${sCard('Aangenomen', aangenomenInPeriod.length, 'in gekozen periode', '#1a5c2a', aangenomenItems, 'Aangenomen')}
+    ${sCard('Uitgestroomd', afgewezenInPeriod.length, 'gearchiveerd (niet aangenomen)', '#782410', afgewezenItems, 'Uitgestroomd')}
   </div>
   ${aangenomenInPeriod.length ? `<div style="font-size:11px;color:var(--muted);margin-bottom:6px"><strong>Aangenomen:</strong></div>
   <div style="display:flex;flex-direction:column;gap:4px">${aangenomenInPeriod.slice(0,12).map(e=>{
@@ -4996,7 +5031,7 @@ function _renderKPIContent(el, allCands, allVacs, allOffers) {
   // Section 6 — Time-to-hire
   const avgLabel = avgTTH !== null ? avgTTH+' dagen' : '—';
   html += sec('Time-to-hire (aanmaken → aangenomen)', 'ti-clock', `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
-    ${sCard('Gemiddeld', avgLabel, tthEntries.length+' plaatsingen totaal')}
+    ${sCard('Gemiddeld', avgLabel, tthEntries.length+' plaatsingen totaal', 'var(--hg)', tthAvgItems, 'Time-to-hire per kandidaat')}
   </div>
   <div style="display:flex;gap:8px;margin-bottom:10px">
     <button class="bsm${_kpiTTHSort==='longest'?' active-period':''}" style="${_kpiTTHSort==='longest'?'background:var(--hg);color:#fff;border-color:var(--hg)':''}" onclick="window._kpiSetTTHSort('longest')">Langst</button>
@@ -5041,8 +5076,8 @@ function _renderKPIContent(el, allCands, allVacs, allOffers) {
     <div style="flex:1;min-width:220px">
       <div style="font-size:11px;font-weight:600;color:#8a8070;margin-bottom:8px">HIRES IN PERIODE</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        ${sCard('Eigen werving', ewHires, totalHires?ewHirePct+'%':'')}
-        ${sCard('Via bureau', bureauHires, totalHires?Math.round(bureauHires/totalHires*100)+'%':'')}
+        ${sCard('Eigen werving', ewHires, totalHires?ewHirePct+'%':'', 'var(--hg)', ewHireItems, 'EW hires')}
+        ${sCard('Via bureau', bureauHires, totalHires?Math.round(bureauHires/totalHires*100)+'%':'', 'var(--hg)', bureauHireItems, 'Bureau hires')}
       </div>
       ${totalHires ? `<div style="margin-top:10px;height:10px;background:#e8ede9;border-radius:5px;overflow:hidden"><div style="height:100%;width:${ewHirePct}%;background:var(--hg);border-radius:5px"></div></div>
       <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:3px"><span>EW ${ewHirePct}%</span><span>Bureau ${100-ewHirePct}%</span></div>` : ''}
@@ -5050,8 +5085,8 @@ function _renderKPIContent(el, allCands, allVacs, allOffers) {
     <div style="flex:1;min-width:220px">
       <div style="font-size:11px;font-weight:600;color:#8a8070;margin-bottom:8px">HUIDIGE FUNNEL (open vacs)</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        ${sCard('Eigen werving', funnelEW, funnelEWPct+'%')}
-        ${sCard('Via bureau', funnelBureau, funnelBureauPct+'%')}
+        ${sCard('Eigen werving', funnelEW, funnelEWPct+'%', 'var(--hg)', funnelEWItems, 'EW in funnel')}
+        ${sCard('Via bureau', funnelBureau, funnelBureauPct+'%', 'var(--hg)', funnelBureauItems, 'Bureau in funnel')}
       </div>
       ${funnelTotal ? `<div style="margin-top:10px;height:10px;background:#e8ede9;border-radius:5px;overflow:hidden"><div style="height:100%;width:${funnelEWPct}%;background:var(--hg);border-radius:5px"></div></div>
       <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:3px"><span>EW ${funnelEWPct}%</span><span>Bureau ${funnelBureauPct}%</span></div>` : ''}
