@@ -556,7 +556,7 @@ b,strong{font-weight:500}
     </div>
   </div>
   <div class="navtabs" id="navtabs-container">
-    <div class="navtab" onclick="showTab('dash')" id="tab-dash"><i class="ti ti-chart-bar"></i> Dashboard <span class="nbadge" id="nb-dash">0</span></div>
+    <div class="navtab" onclick="showTab('dash')" id="tab-dash"><i class="ti ti-chart-bar"></i> Overzicht <span class="nbadge" id="nb-dash">0</span></div>
     <div class="navtab active" onclick="showTab('lib')" id="tab-lib"><i class="ti ti-users"></i> Kandidaten <span class="nbadge" id="nb-lib">0</span></div>
     <div class="navtab" onclick="showTab('portefeuille')" id="tab-portefeuille"><i class="ti ti-folder-open"></i> In Portefeuille <span class="nbadge" id="nb-portefeuille">0</span></div>
     <div class="navtab" onclick="showTab('vac')" id="tab-vac"><i class="ti ti-briefcase"></i> Vacatures <span class="nbadge" id="nb-vac">0</span></div>
@@ -568,8 +568,8 @@ b,strong{font-weight:500}
     <div class="navtab" onclick="showTab('archive')" id="tab-archive"><i class="ti ti-archive"></i> Archief <span class="nbadge" id="nb-archive">0</span></div>
     <div class="navtab" onclick="showTab('match')" id="tab-match"><i class="ti ti-sparkles"></i> AI Match</div>
     <div class="navtab" onclick="showTab('settings')" id="tab-settings"><i class="ti ti-settings"></i> Instellingen</div>
+    <div class="navtab" onclick="showTab('kpi')" id="tab-kpi" style="display:none"><i class="ti ti-chart-dots"></i> Dashboard</div>
     <div class="navtab" onclick="showTab('rapport')" id="tab-rapport" style="display:none"><i class="ti ti-chart-area"></i> Teamrapport</div>
-    <div class="navtab" onclick="showTab('kpi')" id="tab-kpi" style="display:none"><i class="ti ti-chart-dots"></i> KPI</div>
   </div>
   <div class="content">
 
@@ -3342,7 +3342,7 @@ let sortCol = null, sortDir = 'asc';
 
 // ── TAB VISIBILITY
 const TAB_CONFIG = [
-  {key:'dash',        label:'Dashboard',      icon:'ti-chart-bar',    required:false},
+  {key:'dash',        label:'Overzicht',      icon:'ti-chart-bar',    required:false},
   {key:'lib',         label:'Kandidaten',     icon:'ti-users',        required:true},
   {key:'portefeuille',label:'In Portefeuille',icon:'ti-folder-open',  required:false},
   {key:'vac',         label:'Vacatures',      icon:'ti-briefcase',    required:false},
