@@ -569,6 +569,7 @@ b,strong{font-weight:500}
     <div class="navtab" onclick="showTab('match')" id="tab-match"><i class="ti ti-sparkles"></i> AI Match</div>
     <div class="navtab" onclick="showTab('settings')" id="tab-settings"><i class="ti ti-settings"></i> Instellingen</div>
     <div class="navtab" onclick="showTab('rapport')" id="tab-rapport" style="display:none"><i class="ti ti-chart-area"></i> Teamrapport</div>
+    <div class="navtab" onclick="showTab('kpi')" id="tab-kpi" style="display:none"><i class="ti ti-chart-dots"></i> KPI</div>
   </div>
   <div class="content">
 
@@ -988,6 +989,11 @@ b,strong{font-weight:500}
     <!-- TEAMRAPPORT (alleen Jeen) -->
     <div id="view-rapport" style="display:none;padding:0">
       <div id="rapport-content" style="max-width:760px;margin:0 auto;padding:16px 16px 48px"></div>
+    </div>
+
+    <!-- KPI DASHBOARD -->
+    <div id="view-kpi" style="display:none;padding:0">
+      <div id="kpi-content" style="max-width:980px;margin:0 auto;padding:16px 16px 48px"></div>
     </div>
 
     <!-- INSTELLINGEN -->
@@ -3356,9 +3362,11 @@ function updateTabVisibility(){
     const el = document.getElementById('tab-'+t.key);
     if(el) el.style.display = visibleTabs.includes(t.key) ? '' : 'none';
   });
-  // Rapport tab: only for admins, managed separately from TAB_CONFIG
+  // Rapport & KPI tabs: only for admins, managed separately from TAB_CONFIG
   const rapportTab = document.getElementById('tab-rapport');
   if(rapportTab) rapportTab.style.display = (currentUserObj?.role === 'Admin') ? '' : 'none';
+  const kpiTab = document.getElementById('tab-kpi');
+  if(kpiTab) kpiTab.style.display = (currentUserObj?.role === 'Admin') ? '' : 'none';
 }
 
 async function saveVisibleTabs(){
@@ -4716,6 +4724,352 @@ function rapportTT(el, show){
   });
 }
 
+// ── KPI DASHBOARD ──────────────────────────────────────────────
+let _kpiPeriod = 'maand';
+let _kpiCandSort = 'count'; // 'count' | 'alpha'
+let _kpiTTHSort = 'longest'; // 'longest' | 'shortest' | 'alpha'
+let _kpiRendered = false;
+
+function _kpiDateRange(period) {
+  const now = new Date();
+  const today = now.toISOString().slice(0,10);
+  let from;
+  if(period==='week'){
+    const d = new Date(now); d.setDate(d.getDate()-6); from=d.toISOString().slice(0,10);
+  } else if(period==='maand'){
+    from = today.slice(0,7)+'-01';
+  } else if(period==='kwartaal'){
+    const m = now.getMonth(); // 0-indexed
+    const qStart = m<3?0:m<6?3:m<9?6:9;
+    from = now.getFullYear()+'-'+(String(qStart+1).padStart(2,'0'))+'-01';
+  } else if(period==='ytd'){
+    from = now.getFullYear()+'-01-01';
+  } else if(period==='jaar'){
+    from = now.getFullYear()+'-01-01';
+  } else { // 'alles'
+    from = '2020-01-01';
+  }
+  return {from, to: today};
+}
+
+function _kpiInRange(dateStr, from, to) {
+  if(!dateStr) return false;
+  const d = dateStr.slice(0,10);
+  return d >= from && d <= to;
+}
+
+async function renderKPI(force=false) {
+  const el = document.getElementById('kpi-content');
+  if(!el) return;
+  if(_kpiRendered && !force) return;
+  _kpiRendered = false;
+  el.innerHTML = `<div style="text-align:center;padding:60px;color:var(--muted)"><i class="ti ti-loader" style="font-size:28px"></i><br><br>KPI data laden…</div>`;
+  try {
+    const [allCands, allVacs, allOffers] = await Promise.all([
+      sbFetch('candidates?select=id,name,bureau,created_at,archived,archived_date,archived_reason&limit=2000&order=created_at.asc'),
+      sbFetch('vacatures?select=id,company,role,owner,type,status,kanban_data,created_date&limit=500'),
+      sbFetch('offer_log?select=id,date,candidate_id,candidate_name,company,user&limit=2000&order=date.asc'),
+    ]);
+    _kpiRendered = true;
+    _renderKPIContent(el, allCands, allVacs, allOffers);
+  } catch(err) {
+    el.innerHTML = `<div style="color:#782410;padding:20px;border:1px solid #fde8d2;border-radius:6px;font-size:13px"><strong>Fout bij laden KPI:</strong> ${esc(String(err))}<br><br><button class="bsm" onclick="renderKPI(true)"><i class="ti ti-refresh"></i> Opnieuw</button></div>`;
+  }
+}
+
+function _renderKPIContent(el, allCands, allVacs, allOffers) {
+  const {from, to} = _kpiDateRange(_kpiPeriod);
+
+  // ── Helpers
+  const candMap = {};
+  allCands.forEach(c => { candMap[c.id] = c; });
+
+  // ── 1. Nieuwe kandidaten per periode
+  const nieuwTotal = allCands.filter(c => _kpiInRange(c.created_at, from, to)).length;
+  const nieuwEW = allCands.filter(c => _kpiInRange(c.created_at, from, to) && c.bureau==='Eigen Werving').length;
+  const nieuwBureau = nieuwTotal - nieuwEW;
+
+  // ── 2. Introductions (offer_log) per periode — kandidaat- en klant-niveau
+  const offersInPeriod = allOffers.filter(o => _kpiInRange(o.date, from, to));
+  const introPerKandidaat = {};
+  const introPerKlant = {};
+  offersInPeriod.forEach(o => {
+    introPerKandidaat[o.candidate_id || o.candidate_name] = (introPerKandidaat[o.candidate_id || o.candidate_name] || 0) + 1;
+    if(o.company) introPerKlant[o.company] = (introPerKlant[o.company] || 0) + 1;
+  });
+  const totalIntros = offersInPeriod.length;
+  const uniqueKandIntro = Object.keys(introPerKandidaat).length;
+  const uniqueKlantIntro = Object.keys(introPerKlant).length;
+
+  // Top introductions per klant
+  const topKlanten = Object.entries(introPerKlant).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  // ── 3 & 4. Aangenomen + Afgewezen per periode via kanban_data
+  let aangenomenInPeriod = [];
+  let afgewezenInPeriod = [];
+  const allCandInFunnel = {}; // candId -> {stages: Set, vacs: Set}
+
+  allVacs.forEach(v => {
+    if(v.type==='campagne') return;
+    const kd = v.kanban_data || {};
+    // Aangenomen
+    const dates = kd.aangenomenDates || {};
+    Object.entries(dates).forEach(([cid, dt]) => {
+      if(_kpiInRange(dt, from, to)) {
+        aangenomenInPeriod.push({cid, date:dt, company:v.company, role:v.role, owner:v.owner, vId:v.id});
+      }
+    });
+    // Activiteit ranking — alle kandidaten in elke fase bijhouden
+    const stages = ['beoogd','voorgesteld','gesprek','gesprek2','aangenomen','afgewezen','onhold','teruggetrokken'];
+    stages.forEach(s => {
+      (kd[s]||[]).forEach(cid => {
+        if(!allCandInFunnel[cid]) allCandInFunnel[cid] = {stages: new Set(), vacs: new Set()};
+        allCandInFunnel[cid].stages.add(s);
+        allCandInFunnel[cid].vacs.add(v.id);
+      });
+    });
+  });
+
+  // Afgewezen: archived candidates with archived_reason != 'aangenomen' and archived_date in period
+  afgewezenInPeriod = allCands.filter(c => c.archived && c.archived_reason && c.archived_reason !== 'aangenomen' && _kpiInRange(c.archived_date, from, to));
+
+  // ── 5. Kandidaat activiteitsranking
+  let candActivity = Object.entries(allCandInFunnel).map(([cid, data]) => {
+    const c = candMap[cid];
+    return {
+      cid,
+      name: c ? c.name : cid,
+      vacCount: data.vacs.size,
+      stageScore: [...data.stages].reduce((s,st)=>s+(['beoogd','voorgesteld'].includes(st)?1:['gesprek','gesprek2'].includes(st)?2:['aangenomen'].includes(st)?3:0.5),0),
+    };
+  });
+  if(_kpiCandSort === 'count') candActivity.sort((a,b) => b.vacCount - a.vacCount || b.stageScore - a.stageScore);
+  else candActivity.sort((a,b) => a.name.localeCompare(b.name));
+
+  // ── 6. Time-to-hire
+  const tthEntries = [];
+  allVacs.forEach(v => {
+    if(v.type==='campagne') return;
+    const kd = v.kanban_data || {};
+    const dates = kd.aangenomenDates || {};
+    Object.entries(dates).forEach(([cid, hireDate]) => {
+      const c = candMap[cid];
+      if(!c || !c.created_at || !hireDate) return;
+      const created = c.created_at.slice(0,10);
+      const hired = hireDate.slice(0,10);
+      const days = Math.round((new Date(hired) - new Date(created)) / 86400000);
+      if(days >= 0) tthEntries.push({cid, name: c.name, days, created, hired, company: v.company, role: v.role});
+    });
+  });
+  if(_kpiTTHSort === 'longest') tthEntries.sort((a,b) => b.days - a.days);
+  else if(_kpiTTHSort === 'shortest') tthEntries.sort((a,b) => a.days - b.days);
+  else tthEntries.sort((a,b) => a.name.localeCompare(b.name));
+  const avgTTH = tthEntries.length ? Math.round(tthEntries.reduce((s,e)=>s+e.days,0)/tthEntries.length) : null;
+
+  // ── 7. Phase duration (gesprekDates → aangenomenDates)
+  const phaseDurations = []; // {name, vac, v→g days, g→g2 days, g2→hire days}
+  allVacs.forEach(v => {
+    if(v.type==='campagne') return;
+    const kd = v.kanban_data || {};
+    const gd = kd.gesprekDates || {};
+    const ad = kd.aangenomenDates || {};
+    (kd.aangenomen||[]).forEach(cid => {
+      const hireDate = ad[cid];
+      const gesprekDate = gd[cid+':gesprek'] || null;
+      const gesprek2Date = gd[cid+':gesprek2'] || null;
+      const c = candMap[cid];
+      if(!hireDate || !c) return;
+      const entry = {cid, name: c.name, company: v.company, role: v.role};
+      if(gesprekDate && hireDate) entry.gToHire = Math.round((new Date(hireDate)-new Date(gesprekDate))/86400000);
+      if(gesprekDate && gesprek2Date) entry.g1Tog2 = Math.round((new Date(gesprek2Date)-new Date(gesprekDate))/86400000);
+      if(gesprek2Date && hireDate) entry.g2ToHire = Math.round((new Date(hireDate)-new Date(gesprek2Date))/86400000);
+      phaseDurations.push(entry);
+    });
+  });
+
+  // ── 8 & 9. Eigen werving vs bureau
+  // Historical: aangenomen
+  let ewHires = 0, bureauHires = 0;
+  aangenomenInPeriod.forEach(e => {
+    const c = candMap[e.cid];
+    if(c && c.bureau==='Eigen Werving') ewHires++;
+    else bureauHires++;
+  });
+  // Current funnel (all open vacs)
+  const openVacs = allVacs.filter(v => v.status==='open' && v.type!=='campagne');
+  const funnelCandIds = new Set();
+  const funnelEWIds = new Set();
+  openVacs.forEach(v => {
+    const kd = v.kanban_data || {};
+    ['voorgesteld','gesprek','gesprek2'].forEach(s => {
+      (kd[s]||[]).forEach(cid => {
+        funnelCandIds.add(cid);
+        const c = candMap[cid];
+        if(c && c.bureau==='Eigen Werving') funnelEWIds.add(cid);
+      });
+    });
+  });
+  const funnelTotal = funnelCandIds.size;
+  const funnelEW = funnelEWIds.size;
+  const funnelBureau = funnelTotal - funnelEW;
+  const funnelEWPct = funnelTotal ? Math.round(funnelEW/funnelTotal*100) : 0;
+  const funnelBureauPct = funnelTotal ? Math.round(funnelBureau/funnelTotal*100) : 0;
+
+  // ── Render
+  const periods = [
+    {k:'week',l:'7 dagen'},{k:'maand',l:'Deze maand'},{k:'kwartaal',l:'Dit kwartaal'},
+    {k:'ytd',l:'YTD'},{k:'jaar',l:'Dit jaar'},{k:'alles',l:'Alles'},
+  ];
+  const periodBar = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px">
+    ${periods.map(p=>`<button class="bsm${_kpiPeriod===p.k?' active-period':''}" style="${_kpiPeriod===p.k?'background:var(--hg);color:#fff;border-color:var(--hg)':''}" onclick="window._kpiSetPeriod('${p.k}')">${p.l}</button>`).join('')}
+    <button class="bsm" style="margin-left:auto" onclick="renderKPI(true)"><i class="ti ti-refresh"></i> Verversen</button>
+  </div>`;
+
+  const sCard = (label, val, sub='', col='var(--hg)') => `<div style="flex:1;min-width:140px;padding:18px 16px 14px;background:#fff;border:1px solid var(--timberwolf);border-radius:8px;text-align:center">
+    <div style="font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8a8070;margin-bottom:6px">${label}</div>
+    <div style="font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:${col};line-height:1">${val}</div>
+    ${sub?`<div style="font-size:11px;color:var(--muted);margin-top:4px">${sub}</div>`:''}
+  </div>`;
+
+  const sec = (title, icon, body) => `<div style="margin-bottom:28px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8a8070;margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="ti ${icon}"></i> ${title}</div>
+    ${body}
+  </div>`;
+
+  const fromLabel = from.slice(0,10);
+  const toLabel = to.slice(0,10);
+
+  // Build HTML
+  let html = `<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Periode: ${fromLabel} → ${toLabel}</div>`;
+  html += periodBar;
+
+  // Section 1 — Instroom
+  html += sec('Instroom kandidaten', 'ti-user-plus', `<div style="display:flex;gap:10px;flex-wrap:wrap">
+    ${sCard('Nieuw toegevoegd', nieuwTotal)}
+    ${sCard('Eigen werving', nieuwEW, nieuwTotal?Math.round(nieuwEW/nieuwTotal*100)+'%':'')}
+    ${sCard('Via bureau', nieuwBureau, nieuwTotal?Math.round(nieuwBureau/nieuwTotal*100)+'%':'')}
+  </div>`);
+
+  // Section 2 — Introductions
+  html += sec('Introductions (voorgesteld)', 'ti-send', `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+    ${sCard('Totaal aanbiedingen', totalIntros)}
+    ${sCard('Unieke kandidaten', uniqueKandIntro)}
+    ${sCard('Unieke klanten', uniqueKlantIntro)}
+  </div>
+  ${topKlanten.length ? `<div style="font-size:11px;font-weight:600;color:#8a8070;margin-bottom:6px">TOP KLANTEN (aanbiedingen)</div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px">${topKlanten.map(([k,n])=>`<span style="background:var(--hgl);color:var(--hg);padding:3px 10px;border-radius:4px;font-size:12px;font-weight:500">${esc(k)} <strong>${n}</strong></span>`).join('')}</div>` : ''}`);
+
+  // Section 3 & 4 — Aangenomen & Afgewezen
+  html += sec('Resultaat', 'ti-trophy', `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+    ${sCard('Aangenomen', aangenomenInPeriod.length, 'in gekozen periode', '#1a5c2a')}
+    ${sCard('Uitgestroomd', afgewezenInPeriod.length, 'gearchiveerd (niet aangenomen)', '#782410')}
+  </div>
+  ${aangenomenInPeriod.length ? `<div style="font-size:11px;color:var(--muted);margin-bottom:6px"><strong>Aangenomen:</strong></div>
+  <div style="display:flex;flex-direction:column;gap:4px">${aangenomenInPeriod.slice(0,12).map(e=>{
+    const c = candMap[e.cid];
+    const isEW = c && c.bureau==='Eigen Werving';
+    return `<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 8px;background:#fff;border-radius:4px;border:1px solid #e8ede9">
+      <span style="font-weight:600;color:var(--hg);min-width:120px">${esc(c?c.name:e.cid)}</span>
+      <span style="color:var(--muted)">${esc(e.company)} — ${esc(e.role)}</span>
+      <span style="margin-left:auto;font-size:10px;font-weight:600;color:${isEW?'#1a5c2a':'#5a3e8c'};background:${isEW?'#e8f4eb':'#f0eaf8'};padding:1px 6px;border-radius:3px">${isEW?'EW':'Bureau'}</span>
+      <span style="font-size:10px;color:var(--muted)">${e.date.slice(0,10)}</span>
+    </div>`;
+  }).join('')}</div>` : ''}`);
+
+  // Section 5 — Kandidaat activiteitsranking
+  html += sec('Kandidaat activiteitsranking', 'ti-medal', `<div style="display:flex;gap:8px;margin-bottom:10px">
+    <button class="bsm${_kpiCandSort==='count'?' active-period':''}" style="${_kpiCandSort==='count'?'background:var(--hg);color:#fff;border-color:var(--hg)':''}" onclick="window._kpiSetCandSort('count')">Meest actief</button>
+    <button class="bsm${_kpiCandSort==='alpha'?' active-period':''}" style="${_kpiCandSort==='alpha'?'background:var(--hg);color:#fff;border-color:var(--hg)':''}" onclick="window._kpiSetCandSort('alpha')">Alfabetisch</button>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:3px">
+    ${candActivity.slice(0,20).map((c,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:5px 8px;background:${i%2?'#fff':'var(--hgl)'};border-radius:4px;font-size:12px">
+      <span style="font-size:10px;color:var(--muted);width:18px;text-align:right">${i+1}</span>
+      <span style="font-weight:600;color:var(--hg);flex:1" onclick="openModal('${esc(c.cid)}')" style="cursor:pointer">${esc(c.name)}</span>
+      <span style="background:#e8ede9;color:var(--hg);padding:1px 7px;border-radius:3px;font-size:11px;font-weight:600">${c.vacCount} vacature${c.vacCount!==1?'s':''}</span>
+    </div>`).join('')}
+    ${candActivity.length>20?`<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:6px">+ ${candActivity.length-20} meer kandidaten</div>`:''}
+    ${!candActivity.length?'<div style="color:var(--muted);font-size:12px">Geen data</div>':''}
+  </div>`);
+
+  // Section 6 — Time-to-hire
+  const avgLabel = avgTTH !== null ? avgTTH+' dagen' : '—';
+  html += sec('Time-to-hire (aanmaken → aangenomen)', 'ti-clock', `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+    ${sCard('Gemiddeld', avgLabel, tthEntries.length+' plaatsingen totaal')}
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <button class="bsm${_kpiTTHSort==='longest'?' active-period':''}" style="${_kpiTTHSort==='longest'?'background:var(--hg);color:#fff;border-color:var(--hg)':''}" onclick="window._kpiSetTTHSort('longest')">Langst</button>
+    <button class="bsm${_kpiTTHSort==='shortest'?' active-period':''}" style="${_kpiTTHSort==='shortest'?'background:var(--hg);color:#fff;border-color:var(--hg)':''}" onclick="window._kpiSetTTHSort('shortest')">Kortst</button>
+    <button class="bsm${_kpiTTHSort==='alpha'?' active-period':''}" style="${_kpiTTHSort==='alpha'?'background:var(--hg);color:#fff;border-color:var(--hg)':''}" onclick="window._kpiSetTTHSort('alpha')">Alfabetisch</button>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:3px">
+    ${tthEntries.slice(0,15).map((e,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:${i%2?'#fff':'var(--hgl)'};border-radius:4px;font-size:12px">
+      <span style="font-weight:600;color:var(--hg);min-width:110px">${esc(e.name)}</span>
+      <span style="color:var(--muted);flex:1">${esc(e.company)} — ${esc(e.role)}</span>
+      <span style="font-size:10px;color:var(--muted)">${e.created} → ${e.hired}</span>
+      <span style="font-weight:700;color:${e.days>90?'#782410':e.days>45?'#b07a20':'#1a5c2a'};min-width:60px;text-align:right">${e.days} dgn</span>
+    </div>`).join('')}
+    ${tthEntries.length>15?`<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:6px">+ ${tthEntries.length-15} meer</div>`:''}
+    ${!tthEntries.length?'<div style="color:var(--muted);font-size:12px">Nog geen aangenomen kandidaten</div>':''}
+  </div>`);
+
+  // Section 7 — Phase durations
+  if(phaseDurations.length) {
+    const avgG = phaseDurations.filter(e=>e.gToHire!=null);
+    const avgGVal = avgG.length ? Math.round(avgG.reduce((s,e)=>s+e.gToHire,0)/avgG.length) : null;
+    const avgG1G2 = phaseDurations.filter(e=>e.g1Tog2!=null);
+    const avgG1G2Val = avgG1G2.length ? Math.round(avgG1G2.reduce((s,e)=>s+e.g1Tog2,0)/avgG1G2.length) : null;
+    html += sec('Faseduur (aangenomen traject)', 'ti-route', `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      ${sCard('Ø gesprek → hire', avgGVal!==null?avgGVal+' dgn':'—', avgG.length+' trajecten')}
+      ${sCard('Ø 1e → 2e gesprek', avgG1G2Val!==null?avgG1G2Val+' dgn':'—', avgG1G2.length+' trajecten')}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:3px">
+      ${phaseDurations.slice(0,10).map((e,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:${i%2?'#fff':'var(--hgl)'};border-radius:4px;font-size:12px">
+        <span style="font-weight:600;color:var(--hg);min-width:110px">${esc(e.name)}</span>
+        <span style="color:var(--muted);flex:1">${esc(e.company)}</span>
+        ${e.g1Tog2!=null?`<span style="font-size:10px;color:#b07a20">G1→G2: ${e.g1Tog2}d</span>`:''}
+        ${e.gToHire!=null?`<span style="font-size:10px;color:var(--hg)">G→hire: ${e.gToHire}d</span>`:''}
+      </div>`).join('')}
+    </div>`);
+  }
+
+  // Section 8 & 9 — Eigen werving vs bureau
+  const totalHires = ewHires + bureauHires;
+  const ewHirePct = totalHires ? Math.round(ewHires/totalHires*100) : 0;
+  html += sec('Eigen werving vs bureau', 'ti-building-community', `<div style="display:flex;gap:16px;flex-wrap:wrap">
+    <div style="flex:1;min-width:220px">
+      <div style="font-size:11px;font-weight:600;color:#8a8070;margin-bottom:8px">HIRES IN PERIODE</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${sCard('Eigen werving', ewHires, totalHires?ewHirePct+'%':'')}
+        ${sCard('Via bureau', bureauHires, totalHires?Math.round(bureauHires/totalHires*100)+'%':'')}
+      </div>
+      ${totalHires ? `<div style="margin-top:10px;height:10px;background:#e8ede9;border-radius:5px;overflow:hidden"><div style="height:100%;width:${ewHirePct}%;background:var(--hg);border-radius:5px"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:3px"><span>EW ${ewHirePct}%</span><span>Bureau ${100-ewHirePct}%</span></div>` : ''}
+    </div>
+    <div style="flex:1;min-width:220px">
+      <div style="font-size:11px;font-weight:600;color:#8a8070;margin-bottom:8px">HUIDIGE FUNNEL (open vacs)</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${sCard('Eigen werving', funnelEW, funnelEWPct+'%')}
+        ${sCard('Via bureau', funnelBureau, funnelBureauPct+'%')}
+      </div>
+      ${funnelTotal ? `<div style="margin-top:10px;height:10px;background:#e8ede9;border-radius:5px;overflow:hidden"><div style="height:100%;width:${funnelEWPct}%;background:var(--hg);border-radius:5px"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:3px"><span>EW ${funnelEWPct}%</span><span>Bureau ${funnelBureauPct}%</span></div>` : ''}
+    </div>
+  </div>`);
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:6px">
+      <h2 style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--hg);margin:0">Recruitment KPI</h2>
+    </div>
+    ${html}`;
+}
+
+// KPI sort/period setters — exposed globally so onclick= strings work
+window._kpiSetPeriod = function(p){ _kpiPeriod = p; _kpiRendered = false; renderKPI(true); };
+window._kpiSetCandSort = function(s){ _kpiCandSort = s; _kpiRendered = false; renderKPI(true); };
+window._kpiSetTTHSort = function(s){ _kpiTTHSort = s; _kpiRendered = false; renderKPI(true); };
+
+// ── END KPI DASHBOARD ───────────────────────────────────────────
+
 async function renderRapport(force=false){
   const el = document.getElementById('rapport-content');
   if(!el) return;
@@ -5031,7 +5385,7 @@ async function renderRapport(force=false){
 }
 
 function showTab(t){
-  ['lib','portefeuille','push','offer','vac','dash','archive','companies','match','meetings','funnel','settings','rapport'].forEach(x=>{
+  ['lib','portefeuille','push','offer','vac','dash','archive','companies','match','meetings','funnel','settings','rapport','kpi'].forEach(x=>{
     const v=document.getElementById('view-'+x); if(v) v.style.display=x===t?'':'none';
     const tb=document.getElementById('tab-'+x); if(tb) tb.classList.toggle('active',x===t);
   });
@@ -5048,6 +5402,7 @@ function showTab(t){
   if(t==='meetings') renderMeetings();
   if(t==='funnel') renderFunnelTab();
   if(t==='rapport') renderRapport();
+  if(t==='kpi') renderKPI();
   if(t==='vac'){ document.querySelector('.content').style.padding = '0'; } else { document.querySelector('.content').style.padding = '16px'; }
 }
 
