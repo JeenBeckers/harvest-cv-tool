@@ -1449,9 +1449,11 @@ function applyRolePermissions(user){
   const isAdmin = user.role === 'Admin';
   const mgmt = document.getElementById('user-mgmt-section');
   if(mgmt) mgmt.style.display = isAdmin ? '' : 'none';
-  // Teamrapport tab only for admins
+  // Teamrapport + Dashboard (KPI) tab only for admins
   const rapportTab = document.getElementById('tab-rapport');
-  if(rapportTab) rapportTab.style.display = user.role === 'Admin' ? '' : 'none';
+  if(rapportTab) rapportTab.style.display = isAdmin ? '' : 'none';
+  const kpiTab = document.getElementById('tab-kpi');
+  if(kpiTab) kpiTab.style.display = isAdmin ? '' : 'none';
 }
 
 // ── USER MANAGEMENT
