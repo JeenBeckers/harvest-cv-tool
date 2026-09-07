@@ -5070,28 +5070,55 @@ function _renderKPIContent(el, allCands, allVacs, allOffers) {
       <span style="color:var(--muted);flex:1">${esc(e.company)} — ${esc(e.role)}</span>
       <span style="font-size:10px;color:var(--muted)">${e.created} → ${e.hired}</span>
       <span style="font-weight:700;color:${e.days>90?'#782410':e.days>45?'#b07a20':'#1a5c2a'};min-width:60px;text-align:right">${e.days} dgn</span>
+      <button onclick="window._kpiRemoveTTH('${esc(e.vId)}','${esc(e.cid)}')" title="Verwijder deze aangenomen-datum" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:11px;padding:0 2px;line-height:1" onmouseover="this.style.color='#782410'" onmouseout="this.style.color='#ccc'"><i class="ti ti-x"></i></button>
     </div>`).join('')}
     ${tthEntries.length>15?`<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:6px">+ ${tthEntries.length-15} meer</div>`:''}
     ${!tthEntries.length?'<div style="color:var(--muted);font-size:12px">Nog geen aangenomen kandidaten</div>':''}
   </div>`);
 
   // Section 7 — Phase durations
-  if(phaseDurations.length) {
-    const avgG = phaseDurations.filter(e=>e.gToHire!=null);
+  // Enrich phaseDurations with total tth days from tthEntries
+  const tthLookup = {};
+  tthEntries.forEach(e => { tthLookup[e.cid+'|'+e.vId] = e.days; });
+  // Also build phaseDurations for ALL aangenomen (including those without gesprekDates)
+  const allHirePhaseDurations = [];
+  allVacs.forEach(v => {
+    if(v.type==='campagne') return;
+    const kd = v.kanban_data || {};
+    const gd = kd.gesprekDates || {};
+    const ad = kd.aangenomenDates || {};
+    (kd.aangenomen||[]).forEach(cid => {
+      const hireDate = ad[cid];
+      const c = candMap[cid];
+      if(!hireDate || !c) return;
+      const gesprekDate = gd[cid+':gesprek'] || null;
+      const gesprek2Date = gd[cid+':gesprek2'] || null;
+      const totalDays = tthLookup[cid+'|'+v.id] ?? null;
+      const entry = {cid, name: c.name, company: v.company, role: v.role, totalDays};
+      if(gesprekDate && hireDate) entry.gToHire = Math.round((new Date(hireDate)-new Date(gesprekDate))/86400000);
+      if(gesprekDate && gesprek2Date) entry.g1Tog2 = Math.round((new Date(gesprek2Date)-new Date(gesprekDate))/86400000);
+      allHirePhaseDurations.push(entry);
+    });
+  });
+
+  if(allHirePhaseDurations.length) {
+    const avgG = allHirePhaseDurations.filter(e=>e.gToHire!=null);
     const avgGVal = avgG.length ? Math.round(avgG.reduce((s,e)=>s+e.gToHire,0)/avgG.length) : null;
-    const avgG1G2 = phaseDurations.filter(e=>e.g1Tog2!=null);
+    const avgG1G2 = allHirePhaseDurations.filter(e=>e.g1Tog2!=null);
     const avgG1G2Val = avgG1G2.length ? Math.round(avgG1G2.reduce((s,e)=>s+e.g1Tog2,0)/avgG1G2.length) : null;
     html += sec('Faseduur (aangenomen traject)', 'ti-route', `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
       ${sCard('Ø gesprek → hire', avgGVal!==null?avgGVal+' dgn':'—', avgG.length+' trajecten')}
       ${sCard('Ø 1e → 2e gesprek', avgG1G2Val!==null?avgG1G2Val+' dgn':'—', avgG1G2.length+' trajecten')}
     </div>
     <div style="display:flex;flex-direction:column;gap:3px">
-      ${phaseDurations.slice(0,10).map((e,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:${i%2?'#fff':'var(--hgl)'};border-radius:4px;font-size:12px">
+      ${allHirePhaseDurations.slice(0,20).map((e,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:${i%2?'#fff':'var(--hgl)'};border-radius:4px;font-size:12px">
         <span style="font-weight:600;color:var(--hg);min-width:110px">${esc(e.name)}</span>
         <span style="color:var(--muted);flex:1">${esc(e.company)}</span>
         ${e.g1Tog2!=null?`<span style="font-size:10px;color:#b07a20">G1→G2: ${e.g1Tog2}d</span>`:''}
         ${e.gToHire!=null?`<span style="font-size:10px;color:var(--hg)">G→hire: ${e.gToHire}d</span>`:''}
+        ${e.totalDays!=null?`<span style="font-size:10px;font-weight:700;color:${e.totalDays>90?'#782410':e.totalDays>45?'#b07a20':'#1a5c2a'}">TTH: ${e.totalDays}d</span>`:''}
       </div>`).join('')}
+      ${allHirePhaseDurations.length>20?`<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:6px">+ ${allHirePhaseDurations.length-20} meer</div>`:''}
     </div>`);
   }
 
@@ -5130,6 +5157,19 @@ function _renderKPIContent(el, allCands, allVacs, allOffers) {
 window._kpiSetPeriod = function(p){ _kpiPeriod = p; _kpiRendered = false; renderKPI(true); };
 window._kpiSetCandSort = function(s){ _kpiCandSort = s; _kpiRendered = false; renderKPI(true); };
 window._kpiSetTTHSort = function(s){ _kpiTTHSort = s; _kpiRendered = false; renderKPI(true); };
+window._kpiRemoveTTH = async function(vId, cid) {
+  if(!confirm('Aangenomen-datum verwijderen voor deze kandidaat?')) return;
+  const vac = vacatures.find(v=>v.id===vId);
+  if(!vac) return;
+  const kd = JSON.parse(JSON.stringify(vac.kanbanData||{}));
+  if(kd.aangenomenDates) delete kd.aangenomenDates[cid];
+  if(kd.aangenomen) kd.aangenomen = (kd.aangenomen||[]).filter(id=>id!==cid);
+  vac.kanbanData = kd;
+  await sbFetch('vacatures?id=eq.'+vId, {method:'PATCH', body: JSON.stringify({kanban_data: kd})});
+  _kpiRendered = false;
+  renderKPI(true);
+  showToast('Aangenomen-datum verwijderd');
+};
 
 // ── END KPI DASHBOARD ───────────────────────────────────────────
 
