@@ -4732,26 +4732,48 @@ let _kpiCandSort = 'count'; // 'count' | 'alpha'
 let _kpiTTHSort = 'longest'; // 'longest' | 'shortest' | 'alpha'
 let _kpiRendered = false;
 
+const _MONTH_NL = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+
+function _kpiMonthOptions() {
+  const now = new Date();
+  const result = [];
+  // Previous 2 months + current month by name
+  for(let i = 2; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    result.push({k:'month-'+key, l:_MONTH_NL[d.getMonth()]});
+  }
+  return result;
+}
+
 function _kpiDateRange(period) {
   const now = new Date();
   const today = now.toISOString().slice(0,10);
-  let from;
+  let from, to = today;
   if(period==='week'){
     const d = new Date(now); d.setDate(d.getDate()-6); from=d.toISOString().slice(0,10);
   } else if(period==='maand'){
     from = today.slice(0,7)+'-01';
+  } else if(period.startsWith('month-')){
+    const ym = period.slice(6); // e.g. '2026-08'
+    from = ym+'-01';
+    // last day of that month
+    const [y,m] = ym.split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    const monthEnd = ym+'-'+String(lastDay).padStart(2,'0');
+    to = monthEnd < today ? monthEnd : today;
   } else if(period==='kwartaal'){
-    const m = now.getMonth(); // 0-indexed
+    const m = now.getMonth();
     const qStart = m<3?0:m<6?3:m<9?6:9;
     from = now.getFullYear()+'-'+(String(qStart+1).padStart(2,'0'))+'-01';
   } else if(period==='ytd'){
     from = now.getFullYear()+'-01-01';
   } else if(period==='jaar'){
     from = now.getFullYear()+'-01-01';
-  } else { // 'alles'
+  } else {
     from = '2020-01-01';
   }
-  return {from, to: today};
+  return {from, to};
 }
 
 function _kpiInRange(dateStr, from, to) {
@@ -4951,8 +4973,12 @@ function _renderKPIContent(el, allCands, allVacs, allOffers) {
 
   // ── Render
   const periods = [
-    {k:'week',l:'7 dagen'},{k:'maand',l:'Deze maand'},{k:'kwartaal',l:'Dit kwartaal'},
-    {k:'ytd',l:'YTD'},{k:'jaar',l:'Dit jaar'},{k:'alles',l:'Alles'},
+    {k:'week',l:'7 dagen'},
+    {k:'maand',l:'Deze maand'},
+    ..._kpiMonthOptions(),
+    {k:'ytd',l:'YTD'},
+    {k:'jaar',l:'Dit jaar'},
+    {k:'alles',l:'Alles'},
   ];
   const periodBar = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px">
     ${periods.map(p=>`<button class="bsm${_kpiPeriod===p.k?' active-period':''}" style="${_kpiPeriod===p.k?'background:var(--hg);color:#fff;border-color:var(--hg)':''}" onclick="window._kpiSetPeriod('${p.k}')">${p.l}</button>`).join('')}
