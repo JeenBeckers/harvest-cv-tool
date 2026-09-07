@@ -4891,7 +4891,8 @@ function _renderKPIContent(el, allCands, allVacs, allOffers) {
       const created = c.created_at.slice(0,10);
       const hired = hireDate.slice(0,10);
       const days = Math.round((new Date(hired) - new Date(created)) / 86400000);
-      if(days >= 0) tthEntries.push({cid, name: c.name, days, created, hired, company: v.company, role: v.role});
+      const startD = (kd.startDates || {})[cid] || null;
+      if(days >= 0) tthEntries.push({cid, vId: v.id, name: c.name, days, created, hired, startDate: startD, company: v.company, role: v.role});
     });
   });
   if(_kpiTTHSort === 'longest') tthEntries.sort((a,b) => b.days - a.days);
@@ -5068,8 +5069,10 @@ function _renderKPIContent(el, allCands, allVacs, allOffers) {
     ${tthEntries.slice(0,15).map((e,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:${i%2?'#fff':'var(--hgl)'};border-radius:4px;font-size:12px">
       <span style="font-weight:600;color:var(--hg);min-width:110px">${esc(e.name)}</span>
       <span style="color:var(--muted);flex:1">${esc(e.company)} — ${esc(e.role)}</span>
-      <span style="font-size:10px;color:var(--muted)">${e.created} → ${e.hired}</span>
-      <span style="font-weight:700;color:${e.days>90?'#782410':e.days>45?'#b07a20':'#1a5c2a'};min-width:60px;text-align:right">${e.days} dgn</span>
+      <span style="font-size:10px;color:var(--muted)" title="aangemaakt → aangenomen">${e.created} → ${e.hired}</span>
+      ${e.startDate?`<span style="font-size:10px;color:#1a5c2a" title="startdatum">▶ ${e.startDate}</span>`:''}
+      <span style="font-weight:700;color:${e.days>90?'#782410':e.days>45?'#b07a20':'#1a5c2a'};min-width:52px;text-align:right">${e.days} dgn</span>
+      <button onclick="window._kpiEditTTH('${esc(e.vId)}','${esc(e.cid)}','${esc(e.hired)}','${esc(e.startDate||'')}')" title="Plaatsings- of startdatum aanpassen" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:11px;padding:0 2px;line-height:1" onmouseover="this.style.color='var(--hg)'" onmouseout="this.style.color='#ccc'"><i class="ti ti-pencil"></i></button>
       <button onclick="window._kpiRemoveTTH('${esc(e.vId)}','${esc(e.cid)}')" title="Verwijder deze aangenomen-datum" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:11px;padding:0 2px;line-height:1" onmouseover="this.style.color='#782410'" onmouseout="this.style.color='#ccc'"><i class="ti ti-x"></i></button>
     </div>`).join('')}
     ${tthEntries.length>15?`<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:6px">+ ${tthEntries.length-15} meer</div>`:''}
@@ -5157,6 +5160,47 @@ function _renderKPIContent(el, allCands, allVacs, allOffers) {
 window._kpiSetPeriod = function(p){ _kpiPeriod = p; _kpiRendered = false; renderKPI(true); };
 window._kpiSetCandSort = function(s){ _kpiCandSort = s; _kpiRendered = false; renderKPI(true); };
 window._kpiSetTTHSort = function(s){ _kpiTTHSort = s; _kpiRendered = false; renderKPI(true); };
+window._kpiEditTTH = async function(vId, cid, currentHired, currentStart) {
+  // Show inline edit modal for plaatsingsdatum + startdatum
+  const existing = document.getElementById('kpi-edit-tth-modal');
+  if(existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'kpi-edit-tth-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999';
+  modal.innerHTML = `<div style="background:#fff;border-radius:10px;padding:28px 32px;min-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div style="font-weight:700;font-size:15px;margin-bottom:18px;color:var(--hg)">Datums aanpassen</div>
+    <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px">Plaatsingsdatum (aangenomen)</label>
+    <input id="kpi-edit-hired" type="date" value="${currentHired||''}" style="width:100%;border:1px solid var(--timberwolf);border-radius:6px;padding:7px 10px;font-size:14px;margin-bottom:14px;box-sizing:border-box">
+    <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px">Startdatum (eerste werkdag)</label>
+    <input id="kpi-edit-start" type="date" value="${currentStart||''}" style="width:100%;border:1px solid var(--timberwolf);border-radius:6px;padding:7px 10px;font-size:14px;margin-bottom:20px;box-sizing:border-box">
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="bsm" onclick="document.getElementById('kpi-edit-tth-modal').remove()">Annuleren</button>
+      <button class="bsm" style="background:var(--hg);color:#fff;border-color:var(--hg)" onclick="window._kpiEditTTHSave('${vId}','${cid}')">Opslaan</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+};
+window._kpiEditTTHSave = async function(vId, cid) {
+  const hiredVal = document.getElementById('kpi-edit-hired')?.value?.trim();
+  const startVal = document.getElementById('kpi-edit-start')?.value?.trim();
+  if(!hiredVal) { alert('Vul een plaatsingsdatum in'); return; }
+  document.getElementById('kpi-edit-tth-modal')?.remove();
+  const vac = vacatures.find(v=>v.id===vId);
+  if(!vac) return;
+  const kd = JSON.parse(JSON.stringify(vac.kanbanData||{}));
+  if(!kd.aangenomenDates) kd.aangenomenDates = {};
+  kd.aangenomenDates[cid] = hiredVal;
+  if(startVal) {
+    if(!kd.startDates) kd.startDates = {};
+    kd.startDates[cid] = startVal;
+  }
+  vac.kanbanData = kd;
+  await sbFetch('vacatures?id=eq.'+vId, {method:'PATCH', body: JSON.stringify({kanban_data: kd})});
+  _kpiRendered = false;
+  renderKPI(true);
+  showToast('Datums opgeslagen');
+};
 window._kpiRemoveTTH = async function(vId, cid) {
   if(!confirm('Aangenomen-datum verwijderen voor deze kandidaat?')) return;
   const vac = vacatures.find(v=>v.id===vId);
