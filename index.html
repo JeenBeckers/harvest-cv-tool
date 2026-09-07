@@ -43,7 +43,7 @@ b,strong{font-weight:500}
 .ubtn.active{background:var(--beige);color:var(--hg)}
 
 /* ── NAV TABS ── */
-.navtabs{background:#fff;border-bottom:1px solid var(--border);display:flex;padding:0 12px;overflow-x:auto}
+.navtabs{background:#fff;border-bottom:1px solid var(--border);display:flex;padding:0 12px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}.navtabs::-webkit-scrollbar{display:none}
 .navtab{padding:10px 12px;font-size:12px;font-weight:400;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;display:flex;align-items:center;gap:4px;white-space:nowrap}
 .navtab:hover{color:var(--hg)}
 .navtab.active{color:var(--hg);border-bottom-color:var(--hg)}
@@ -4387,7 +4387,7 @@ function renderSettings(){
   if(currentUserObj?.role==='Admin') renderUserMgmt();
   const mgmt=document.getElementById('user-mgmt-section');
   if(mgmt) mgmt.style.display=(currentUserObj?.role==='Admin')?'':'none';
-  document.getElementById('sig-input').value=signature;document.getElementById('user-email-rows').innerHTML=USERS.map(u=>`<div class="user-email-row"><span class="upill ${UCLS[u]}" style="min-width:55px;justify-content:center">${u}</span><input class="fi" style="flex:1" type="email" id="email-${u}" placeholder="${u.toLowerCase()}@harvest.nl" value="${esc(userEmails[u]||'')}"><button class="bsm p" onclick="saveUserEmail('${u}')"><i class="ti ti-check" style="font-size:10px"></i> Opslaan</button></div>`).join('');}
+  const sigEl=document.getElementById('sig-input');if(sigEl)sigEl.value=signature;document.getElementById('user-email-rows').innerHTML=USERS.map(u=>`<div class="user-email-row"><span class="upill ${UCLS[u]}" style="min-width:55px;justify-content:center">${u}</span><input class="fi" style="flex:1" type="email" id="email-${u}" placeholder="${u.toLowerCase()}@harvest.nl" value="${esc(userEmails[u]||'')}"><button class="bsm p" onclick="saveUserEmail('${u}')"><i class="ti ti-check" style="font-size:10px"></i> Opslaan</button></div>`).join('');}
 async function saveUserEmail(u){userEmails[u]=document.getElementById('email-'+u).value.trim();await saveEmails();showToast('✓ Opgeslagen voor '+u);}
 async function saveSignature(){signature=document.getElementById('sig-input').value;await saveSig();showToast('✓ Handtekening opgeslagen');}
 
