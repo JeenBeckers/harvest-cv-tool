@@ -3386,10 +3386,16 @@ async function loadVisibleTabs(){
   const v = await DB.getSetting('visible_tabs');
   if(v){
     const parsed = JSON.parse(v);
-    // Always keep required tabs
+    // Always keep required tabs; show new tabs (not in stored list) by default
     visibleTabs = TAB_CONFIG.map(t=>t.key).filter(k=>{
       const cfg = TAB_CONFIG.find(t=>t.key===k);
-      return cfg?.required || parsed.includes(k);
+      return cfg?.required || parsed.includes(k) || !parsed.some(p=>TAB_CONFIG.find(t=>t.key===p));
+    });
+    // New keys not previously known → default visible
+    TAB_CONFIG.forEach(t=>{
+      if(!t.required && !parsed.includes(t.key) && !visibleTabs.includes(t.key)){
+        visibleTabs.push(t.key);
+      }
     });
   }
   updateTabVisibility();
