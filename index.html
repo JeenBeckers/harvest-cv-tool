@@ -6318,7 +6318,9 @@ function openOppModal(id){
 
       <div>
         <label style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px">Klant *</label>
-        <input id="opp-f-klant" type="text" value="${esc(v.klant||'')}" placeholder="Bedrijfsnaam" style="width:100%;border:1px solid var(--timberwolf);border-radius:6px;padding:7px 10px;font-size:13px;box-sizing:border-box">
+        <input id="opp-f-klant" type="text" list="opp-companies-list" value="${esc(v.klant||'')}" placeholder="Bedrijfsnaam zoeken of nieuw…" autocomplete="off" style="width:100%;border:1px solid var(--timberwolf);border-radius:6px;padding:7px 10px;font-size:13px;box-sizing:border-box">
+        <datalist id="opp-companies-list">${(companies||[]).map(c=>`<option value="${esc(typeof c==='string'?c:c.name||'')}"></option>`).join('')}</datalist>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">Niet gevonden? Typ de naam — wordt automatisch opgeslagen in bedrijvenlijst.</div>
       </div>
       <div>
         <label style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px">Contactpersoon</label>
@@ -6401,6 +6403,12 @@ async function saveOpp(id){
 
   document.getElementById('opp-modal-overlay')?.remove();
   await _oppSave();
+  // Add to companies list if new
+  const klantName = rec.klant;
+  const knownNames = (companies||[]).map(c=>typeof c==='string'?c:c.name||'');
+  if(klantName && !knownNames.some(n=>n.toLowerCase()===klantName.toLowerCase())){
+    try { await sbFetch('companies', {method:'POST', body:JSON.stringify({name:klantName})}); companies.push(klantName); } catch(e){}
+  }
   _renderOppContent();
   showToast(id ? 'Opportunity bijgewerkt' : 'Opportunity toegevoegd');
 }
