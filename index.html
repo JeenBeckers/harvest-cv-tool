@@ -568,6 +568,7 @@ b,strong{font-weight:500}
     <div class="navtab" onclick="showTab('archive')" id="tab-archive"><i class="ti ti-archive"></i> Archief <span class="nbadge" id="nb-archive">0</span></div>
     <div class="navtab" onclick="showTab('match')" id="tab-match"><i class="ti ti-sparkles"></i> AI Match</div>
     <div class="navtab" onclick="showTab('settings')" id="tab-settings"><i class="ti ti-settings"></i> Instellingen</div>
+    <div class="navtab" onclick="showTab('opp')" id="tab-opp"><i class="ti ti-trophy"></i> Opportunities</div>
     <div class="navtab" onclick="showTab('kpi')" id="tab-kpi" style="display:none"><i class="ti ti-chart-dots"></i> Dashboard</div>
     <div class="navtab" onclick="showTab('rapport')" id="tab-rapport" style="display:none"><i class="ti ti-chart-area"></i> Teamrapport</div>
   </div>
@@ -984,6 +985,11 @@ b,strong{font-weight:500}
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- OPPORTUNITIES -->
+    <div id="view-opp" style="display:none;padding:0">
+      <div id="opp-content" style="max-width:1000px;margin:0 auto;padding:16px 16px 48px"></div>
     </div>
 
     <!-- TEAMRAPPORT (alleen Jeen) -->
@@ -3356,6 +3362,7 @@ const TAB_CONFIG = [
   {key:'archive',     label:'Archief',        icon:'ti-archive',      required:false},
   {key:'match',       label:'AI Match',       icon:'ti-sparkles',     required:false},
   {key:'settings',    label:'Instellingen',   icon:'ti-settings',     required:true},
+  {key:'opp',         label:'Opportunities',  icon:'ti-trophy',       required:false},
 ];
 let visibleTabs = TAB_CONFIG.map(t=>t.key); // default: all visible
 
@@ -5532,7 +5539,7 @@ async function renderRapport(force=false){
 }
 
 function showTab(t){
-  ['lib','portefeuille','push','offer','vac','dash','archive','companies','match','meetings','funnel','settings','rapport','kpi'].forEach(x=>{
+  ['lib','portefeuille','push','offer','vac','dash','archive','companies','match','meetings','funnel','settings','rapport','kpi','opp'].forEach(x=>{
     const v=document.getElementById('view-'+x); if(v) v.style.display=x===t?'':'none';
     const tb=document.getElementById('tab-'+x); if(tb) tb.classList.toggle('active',x===t);
   });
@@ -5550,6 +5557,7 @@ function showTab(t){
   if(t==='funnel') renderFunnelTab();
   if(t==='rapport') renderRapport();
   if(t==='kpi') renderKPI();
+  if(t==='opp') renderOpportunities();
   if(t==='vac'){ document.querySelector('.content').style.padding = '0'; } else { document.querySelector('.content').style.padding = '16px'; }
 }
 
@@ -6147,6 +6155,256 @@ async function saveEditMeeting(id) {
   try { await DB.upsertMeeting(m); } catch(e) { console.error('saveEditMeeting failed:', e); }
   renderMeetings();
   showToast('Afspraak bijgewerkt');
+}
+
+// ─────────────────────────────────────────────
+// OPPORTUNITIES
+// ─────────────────────────────────────────────
+const OPP_SETTINGS_KEY = 'opportunities_v1';
+let _oppData = []; // loaded on first render
+let _oppFilter = 'all'; // 'all' | 'academy' | 'postmaster'
+let _oppFaseFilter = 'active'; // 'active' | 'all' | 'verloren'
+
+const OPP_FASE = ['kennismaking','offerte','closen','on-hold','verloren'];
+const OPP_FASE_LABELS = {kennismaking:'Kennismaking',offerte:'Offerte',closen:'Closen','on-hold':'On-hold',verloren:'Verloren'};
+const OPP_FASE_COLORS = {kennismaking:'#b07a20',offerte:'#1a5c2a',closen:'#092B13','on-hold':'#888',verloren:'#782410'};
+const OPP_TOT_STAND = ['acquisitie','bbtg','cross-sell'];
+
+function _oppId(){ return 'opp-'+Date.now()+'-'+Math.random().toString(36).slice(2,7); }
+
+async function _oppLoad(){
+  const raw = await DB.getSetting(OPP_SETTINGS_KEY);
+  _oppData = raw ? JSON.parse(raw) : [];
+}
+async function _oppSave(){
+  await DB.setSetting(OPP_SETTINGS_KEY, JSON.stringify(_oppData));
+}
+
+function _oppFmt(n){ return n!=null && n!=='' ? '€'+Number(n).toLocaleString('nl-NL') : '—'; }
+
+async function renderOpportunities(){
+  const el = document.getElementById('opp-content');
+  if(!el) return;
+  el.innerHTML = '<div style="color:var(--muted);padding:24px">Laden…</div>';
+  await _oppLoad();
+  _renderOppContent();
+}
+
+function _renderOppContent(){
+  const el = document.getElementById('opp-content');
+  if(!el) return;
+
+  // Filter
+  let list = _oppData.slice();
+  if(_oppFilter !== 'all') list = list.filter(o=>o.type===_oppFilter);
+  if(_oppFaseFilter === 'active') list = list.filter(o=>o.fase !== 'verloren');
+  else if(_oppFaseFilter === 'verloren') list = list.filter(o=>o.fase === 'verloren');
+
+  // Summary per fase
+  const activeFases = ['kennismaking','offerte','closen','on-hold'];
+  const faseGroups = {};
+  OPP_FASE.forEach(f=>{ faseGroups[f] = list.filter(o=>o.fase===f); });
+  const activeList = list.filter(o=>o.fase!=='verloren');
+  const totalPipeline = activeList.reduce((s,o)=>s+(Number(o.dealSize)||0),0);
+  const totalActive = activeList.length;
+
+  const faseCardHtml = activeFases.map(f=>{
+    const items = faseGroups[f]||[];
+    const val = items.reduce((s,o)=>s+(Number(o.dealSize)||0),0);
+    return `<div style="flex:1;min-width:130px;background:#fff;border:1px solid var(--timberwolf);border-radius:8px;padding:14px 12px;text-align:center">
+      <div style="font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:${OPP_FASE_COLORS[f]};margin-bottom:4px">${OPP_FASE_LABELS[f]}</div>
+      <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--hg)">${items.length}</div>
+      ${val?`<div style="font-size:11px;color:var(--muted);margin-top:2px">${_oppFmt(val)}</div>`:''}
+    </div>`;
+  }).join('');
+
+  // Table rows
+  const sorted = list.slice().sort((a,b)=>{
+    const fo = OPP_FASE.indexOf(a.fase) - OPP_FASE.indexOf(b.fase);
+    return fo !== 0 ? fo : (a.klant||'').localeCompare(b.klant||'');
+  });
+
+  const rowsHtml = sorted.length ? sorted.map(o=>{
+    const typeLabel = o.type==='academy'?'Academy':'Post Master';
+    const typeColor = o.type==='academy'?'#092B13':'#782410';
+    const ds = o.dealSize ? _oppFmt(o.dealSize) : '—';
+    return `<tr style="cursor:pointer;font-size:13px" onclick="openOppModal('${o.id}')">
+      <td style="padding:8px 10px"><span style="font-size:10px;font-weight:700;color:${typeColor};background:${typeColor}18;border-radius:3px;padding:2px 6px">${typeLabel}</span></td>
+      <td style="padding:8px 10px;font-weight:600;color:var(--hg)">${esc(o.klant||'—')}</td>
+      <td style="padding:8px 10px;color:var(--muted);font-size:12px">${esc(o.contactpersoon||'—')}</td>
+      <td style="padding:8px 10px;font-size:12px">${esc(o.onderwerp||'—')}</td>
+      <td style="padding:8px 10px"><span style="font-size:11px;font-weight:600;color:${OPP_FASE_COLORS[o.fase]||'#888'}">${OPP_FASE_LABELS[o.fase]||o.fase}</span></td>
+      <td style="padding:8px 10px;font-size:12px;color:var(--muted)">${esc(o.totStand||'—')}</td>
+      <td style="padding:8px 10px;font-size:12px">${o.startVerwacht||'—'}</td>
+      <td style="padding:8px 10px;font-weight:600;text-align:right">${ds}</td>
+      <td style="padding:8px 4px;text-align:right" onclick="event.stopPropagation()">
+        <button class="bsm" style="font-size:10px;padding:2px 7px" onclick="openOppModal('${o.id}')"><i class="ti ti-pencil"></i></button>
+        <button class="bsm" style="font-size:10px;padding:2px 7px;color:#782410;border-color:#782410" onclick="deleteOpp('${o.id}')"><i class="ti ti-trash"></i></button>
+      </td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="9" style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Nog geen opportunities</td></tr>`;
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+      <div>
+        <h2 style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--hg);margin:0">Opportunities</h2>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${totalActive} actieve deals · pipeline ${_oppFmt(totalPipeline)}</div>
+      </div>
+      <button class="bsm" style="background:var(--hg);color:#fff;border-color:var(--hg);padding:7px 16px;font-size:13px" onclick="openOppModal()"><i class="ti ti-plus"></i> Nieuwe opportunity</button>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      ${faseCardHtml}
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+      <span style="font-size:11px;color:var(--muted)">Type:</span>
+      ${[['all','Alle'],['academy','Academy'],['postmaster','Post Master']].map(([k,l])=>`<button class="bsm${_oppFilter===k?' active-period':''}" style="${_oppFilter===k?'background:var(--hg);color:#fff;border-color:var(--hg)':''}" onclick="window._oppSetFilter('${k}')">${l}</button>`).join('')}
+      <span style="font-size:11px;color:var(--muted);margin-left:8px">Status:</span>
+      ${[['active','Actief'],['all','Alles'],['verloren','Verloren']].map(([k,l])=>`<button class="bsm${_oppFaseFilter===k?' active-period':''}" style="${_oppFaseFilter===k?'background:var(--hg);color:#fff;border-color:var(--hg)':''}" onclick="window._oppSetFaseFilter('${k}')">${l}</button>`).join('')}
+    </div>
+
+    <div style="background:#fff;border:1px solid var(--timberwolf);border-radius:8px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:var(--hgl);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
+            <th style="padding:8px 10px;text-align:left">Type</th>
+            <th style="padding:8px 10px;text-align:left">Klant</th>
+            <th style="padding:8px 10px;text-align:left">Contact</th>
+            <th style="padding:8px 10px;text-align:left">Onderwerp</th>
+            <th style="padding:8px 10px;text-align:left">Fase</th>
+            <th style="padding:8px 10px;text-align:left">Tot stand</th>
+            <th style="padding:8px 10px;text-align:left">Start verwacht</th>
+            <th style="padding:8px 10px;text-align:right">Deal size</th>
+            <th style="padding:8px 10px"></th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>`;
+}
+
+window._oppSetFilter = function(f){ _oppFilter=f; _renderOppContent(); };
+window._oppSetFaseFilter = function(f){ _oppFaseFilter=f; _renderOppContent(); };
+
+function openOppModal(id){
+  const opp = id ? _oppData.find(o=>o.id===id) : null;
+  const v = opp || {type:'academy',fase:'kennismaking'};
+
+  const existing = document.getElementById('opp-modal-overlay');
+  if(existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'opp-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
+
+  overlay.innerHTML = `<div style="background:#fff;border-radius:12px;padding:28px 30px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.18)">
+    <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--hg);margin-bottom:20px">${opp?'Opportunity bewerken':'Nieuwe opportunity'}</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div style="grid-column:1/-1">
+        <label style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px">Type *</label>
+        <div style="display:flex;gap:8px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="radio" name="opp-type" value="academy" ${v.type!=='postmaster'?'checked':''}> Academy</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="radio" name="opp-type" value="postmaster" ${v.type==='postmaster'?'checked':''}> Post Master</label>
+        </div>
+      </div>
+
+      <div>
+        <label style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px">Klant *</label>
+        <input id="opp-f-klant" type="text" value="${esc(v.klant||'')}" placeholder="Bedrijfsnaam" style="width:100%;border:1px solid var(--timberwolf);border-radius:6px;padding:7px 10px;font-size:13px;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px">Contactpersoon</label>
+        <input id="opp-f-contact" type="text" value="${esc(v.contactpersoon||'')}" placeholder="Naam" style="width:100%;border:1px solid var(--timberwolf);border-radius:6px;padding:7px 10px;font-size:13px;box-sizing:border-box">
+      </div>
+
+      <div style="grid-column:1/-1">
+        <label style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px">Onderwerp *</label>
+        <input id="opp-f-onderwerp" type="text" value="${esc(v.onderwerp||'')}" placeholder="Bijv. Python Academy — 8 deelnemers" style="width:100%;border:1px solid var(--timberwolf);border-radius:6px;padding:7px 10px;font-size:13px;box-sizing:border-box">
+      </div>
+
+      <div>
+        <label style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px">Hoe tot stand gekomen *</label>
+        <select id="opp-f-totstand" style="width:100%;border:1px solid var(--timberwolf);border-radius:6px;padding:7px 10px;font-size:13px;box-sizing:border-box">
+          ${OPP_TOT_STAND.map(s=>`<option value="${s}" ${v.totStand===s?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px">Fase *</label>
+        <select id="opp-f-fase" style="width:100%;border:1px solid var(--timberwolf);border-radius:6px;padding:7px 10px;font-size:13px;box-sizing:border-box">
+          ${OPP_FASE.map(f=>`<option value="${f}" ${v.fase===f?'selected':''}>${OPP_FASE_LABELS[f]}</option>`).join('')}
+        </select>
+      </div>
+
+      <div>
+        <label style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px">Start verwacht</label>
+        <input id="opp-f-start" type="month" value="${v.startVerwacht||''}" style="width:100%;border:1px solid var(--timberwolf);border-radius:6px;padding:7px 10px;font-size:13px;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px">Deal size (€)</label>
+        <input id="opp-f-deal" type="number" min="0" step="500" value="${v.dealSize||''}" placeholder="0" style="width:100%;border:1px solid var(--timberwolf);border-radius:6px;padding:7px 10px;font-size:13px;box-sizing:border-box">
+      </div>
+
+      <div style="grid-column:1/-1">
+        <label style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px">Notities</label>
+        <textarea id="opp-f-notes" rows="3" placeholder="Optionele aantekeningen…" style="width:100%;border:1px solid var(--timberwolf);border-radius:6px;padding:7px 10px;font-size:13px;box-sizing:border-box;resize:vertical">${esc(v.notes||'')}</textarea>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+      <button class="bsm" onclick="document.getElementById('opp-modal-overlay').remove()">Annuleren</button>
+      <button class="bsm" style="background:var(--hg);color:#fff;border-color:var(--hg)" onclick="saveOpp('${id||''}')">Opslaan</button>
+    </div>
+  </div>`;
+
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+}
+
+async function saveOpp(id){
+  const klant = document.getElementById('opp-f-klant')?.value?.trim();
+  const onderwerp = document.getElementById('opp-f-onderwerp')?.value?.trim();
+  if(!klant){ alert('Vul een klantnaam in'); return; }
+  if(!onderwerp){ alert('Vul een onderwerp in'); return; }
+
+  const typeEl = document.querySelector('input[name="opp-type"]:checked');
+  const rec = {
+    id: id || _oppId(),
+    type: typeEl ? typeEl.value : 'academy',
+    klant,
+    contactpersoon: document.getElementById('opp-f-contact')?.value?.trim()||'',
+    onderwerp,
+    totStand: document.getElementById('opp-f-totstand')?.value||'acquisitie',
+    fase: document.getElementById('opp-f-fase')?.value||'kennismaking',
+    startVerwacht: document.getElementById('opp-f-start')?.value||'',
+    dealSize: Number(document.getElementById('opp-f-deal')?.value)||0,
+    notes: document.getElementById('opp-f-notes')?.value?.trim()||'',
+    updatedAt: new Date().toISOString().slice(0,10),
+    owner: CU||'',
+  };
+  if(!id) rec.createdAt = rec.updatedAt;
+
+  if(id){
+    const idx = _oppData.findIndex(o=>o.id===id);
+    if(idx>=0) _oppData[idx] = {..._oppData[idx],...rec};
+    else _oppData.push(rec);
+  } else {
+    _oppData.push(rec);
+  }
+
+  document.getElementById('opp-modal-overlay')?.remove();
+  await _oppSave();
+  _renderOppContent();
+  showToast(id ? 'Opportunity bijgewerkt' : 'Opportunity toegevoegd');
+}
+
+async function deleteOpp(id){
+  if(!confirm('Opportunity verwijderen?')) return;
+  _oppData = _oppData.filter(o=>o.id!==id);
+  await _oppSave();
+  _renderOppContent();
+  showToast('Opportunity verwijderd');
 }
 
 </script>
